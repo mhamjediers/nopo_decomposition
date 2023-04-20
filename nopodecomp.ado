@@ -4,7 +4,7 @@
 *********
 cap program drop nopodecomp
 program define nopodecomp , eclass
-	syntax varlist , BY(varname) [PREFix(string) REPLACE SWITCH NORMalize]
+	syntax varlist , BY(varname) [PREFix(string) REPLACE SWITCH NORMalize BOOTSTRAP]
 	
 
 	marksample touse
@@ -62,24 +62,23 @@ program define nopodecomp , eclass
 	di as text " " 										_col(60) "N(matched strata) = " _col(85) mstrata
 	di as text _newline
 
-	di as text " Group " _col(20) "{c |}" /*
-		*/ _col(25) "Matched" _col(41) "{c |}" /*
-		*/ _col(46) "Unmatched"  _col(62) "{c |}" /*
-		*/ _col(67) "Total"  _col(73) "{c |}" /*
-		*/ _col(76) "Mean(" abbrev("`outcome'",9) ")"
-	di as text "{hline 19}{c +}{hline 20}{c +}{hline 20}{c +}{hline 10}{c +}{hline 15}"
-	di as text abbrev("`gr0'",13) " (ref)"  _col(20) "{c |}" /*
-		*/ as result _col(21) %8.0g `=mtab[1,1]' _col(30) "("%4.1f `=mtab[1,2]*100' "%)" _col(41) "{c |}" /*
-		*/ _col(43) %8.0g `=mtab[1,3]' _col(52) "("%4.1f `=mtab[1,4]*100' "%)"  _col(62) "{c |}" /*
-		*/ _col(64) %8.0g `=mtab[1,5]'  _col(73) "{c |}" /*
-		*/ _col(78) %05.3g `=mtab[1,6]' 
-	di as text  abbrev("`gr1'",13)   _col(20) "{c |}" /*
-		*/ as result _col(21) %8.0g `=mtab[2,1]' _col(30) "("%4.1f `=mtab[2,2]*100' "%)" _col(41) "{c |}" /*
-		*/ _col(43) %8.0g `=mtab[2,3]' _col(52) "("%4.1f `=mtab[2,4]*100' "%)"  _col(62) "{c |}" /*
-		*/ _col(64) %8.0g `=mtab[2,5]'  _col(73) "{c |}" /*
-		*/ _col(78) %05.3g `=mtab[2,6]' 
-	di as text "{hline 19}{c +}{hline 20}{c +}{hline 20}{c +}{hline 10}{c +}{hline 15}"
-	di as text _newline
+	di as text " Group " _col(22) "{c |}" /*
+		*/ _col(29) "Matched" _col(40) "{c |}" /*
+		*/ _col(45) "Unmatched"  _col(58) "{c |}" /*
+		*/ _col(62) "Total"  _col(71) "{c |}" /*
+		*/ _col(73) "Mean(" abbrev("`outcome'",9) ")"
+	di as text "{hline 21}{c +}{hline 17}{c +}{hline 17}{c +}{hline 12}{c +}{hline 15}"
+	di as text "A: " abbrev("`gr0'",13) " (ref)"  _col(22) "{c |}" /*
+		*/ as result _col(22) %8.0g `=mtab[1,1]' _col(32) "("%4.1f `=mtab[1,2]*100' "%)" _col(40) "{c |}" /*
+		*/ _col(41) %8.0g `=mtab[1,3]' _col(50) "("%4.1f `=mtab[1,4]*100' "%)"  _col(58) "{c |}" /*
+		*/ _col(59) %8.0g `=mtab[1,5]'  _col(71) "{c |}" /*
+		*/ _col(75) %05.3g `=mtab[1,6]' 
+	di as text "B: "  abbrev("`gr1'",13)   _col(22) "{c |}" /*
+		*/ as result _col(22) %8.0g `=mtab[2,1]' _col(32) "("%4.1f `=mtab[2,2]*100' "%)" _col(40) "{c |}" /*
+		*/ _col(41) %8.0g `=mtab[2,3]' _col(50) "("%4.1f `=mtab[2,4]*100' "%)"  _col(58) "{c |}" /*
+		*/ _col(59) %8.0g `=mtab[2,5]'  _col(71) "{c |}" /*
+		*/ _col(75) %05.3g `=mtab[2,6]' 
+	di as text "{hline 21}{c +}{hline 17}{c +}{hline 17}{c +}{hline 12}{c +}{hline 15}"
 
 	
 	
@@ -88,12 +87,26 @@ program define nopodecomp , eclass
 		qui sum `outcome' if `gr' == 0 
 		qui replace `y' = `outcome' / `r(mean)' if !mi(`gr')
 	}
-	qui nopo_gaps `y' `gr' `prefix'_matched `prefix'_weights
-	matrix colnames b = "D (raw gap)" "D0 (unexpl.)" "DX (expl.)" "DA (unmatch. A)" "DB (unmatch. B)" 
-
+	if "`bootstrap'" == "" {
+		nopo_gaps `y' `gr' `prefix'_matched `prefix'_weights
+		matrix b = e(b)
+		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+		ereturn repost b = b, rename
+	}
+	
+	
+	else {
+		di as text _newline
+		bootstrap, noheader nolegend nowarn notable: nopo_gaps `y' `gr' `prefix'_matched `prefix'_weights
+		matrix b = e(b)
+		matrix V = e(V)
+		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+		matrix colnames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+		matrix rownames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+		ereturn repost b = b V = V, rename
+	}
 	
 	* Returns
-	ereturn post b, depname(`outcome') esamp(`touse') 
 	ereturn matrix match_table = mtab
 	ereturn local ref = "`ref0'"
 	ereturn local match_set = strltrim("`match_set'")
@@ -102,6 +115,7 @@ program define nopodecomp , eclass
 	ereturn scalar match_strata = mstrata
 	ereturn local by = "`by'"
 	*Result table of gap-estimation
+	di as text _newline
 	di as text "Estimates for Nopo decomposition:"
 	ereturn display, noomitted
 	
@@ -157,37 +171,41 @@ end
 /***/
 
 cap program drop nopo_gaps
-program define nopo_gaps
+program define nopo_gaps, eclass
 	args y by _matched _weights
 	
 	matrix b = J(1,5,.)
 	
 	*D
-	matrix b[1,1] = mtab[2,6] - mtab[1,6]
+	qui sum `y' if `by' == 0 
+	local y0 = `r(mean)'
+	qui sum `y' if `by' == 1
+	matrix b[1,1] = `r(mean)' - `y0'
+
 	
 	*D0
 	qui su `y' [iw=`_weights'] if `by'== 0 & `_matched' == 1
-	local y0 = r(mean) 
+	local y0 = `r(mean)'
 	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1
 	matrix b[1,2] = `r(mean)' - `y0'
 
 	*DX
 	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1
-	local y0 = r(mean)
+	local y0 = `r(mean)'
 	qui su `y'  if `by'== 1 & `_matched'== 1
 	matrix b[1,3] = `r(mean)' - `y0'
 	
 	*DA
 	qui su `y'  if `by'== 0 & `_matched' == 0
-	local y0=r(mean)
+	local y0 = `r(mean)'
 	qui su `y'  if `by'== 0 & `_matched' == 1
 	matrix b[1,4] = cond((`r(mean)'-`y0')* mtab[1,3] / mtab[1,5] != ., (`r(mean)'-`y0')* mtab[1,3] / mtab[1,5], 0)
 
 	*DB
 	qui su `y' if `by'== 1 & `_matched' == 1
-	local y0=r(mean)
+	local y0 = `r(mean)'
 	qui su `y'  if `by'== 1 & `_matched' == 0
 	matrix b[1,5] =  cond((`r(mean)'-`y0')* mtab[2,3] / mtab[2,5] != ., (`r(mean)'-`y0')* mtab[2,3] / mtab[2,5], 0)
 	
-
-end
+	ereturn post b, esamp(`touse')
+	end

@@ -40,11 +40,18 @@ timer on 2
 nopodecomp wage age edu, by(t)  //normalize replace
 timer off 2
 
+ereturn list
+
 timer list
+
+// bootstrapping
+nopodecomp wage age edu, by(t) replace bootstrap
+ereturn list
+
 
 // labels are appropriately captured in matching table
 recode t (0 = 0 "immigrant women") (1 = 4 "native men"), gen(groups)
-nopodecomp wage age edu, by(groups) switch prefix(new) // normalize replace switch prefix
+nopodecomp wage age edu, by(groups) switch prefix(new)  // normalize replace switch prefix
 
 ereturn list
 
