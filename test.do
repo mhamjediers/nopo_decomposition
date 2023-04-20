@@ -5,10 +5,14 @@ run "nopodecomp.ado"
 
 clear
 set seed 1234
+set sortseed 1234
 set obs 10000
+
 
 gen age = _n - 5*floor((_n-1)/5)
 gen edu = _n - 4*floor((_n-1)/4)
+
+gen x = runiform(1, 10000)
 
 // decomposition comparison
 gen t = -0.25*edu - 0.1*age + runiform()
@@ -37,7 +41,7 @@ timer off 1
 
 // new command
 timer on 2
-nopodecomp wage age edu, by(t)  //normalize replace
+nopodecomp wage age edu, by(t) replace //normalize replace
 timer off 2
 
 ereturn list
@@ -45,7 +49,7 @@ ereturn list
 timer list
 
 // bootstrapping
-nopodecomp wage age edu, by(t) replace bootstrap
+nopodecomp wage age edu, by(t) replace bootstrap bsopts(seed(123))
 ereturn list
 
 
