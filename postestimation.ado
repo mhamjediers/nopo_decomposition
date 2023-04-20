@@ -1,44 +1,4 @@
 //
-// estimation returns definition
-//
-
-// nopo has to export treatment var
-// nopo has to return treatment value
-// nopo has to export normalized outcome variable
-// nopo has to export tsupport variable 0/1
-
-/* local depvar e(depvar) // points to normalized var if that was requested!
-local support e(support)
-local weight e(weight)
-local mweight e(mweight)
-local treat e(treat)
-scalar treatval = e(treatval)
-local strata e(strata) 
-
-scalars:
-           e(n_strata) =  20
-       e(match_strata) =  16
-
-macros:
-                 e(by) : "groups"
-             e(prefix) : "new"
-          e(match_set) : "age edu"
-                e(ref) : "groups==4"
-         e(properties) : "b"
-             e(depvar) : "wage"
-
-matrices:
-                  e(b) :  1 x 5
-        e(match_table) :  2 x 6
-
-functions:
-             e(sample)
-
-
-*/
-
-
-//
 // postestimation: plot gap component over dv distribution
 //
 
