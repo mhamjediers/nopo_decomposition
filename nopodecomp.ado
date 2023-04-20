@@ -19,7 +19,7 @@ program define nopodecomp , eclass
 		levelsof `by', local(levels)
 		assert `r(r)' == 2
 		local i = 0
-		if "`swap'" != "" { // reverse order for reference group
+		if ("`swap'" != "") { // reverse order for reference group
 			local levels = strreverse("`levels'")
 			local swap = 1
 		}
@@ -97,7 +97,7 @@ program define nopodecomp , eclass
 		nopo_gaps  `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights
 		matrix b = e(b)
 		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		ereturn repost b = b, rename
+		ereturn repost b = b, rename esamp(`touse')
 	}	
 	else {
 		di as text _newline
@@ -110,11 +110,12 @@ program define nopodecomp , eclass
 		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
 		matrix colnames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
 		matrix rownames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		ereturn repost b = b V = V, rename
+		ereturn repost b = b V = V, esamp(`touse')
 	}
 	
 	* Returns
 	ereturn matrix match_table = mtab
+	ereturn local depvar = "`outcome'"
 	ereturn local ref = "`ref0'"
 	ereturn local match_set = strltrim("`match_set'")
 	ereturn local prefix = "`prefix'"
