@@ -56,10 +56,6 @@ program define nopodecomp , eclass
 	*Matching
 	qui nopo_match `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights
 	
-
-	*st_numscalar("mstrata", colsum(strtable[.,1]:!= 0 :& strtable[.,2]:!= 0))
-	*st_numscalar("nstrata", length(uniqrows(strata)))
-
 	*Result table of matching
 	di as text _newline
 	di as text "Exact matching for Nopo decomposition:"	_col(60) "N(strata) = " 		_col(85) nstrata
@@ -124,6 +120,11 @@ program define nopo_match
 	bys `_strata': egen `_max' = max(`by')  
 	replace `_matched' = `_min' == 0 & `_max' == 1
 	
+	levelsof `_strata'
+	scalar nstrata = `r(r)'
+	levelsof `_strata' if `_matched' == 1
+	scalar mstrata = `r(r)'
+	
 	/* Matching Table */	
 	tab `_strata' `by', matcell(strtable)
 	mata: strtable = st_matrix("strtable")
@@ -133,7 +134,7 @@ program define nopo_match
 	mata: mtab[,2] = mtab[,1] :/ mtab[,5]
 	mata: mtab[,3] = colsum(select(strtable,rowmin(strtable) :==0))'
 	mata: mtab[,4] = mtab[,3] :/ mtab[,5]
-	mata: st_matrix("mtab", mtab)	
+	mata: st_matrix("mtab", mtab)
 	*Raw means of outcome for table
 	qui sum `y' if `by' == 0 
 	matrix mtab[1,6] = `r(mean)'
