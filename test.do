@@ -1,4 +1,4 @@
-cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
+//cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "postestimation.ado"
 run "nopodecomp.ado"
@@ -55,17 +55,9 @@ ereturn list
 
 // labels are appropriately captured in matching table
 recode t (0 = 0 "immigrant women") (1 = 4 "native men"), gen(groups)
-nopodecomp wage age edu, by(groups) switch prefix(new)  // normalize replace switch prefix
+nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap prefix
 
 ereturn list
 
 // Post-Estimation commands
-local depvar `e(depvar)'
-local weight `e(prefix)'_weights
-local treat `e(by)'
-
-sum wage
-sum wage if t==0
-sum wage if t==1
-
 nopoplot

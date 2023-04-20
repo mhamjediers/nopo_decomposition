@@ -4,7 +4,7 @@
 *********
 cap program drop nopodecomp
 program define nopodecomp , eclass
-	syntax varlist , BY(varname) [PREFix(string) REPLACE SWITCH NORMalize BOOTSTRAP BSOPTS(string)]
+	syntax varlist , BY(varname) [PREFix(string) REPLACE swap NORMalize BOOTSTRAP BSOPTS(string)]
 	
 
 	marksample touse
@@ -19,8 +19,12 @@ program define nopodecomp , eclass
 		levelsof `by', local(levels)
 		assert `r(r)' == 2
 		local i = 0
-		if "`switch'" != "" { // reverse order for reference group
+		if "`swap'" != "" { // reverse order for reference group
 			local levels = strreverse("`levels'")
+			local swap = 1
+		}
+		else {
+			local swap = 0
 		}
 		foreach l of local levels {
 			replace `gr' = `i' if `by' == `l'
@@ -117,7 +121,9 @@ program define nopodecomp , eclass
 	ereturn scalar n_strata = nstrata
 	ereturn scalar match_strata = mstrata
 	ereturn local by = "`by'"
-	ereturn local switch = "`switch'"
+	ereturn scalar swap = `swap'
+	ereturn local aweight "XXX" // for passthru; only relevant if we implement (distplot already prepped)
+	ereturn local cmd "nopodecomp" // for postestimation checking
 	*Result table of gap-estimation
 	di as text _newline
 	di as text "Estimates for Nopo decomposition:"

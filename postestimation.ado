@@ -2,7 +2,6 @@
 // estimation returns definition
 //
 
-// nopo has to assert 2 group levels
 // nopo has to export treatment var
 // nopo has to return treatment value
 // nopo has to export normalized outcome variable
@@ -14,7 +13,29 @@ local weight e(weight)
 local mweight e(mweight)
 local treat e(treat)
 scalar treatval = e(treatval)
-local strata e(strata) */
+local strata e(strata) 
+
+scalars:
+           e(n_strata) =  20
+       e(match_strata) =  16
+
+macros:
+                 e(by) : "groups"
+             e(prefix) : "new"
+          e(match_set) : "age edu"
+                e(ref) : "groups==4"
+         e(properties) : "b"
+             e(depvar) : "wage"
+
+matrices:
+                  e(b) :  1 x 5
+        e(match_table) :  2 x 6
+
+functions:
+             e(sample)
+
+
+*/
 
 
 //
@@ -25,7 +46,6 @@ local strata e(strata) */
 cap program drop nopoplot
 program define nopoplot
 syntax [if] [aweight], ///
-	[treat(varlist max=1)] ///
 	[NQuantiles(integer 100)] ///
 	[QMIN(integer 1)] ///
 	[QMAX(integer 100)] ///
@@ -37,44 +57,47 @@ syntax [if] [aweight], ///
 	[SAVE(string asis)]
 
     // check if prior command was nopo
-   	/* if ("e(cmd)" != "nopo") {
+   	if ("`e(cmd)'" != "nopodecomp") {
 		noisily dis as error "Previous command was not nopo."
 		error 301
 		exit
-	} */
+	}
 
 	// set input from syntax and nopo returns
+	// sample
 	tempvar touse
     mark `touse' `if'
-	//replace `touse' = 0 if !e(sample)
-
-	local strata "strata"
-	local treatval = 1
-	//local local weightexp "[aw = e(weight)]"
-	local support _supp
-	local mweight _match
-	local treatment t
-	local depvar wage
-
-	// set defaults
-	if ("`twtype'" == "") local twtype "line"
-	if ("`rawumdiff'" == "") local scaleumdiff "scaleumdiff"
-		else local scaleumdiff
-	/* if ("e(weight)" != "") {
+	replace `touse' = 0 if !e(sample)
+	// depvar
+	local depvar "`e(depvar)'"
+	// strata
+	local strata "`e(prefix)'_strata"
+	// treatment indicator (fix to 0/1)
+	tempvar treat
+	gen `treat' = 1 if `e(ref)'
+	replace `treat' = 0 if `treat' != 1 & !mi(`e(by)')
+	// ref group switch
+	if ("`e(swap)'" == "1") local bref = abs(`e(ref)' - 1) // reference group for returns
+		else local bref = `e(ref)'
+	// support
+	local support "`e(prefix)'_matched"
+	// matching weights
+	local mweight "`e(prefix)'_weights"
+	// aweight
+	if ("`e(weight)'" != "") {
 		local weightexp "[aw = `e(weight)']"
 	}
-	else { */
+	else {
 		tempvar w1
 		gen `w1' = 1
 		local weightexp "[aw = `w1']"
-	/* } */
-	tempvar treat
-	gen `treat' = 1 if `treatment' == `treatval'
-	replace `treat' = 0 if `treatment' != `treatval' & !mi(`treatment')
-	noisily tab `treat'
+	}
+
+	// set defaults
+	if ("`twtype'" == "") local twtype "line"
 
 	// abort if quantiles > depvar groups
-	qui levelsof `depvar', local(depvarlvls)
+	qui levelsof `depvar' if `touse', local(depvarlvls)
 	local nqlvls : word count `depvarlvls'
 	if (`nquantiles' > `nqlvls') {
 		noisily dis as error "Less groups in `depvar' than quantiles requested (`nquantiles')."
@@ -93,7 +116,7 @@ syntax [if] [aweight], ///
 	tempfile dx
 	tempvar depvar_strata_mt
 	bys `strata' `support': egen `depvar_strata_mt' = mean(`depvar') ///
-		if `support' & `treat' == `treatval'
+		if `support' & `treat' == `bref'
 	tempvar depvar_strata_m
 	bys `strata' `support': egen `depvar_strata_m' = max(`depvar_strata_mt')
 	replace `depvar_strata_m' = . if !`support'
@@ -105,12 +128,12 @@ syntax [if] [aweight], ///
 		, by(`treat') `opts' save(`d0')
 	// DA
 	tempfile da
-	nopo_gapdist `depvar' if `touse' & `treat' == `treatval' `weightexp' ///
-		, by(`support') `scaleumdiff' `opts' save(`da')
+	nopo_gapdist `depvar' if `touse' & `treat' == 1 `weightexp' ///
+		, by(`support') comp(da) `rawumdiff' `opts' save(`da')
 	// DB
 	tempfile db
-	nopo_gapdist `depvar' if `touse' & `treat' != `treatval' `weightexp' ///
-		, by(`support') `scaleumdiff' `opts' save(`db')
+	nopo_gapdist `depvar' if `touse' & `treat' == 0 `weightexp' ///
+		, by(`support') comp(db) `rawumdiff' `opts' save(`db')
 
 	// plot
 	preserve
@@ -121,7 +144,7 @@ syntax [if] [aweight], ///
 			rename diff `c'
 		}
 		twoway ///
-			(line d q, lp(solid)) ///
+			(line d q, lp(solid) lw(0.5)) ///
 			(line dx q, lp(dash)) ///
 			(line d0 q, lp(shortdash)) ///
 			(line da q, lp(dash_dot)) ///
@@ -129,7 +152,7 @@ syntax [if] [aweight], ///
 			legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) ///
 			yline(0) scheme(s1mono)
 		// save if requested
-		save `save', replace
+		noisily save `save', replace
 	restore
 
 end
@@ -139,21 +162,21 @@ cap program drop nopo_gapdist
 program define nopo_gapdist 
 syntax varname [if] [aweight], ///
 	by(varlist max=1) ///
+	[comp(string)] /// gap components, only relevant for D_A, D_B
 	[NQuantiles(integer 100)] ///
 	[QMIN(integer 1)] ///
 	[QMAX(integer 100)] ///
-	[SCALEUMdiff] ///
-	[revsign] /// reverse sign
+	[RAWUMdiff] /// do not scale by N_A/N_B
 	[TWType(string)] ///
 	[TWOpts(string asis)] ///
 	[RELative] ///
-	[SAVE(string asis)]
+	[SAVE(string asis)] * 
 
 quietly {
 	preserve
 
 		// weight
-		local weightvar =(subinstr("`exp'","=","",.))
+		local weightvar = (subinstr("`exp'","=","",.))
 
 		// subset
 		if "`if'" != "" keep `if'
@@ -173,8 +196,6 @@ quietly {
 		    replace `quantile' = `quantile'_`i' if `by'==`i'
 			drop `totweight'
 		}
-
-		noisily dis "debug"
 		
 		// collapse, use sum of weights (passed via `exp') as N
 		tempvar meanq
@@ -189,18 +210,21 @@ quietly {
 		// gen diff
 		tempvar diff
 		if ("`relative'" == "") {
-			gen `diff' = `meanq'1 - `meanq'0
-			if ("`scaleumdiff'" != "") replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
+			if ("`comp'" == "da") gen `diff' = `meanq'1 - `meanq'0
+				else gen `diff' = `meanq'0 - `meanq'1
 			lab var `diff' "Diff. in `stat' values per quantile"
 		}
 		else {
-			gen `diff' = (1 - (`meanq'0 / `meanq'1)) * 100
-			if ("`scaleumdiff'" != "") replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
+			if ("`comp'" == "da") gen `diff' = (1 - (`meanq'0 / `meanq'1)) * 100 // reversed for D_A
+				else gen `diff' = (1 - (`meanq'1 / `meanq'0)) * 100
 			lab var `diff' "Relative diff. in `stat' values per quantile"
 		}
+
+		// scale D_A/D_B if not otherwise requested
+		if (inlist("`comp'", "da", "db") & "`rawumdiff'" == "") {
+			replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
+		}
 		noisily sum `diff'
-		// reverse gap direction
-		if ("`revsign'" != "") replace `diff' = -`diff'
 
 		// save temp data
 		if ("`save'" != "") {
