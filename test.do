@@ -1,5 +1,7 @@
-run "postestimation.ado"
+cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
+run "postestimation.ado"
+run "nopodecomp.ado"
 
 clear
 set seed 1234
@@ -28,6 +30,9 @@ qui foreach v in age edu strata {
 
 // nopo
 nopomatch age edu, outcome(wage) by(t) sd replace abs
+
+// new command
+nopodecomp wage age edu, by(t) prefix(new) //normalize replace
 
 local depvar nwage
 recode _supp (1 = 0) (2 = 1)

@@ -2,11 +2,9 @@
 *********
 *
 *********
-
-	
-program define nopo , eclass
+cap program drop nopodecomp
+program define nopodecomp , eclass
 	syntax varlist , BY(varname) [PREFix(string) REPLACE SWITCH NORMalize]
-	
 	
 
 	marksample touse
@@ -48,7 +46,6 @@ program define nopo , eclass
 		gen `y' = `outcome' if !mi(`gr')
 	
 	
-
 		*Option replace
 		if "`replace'" != "" {
 			cap drop `prefix'_strata
@@ -142,7 +139,7 @@ program define nopo_match
 		touse = st_local("touse")
 		gr = st_data(., "`by'", touse)
 		match = st_data(., "`_matched'", touse)
-		strata = st_data(., "_strata", touse)
+		strata = st_data(., "`_strata'", touse)
 		strtable = st_matrix("strtable")
 		groups = uniqrows(gr)
 		
@@ -183,7 +180,6 @@ end
 
 cap program drop nopo_gaps
 program define nopo_gaps
-
 	args y by _matched _weights
 	
 	matrix b = J(1,5,.)
