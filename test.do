@@ -37,22 +37,21 @@ timer off 1
 
 // new command
 timer on 2
-nopodecomp wage age edu, by(t) prefix(new) //normalize replace
+nopodecomp wage age edu, by(t)  //normalize replace
 timer off 2
 
 timer list
 
-
 // labels are appropriately captured in matching table
 recode t (0 = 0 "immigrant women") (1 = 4 "native men"), gen(groups)
-nopodecomp wage age edu, by(groups) switch // normalize replace switch prefix
+nopodecomp wage age edu, by(groups) switch prefix(new) // normalize replace switch prefix
 
+ereturn list
 
 // Post-Estimation commands
-local depvar nwage
-recode _supp (1 = 0) (2 = 1)
-local weight _match
-local treat t
+local depvar `e(depvar)'
+local weight `e(prefix)'_weights
+local treat `e(by)'
 
 sum wage
 sum wage if t==0

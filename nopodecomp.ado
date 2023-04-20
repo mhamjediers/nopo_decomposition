@@ -100,7 +100,7 @@ program define nopodecomp , eclass
 	ereturn local prefix = "`prefix'"
 	ereturn scalar n_strata = nstrata
 	ereturn scalar match_strata = mstrata
-	
+	ereturn local by = "`by'"
 	*Result table of gap-estimation
 	di as text "Estimates for Nopo decomposition:"
 	ereturn display, noomitted
