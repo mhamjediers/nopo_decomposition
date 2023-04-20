@@ -28,12 +28,27 @@ qui foreach v in age edu strata {
 	tab `v', gen(`v'_)
 }
 
+timer clear
+
 // nopo
-nopomatch age edu, outcome(wage) by(t) sd replace abs
+timer on 1
+nopomatch age edu, outcome(wage) by(t) replace abs
+timer off 1
 
 // new command
+timer on 2
 nopodecomp wage age edu, by(t) prefix(new) //normalize replace
+timer off 2
 
+timer list
+
+
+// labels are appropriately captured in matching table
+recode t (0 = 0 "immigrant women") (1 = 4 "native men"), gen(groups)
+nopodecomp wage age edu, by(groups) switch // normalize replace switch prefix
+
+
+// Post-Estimation commands
 local depvar nwage
 recode _supp (1 = 0) (2 = 1)
 local weight _match
