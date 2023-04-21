@@ -2,6 +2,22 @@
 // postestimation: plot gap component over dv distribution
 //
 
+/*
+
+At the moment, the plot shows the gaps by comparing the outcome means in each quantile between 
+groups. So, the mean across all these comparisons is the same as the decomposition component values
+produced by nopo. But that also means that:
+
+- At each quantile, the single component values do not add up to d
+- D_A and D_B are scaled as the nopo decomp, so higher values can mean more people or larger gaps
+  (though the factor is always the same due to the quantile logic: n0/(n0+n1) is the same for each
+  quantile). The `rawumdiff' option circumvents the scaling and shows the absolute differences,
+  but then the values do not sum up do D_A/D_B
+
+Does that sound sensible?
+
+*/
+
 // plotting wrapper: 5 plots needed (one for each gap component)
 cap program drop nopoplot
 program define nopoplot
