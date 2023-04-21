@@ -160,7 +160,7 @@ quietly {
 		// xtile aggregates quantiles if they contain constant values. Fill up to avoid empty cells.
 		tempvar quantile
 		gen `quantile' = .
-		lab var `quantile' "Quantile of group-specific wage distribution"
+		lab var `quantile' "Compared `varlist' quantile between groups (component-specific)"
 		tempvar totweight
 		forvalues i = 0/1 {
 			// quantiles
@@ -186,7 +186,7 @@ quietly {
 		tempvar diff
 		if ("`comp'" == "da") gen `diff' = `meanq'1 - `meanq'0
 			else gen `diff' = `meanq'0 - `meanq'1
-		lab var `diff' "Component per quantile"
+		lab var `diff' "Gap"
 
 		// scale D_A/D_B if not otherwise requested
 		if (inlist("`comp'", "da", "db") & "`rawumdiff'" == "") {
