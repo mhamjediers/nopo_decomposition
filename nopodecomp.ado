@@ -4,7 +4,7 @@
 *********
 cap program drop nopodecomp
 program define nopodecomp , eclass
-	syntax varlist , BY(varname) [PREFix(string) REPLACE swap NORMalize BOOTSTRAP BSOPTS(string)]
+	syntax varlist , BY(varname) [PREFix(string) REPLACE swap NORMalize BOOTSTRAP BSOPTS(string) ONLYMATCH]
 	
 
 	marksample touse
@@ -86,31 +86,32 @@ program define nopodecomp , eclass
 		*/ _col(75) %05.3g `=mtab[2,6]' 
 	di as text "{hline 21}{c +}{hline 17}{c +}{hline 17}{c +}{hline 12}{c +}{hline 15}"
 
-	
 	*Estimating gaps
-	if "`normalize'" != "" {
-		qui sum `outcome' if `gr' == 0 
-		qui replace `y' = `outcome' / `r(mean)' if !mi(`gr')
-	}
-	
-	if "`bootstrap'" == "" {
-		nopo_gaps  `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights
-		matrix b = e(b)
-		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		ereturn repost b = b, rename esamp(`touse')
-	}	
-	else {
-		di as text _newline
-		*with repeatedly generating new weights or not?? (if yes, just add the repeat_weights at the end)
-		*with bootstrap-specific weights, the SE get much smaller (I expected the opposite)
-		bootstrap, noheader nolegend nowarn notable `bsopts': ///
-			nopo_gaps `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights 
-		matrix b = e(b)
-		matrix V = e(V)
-		matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		matrix colnames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		matrix rownames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
-		ereturn repost b = b V = V, esamp(`touse')
+	if "`onlymatch'" == "" {
+		if "`normalize'" != "" {
+			qui sum `outcome' if `gr' == 0 
+			qui replace `y' = `outcome' / `r(mean)' if !mi(`gr')
+		}
+		
+		if "`bootstrap'" == "" {
+			nopo_gaps  `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights
+			matrix b = e(b)
+			matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+			ereturn repost b = b, rename esamp(`touse')
+		}	
+		else {
+			di as text _newline
+			*with repeatedly generating new weights or not?? (if yes, just add the repeat_weights at the end)
+			*with bootstrap-specific weights, the SE get much smaller (I expected the opposite)
+			bootstrap, noheader nolegend nowarn notable `bsopts': ///
+				nopo_gaps `y' `gr' `prefix'_strata  `prefix'_matched `prefix'_weights 
+			matrix b = e(b)
+			matrix V = e(V)
+			matrix colnames b = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+			matrix colnames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+			matrix rownames V = "raw gap (D)" "unexpl. (D0)" "explain. (DX)" "unmatch. A (DA)" "unmatch. B (DB)" 
+			ereturn repost b = b V = V, esamp(`touse')
+		}
 	}
 	
 	* Returns
@@ -165,17 +166,18 @@ program define match_table
 
 		mata: st_numscalar("nstrata", colmax(st_data(., "`_strata'")))
 		mata: st_numscalar("mstrata", length(uniqrows(st_data(., "`_strata'","`_matched'"))))
-
-		*does not work with a high number of strata
-		tab `_strata' `by', matcell(strtable)
-		mata: strtable = st_matrix("strtable")
+		
 		mata: mtab = J(2,6,.)
-		mata: mtab[,5] = colsum(strtable)'
-		mata: mtab[,1] = colsum(select(strtable,rowmin(strtable) :>0))'
+		mata: mtab[2,5] = colsum(st_data(., "`by'"))
+		mata: mtab[1,5] = length(st_data(., "`by'")) - mtab[2,5]
+		mata: mtab[2,1] = colsum(st_data(., "`_matched'", "`by'"))
+		mata: mtab[2,3] = mtab[2,5] - mtab[2,1]
+		mata: mtab[1,1] = colsum(st_data(., "`_matched'")) - mtab[2,1]
+		mata: mtab[1,3] = mtab[1,5] - mtab[1,1]
 		mata: mtab[,2] = mtab[,1] :/ mtab[,5]
-		mata: mtab[,3] = colsum(select(strtable,rowmin(strtable) :==0))'
 		mata: mtab[,4] = mtab[,3] :/ mtab[,5]
 		mata: st_matrix("mtab", mtab)
+		
 		*Raw means of outcome for table
 		qui sum `y' if `by' == 0 
 		matrix mtab[1,6] = `r(mean)'
