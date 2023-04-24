@@ -4,11 +4,18 @@
 *********
 cap program drop nopodecomp
 program define nopodecomp , eclass
-	syntax varlist , BY(varname) [PREFix(string) REPLACE swap NORMalize BOOTSTRAP BSOPTS(string) ONLYMATCH]
+	syntax varlist , BY(varname) [ /* 
+	*/ PREFix(string) REPLACE SWAP NORMalize /*
+	*/ BOOTSTRAP BSOPTS(string) /*
+	*/ONLYMATCH /*  not finished yet, but the idea is to omit the gap-estimation to run the same analysis on different samples
+	*/ ]
 	
 
 	marksample touse
-	gettoken outcome match_set:varlist
+	
+	if "`onlymatch'" == "" {
+		gettoken outcome match_set:varlist
+	}
 
 	qui {
 		
@@ -39,7 +46,12 @@ program define nopodecomp , eclass
 		
 	
 		tempvar y 
-		gen `y' = `outcome' if !mi(`gr')
+		if "`onlymatch'" == "" {
+			gen `y' = `outcome' if !mi(`gr')
+		}
+		else {
+			gen `y' = .
+		}
 	
 	
 		*Option replace
