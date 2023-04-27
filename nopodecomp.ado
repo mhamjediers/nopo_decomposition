@@ -221,27 +221,27 @@ program define nopo_gaps, eclass
 
 	
 	*D0
-	qui su `y' [iw=`_weights'] if `by'== 0 & `_matched' == 1
+	qui su `y' [iw=`_weights'] if `by'== 0 & `_matched' == 1, meanonly
 	local y0 = `r(mean)'
-	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1
+	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1, meanonly
 	matrix b[1,2] = `r(mean)' - `y0'
 
 	*DX
-	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1
+	qui su `y' [iw=`_weights'] if `by'== 1 & `_matched' == 1, meanonly
 	local y0 = `r(mean)'
-	qui su `y'  if `by'== 1 & `_matched'== 1
+	qui su `y'  if `by'== 1 & `_matched'== 1, meanonly
 	matrix b[1,3] = `r(mean)' - `y0'
 	
 	*DA
-	qui su `y'  if `by'== 0 & `_matched' == 0
+	qui su `y'  if `by'== 0 & `_matched' == 0, meanonly
 	local y0 = `r(mean)'
-	qui su `y'  if `by'== 0 & `_matched' == 1
+	qui su `y'  if `by'== 0 & `_matched' == 1, meanonly
 	matrix b[1,4] = cond((`r(mean)'-`y0')* mtab[1,3] / mtab[1,5] != ., (`r(mean)'-`y0')* mtab[1,3] / mtab[1,5], 0)
 
 	*DB
-	qui su `y' if `by'== 1 & `_matched' == 1
+	qui su `y' if `by'== 1 & `_matched' == 1, meanonly
 	local y0 = `r(mean)'
-	qui su `y'  if `by'== 1 & `_matched' == 0
+	qui su `y'  if `by'== 1 & `_matched' == 0, meanonly
 	matrix b[1,5] =  cond((`r(mean)'-`y0')* mtab[2,3] / mtab[2,5] != ., (`r(mean)'-`y0')* mtab[2,3] / mtab[2,5], 0)
 	
 	ereturn post b, esamp(`touse')
