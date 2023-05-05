@@ -1,4 +1,4 @@
-cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
+//cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "postestimation.ado"
 run "nopodecomp.ado"
@@ -49,4 +49,7 @@ nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap p
 ereturn list
 
 // Post-Estimation commands
-nopoplot
+lab var edu "Edu"
+lab def edu 1 "grp 1" 2 "grp 2" 3 "grp 3" 4 "grp4"
+lab val edu edu
+nopoplot2 edu
