@@ -236,6 +236,7 @@ syntax varname [if] [aweight], ///
 	[DESCending] /// sort descending (as opposed to ascending if nosort is not specified)
 	[KEEPALLlevels] /// keep all levels of var (if cond. ignored)
 	[FORCE] /// do not check for no. of levels in var
+	[cellmin(real 1)] /// minimum number of weighted obs per cell to be printed 
 	[twopts(string asis)] ///
 	[twoptsbar(string asis)] ///
 	[twoptsscatter(string asis)] ///
@@ -260,11 +261,14 @@ syntax varname [if] [aweight], ///
 		local depvar "`e(depvar)'"
 		// strata
 		local strata "`e(prefix)'_strata"
-		// treatment indicator (fix to 0/1)
+		// treatment indicator (fix to 0/1, relabel accordingly)
 		tempvar treat
 		gen `treat' = 1 if `e(ref)'
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(by)')
-		local vallbl : value label `e(by)'
+		local treatname `e(by)' // for renaming tempvar upon save
+		local treatlbl : variable label `treatname'
+		lab var `treat' `treatlbl'
+		local vallbl : value label `treatname'
 		if ("`vallbl'" != "") {
 			label list `vallbl'
 			levelsof `e(by)', local(bylvls)
@@ -298,6 +302,8 @@ syntax varname [if] [aweight], ///
 		// plotvar
 		tempvar plotby
 		clonevar `plotby' = `varlist'
+		local plotbyname `varlist' // for renaming tempvar upon save
+		local plotbylbl : variable label `plotbyname'
 
 		// save all levels of plotby
 		if ("`keepalllevels'" != "") levelsof `plotby', local(plotbylvls)
@@ -342,7 +348,13 @@ syntax varname [if] [aweight], ///
 			}
 		}
 		lab val `plotbysorted' _sortedlbl
-		if ("`nosort'" == "") drop `sorter'
+		if ("`nosort'" == "") {
+			drop `sorter'
+			lab var `plotbysorted' "`plotbylbl' releveled by mean `depvar' `descending'"
+		} 
+		else {
+			lab var `plotbysorted' "`plotbylbl' releveled"
+		}
 
 		preserve
 
@@ -364,36 +376,37 @@ syntax varname [if] [aweight], ///
 				local w2 = r(mean)
 				sum `depvar' `weightexp' if `treat' == 0
 				local n2 = r(sum_w)
-				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 0
-				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 0
-				dis "`weight'"
+				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 0 & `support' == 0
+				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 0 & `support' == 0
 				replace mdepvar_diff_weighted = mdepvar_diff * (`weight'/`n2') ///
-					if `plotby' == `l' & `treat' == 0
+					if `plotby' == `l' & `treat' == 0 & `support' == 0
 				count if `treat' == 0
-				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 0
+				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 0 & `support' == 0
 
 				// DB
 				sum `depvar' `weightexp' if `treat' == 1 & `support' == 1
 				local w2 = r(mean)
 				sum `depvar' `weightexp' if `treat' == 1
 				local n2 = r(sum_w)
-				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 1
-				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 1
+				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 1 & `support' == 0
+				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 1 & `support' == 0
 				replace mdepvar_diff_weighted = -mdepvar_diff * (`weight'/`n2') ///
-					if `plotby' == `l' & `treat' == 1
+					if `plotby' == `l' & `treat' == 1 & `support' == 0
 				count if `treat' == 1
-				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 1
+				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 1 & `support' == 0
 
 			}
 
 			// check if values the same as in nopo table
+			noisily dis "Component sum check:"
 			noisily table `treat' if `support' == 0, stat(sum mdepvar_diff_weighted)
 			
-			// collapse again
+			// collapse
 			collapse ///
-				(mean) mdepvar_diff (sum) mdepvar_diff_weighted (sum) n_weighted if `support' == 0 ///
+				(mean) mdepvar_diff (sum) mdepvar_diff_weighted ///
+				(sum) n_weighted (mean) `plotby' /// if `support' == 0
 				, by(`plotbysorted' `treat')
-			
+
 			// rmake nice when weighted n < 1
 			replace mdepvar_diff = 0 if n_weighted < 0.5
 			replace mdepvar_diff_weighted = 0 if n_weighted < 0.5
@@ -407,6 +420,7 @@ syntax varname [if] [aweight], ///
 			local wmmax = r(max) * 1.75 // extend to make room for obs text (has to be symmetric)
 			if (`nplotbylvls'/10 < 1) local yrangemax = `nplotbylvls' + 1
 				else `nplotbylvls'/10 + `nplotbylvls'
+			cap drop mx
 			gen mx = `mmax' // x value for n counts (added as mlabel)
 			local text `" text(`yrangemax' `mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
 			local ysize = `nplotbylvls'/10 + 5
@@ -447,6 +461,22 @@ syntax varname [if] [aweight], ///
 				, by(`treat', `twoptsby') `twopts'
 				
 			// save data?
+			if (`"`save'"' != "") {
+				drop mx
+				// rename and label
+				lab var `plotby' "`plotbylbl'"
+				rename `plotby' `plotbyname'
+				rename `plotbysorted' `plotbyname'_sorted
+				lab var `treat' "`treatlbl'"
+				rename `treat' `treatname'
+				rename mdepvar_diff `depvar'_diff
+				lab var `depvar'_diff "Difference mean unmatched - overall mean of matched"
+				rename mdepvar_diff_weighted `depvar'_diff_weighted
+				lab var `depvar'_diff_weighted "Contribution of unmatched to D"
+				lab var n_weighted "N unmatched (weighted)"
+				noisily desc
+				noisily save `save', replace
+			}
 
 		restore
 	//}

@@ -44,6 +44,7 @@ timer list
 
 // labels are appropriately captured in matching table
 recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
+lab var groups "Groups"
 nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap prefix
 
 ereturn list
@@ -52,4 +53,4 @@ ereturn list
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
-nopoplot2 edu
+nopoplot2 edu, save("/home/max/Seafile/Projects/nopo_decomposition/test.dta")
