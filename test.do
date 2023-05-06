@@ -43,13 +43,13 @@ timer off 2
 timer list
 
 // labels are appropriately captured in matching table
-recode t (0 = 0 "immigrant women") (1 = 4 "native men"), gen(groups)
+recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
 nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap prefix
 
 ereturn list
 
 // Post-Estimation commands
 lab var edu "Edu"
-lab def edu 1 "grp 1" 2 "grp 2" 3 "grp 3" 4 "grp4"
+lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 nopoplot2 edu

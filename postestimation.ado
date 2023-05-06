@@ -264,6 +264,20 @@ syntax varname [if] [aweight], ///
 		tempvar treat
 		gen `treat' = 1 if `e(ref)'
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(by)')
+		local vallbl : value label `e(by)'
+		if ("`vallbl'" != "") {
+			label list `vallbl'
+			levelsof `e(by)', local(bylvls)
+			levelsof `e(by)' if `e(ref)', local(reflvl)
+			foreach lvl in `bylvls' {
+				dis "`lvl'"
+				local lbl : label `vallbl' `lvl'
+				dis "`lbl'"
+				if (`lvl' == `reflvl') lab def _bylbl 1 "`lbl'", modify
+					else lab def _bylbl 0 "`lbl'", modify
+			}
+			lab val `treat' _bylbl
+		}
 		// ref group switch
 		if ("`e(swap)'" == "1") local bref = abs(`e(ref)' - 1) // reference group for returns
 			else local bref = `e(ref)'
@@ -388,37 +402,41 @@ syntax varname [if] [aweight], ///
 			
 			// N as text: get coordinates from data
 			sum mdepvar_diff
-			local mmax = r(max)
-			dis "`mmax'"
+			local mmax = r(max) * 1.75 // extend to make room for obs text (has to be symmetric)
 			sum mdepvar_diff_weighted
-			local wmmax = r(max)
-			dis "`wmmax'"
+			local wmmax = r(max) * 1.75 // extend to make room for obs text (has to be symmetric)
 			if (`nplotbylvls'/10 < 1) local yrangemax = `nplotbylvls' + 1
 				else `nplotbylvls'/10 + `nplotbylvls'
-			gen mx = `mmax' * 1.5 // x value for n counts (added as mlabel)
-			local text `" text(`yrangemax' `=(`mmax'*1.5)' "{bf:N unmatched}" "(weighted)", place(sw) xaxis(2)) "'
+			gen mx = `mmax' // x value for n counts (added as mlabel)
+			local text `" text(`yrangemax' `mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
 			local ysize = `nplotbylvls'/10 + 5
-			// text(40.2 30 "(weighted)", place(w) xaxis(2))
 
 			// set default plot options
 			#delimit ;
 			if (`"`twopts'"' == "") local twopts `"
 				legend(order(
-					1 "Category-specific mean of unmatched - overall mean of matched (bottom x-axis)"
 					3 "Contribution of unmatched to D (top x-axis)"
+					1 "Category-specific mean of unmatched - overall mean of matched (bottom x-axis)"
 					) rows(2) margin(zero)  region(style(none)))
 				ylabel(1(1)`nplotbylvls', valuelabel grid angle(horizontal)) 
 				yscale(range(`yrangemax' 1)) ytitle("")
-				xscale(range(-`wmmax' `=(`wmmax'*1.5)') axis(1))
-				xscale(range(-`mmax' `=(`mmax'*1.5)') axis(2))
-				xtitle("Gap", axis(2)) subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
+				xscale(range(-`wmmax' `wmmax') axis(1))
+				xscale(range(-`mmax' `mmax') axis(2)) xlab(, axis(2) grid)
+				xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
+				subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
 				scheme(s1mono) xsize(9) ysize(`ysize')
 				"';
+			if (`"`twoptsby'"' == "") local twoptsby `" 
+				ixtitle note("") b1title("") graphregion(margin(zero)) 
+				"';
+			if (`"`twoptsbar'"' == "") local twoptsbar `"
+				fcolor(gs10%50) lcolor(gs10) lp(solid) lw(0.2)
+				"';
+			if (`"`twoptsscatter'"' == "") local twoptsscatter `" 
+				mcolor(black) xline(0, lcolor(black) lwidth(0.2)) xaxis(1) 
+				xtitle("Contribution of unmatched to D", margin(0 0 3 3)) 
+				"';
 			#delimit cr
-			if (`"`twoptsby'"' == "") local twoptsby `" ixtitle note("") b1title("") graphregion(margin(zero)) "'
-			if (`"`twoptsbar'"' == "") local twoptsbar "fcolor(none) lcolor(gs8) lp(solid) lw(0.5)"
-			if (`"`twoptsline'"' == "") local twoptsscatter `" mcolor(black) xline(0, lcolor(black) lwidth(0.2)) xaxis(1) xtitle("Contribution of unmatched to D") "'
-			///if (`"`twoptsobs'"' == "") local twoptsobs 
 
 			// plot
 			twoway ///
