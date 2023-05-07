@@ -15,6 +15,7 @@ gen t = -0.25*edu - 0.1*age + runiform()
 qui sum t, d
 replace t = t > 0.7 * `r(mean)'
 replace t = 1 if age==1 & edu==1
+
 // wage
 gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
 bys t: sum wage, d
@@ -30,9 +31,16 @@ qui foreach v in age edu strata {
 
 timer clear
 
+// mi check: DA/DB AND N UNMATCHED NOT CORRECT!
+// see comment in nopodecomp; same with nopomatch, see below
+// compare to nopoplot2 output below (which is correct I believe)
+// needs `touse' handling
+replace age = . if edu == 3 & t == 1
+
 // nopo
 timer on 1
 nopomatch age edu, outcome(wage) by(t) replace abs
+nopomatch age edu if !mi(age), outcome(wage) by(t) replace abs
 timer off 1
 
 // new command
@@ -53,4 +61,7 @@ ereturn list
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
-nopoplot2 edu, save("/home/max/Seafile/Projects/nopo_decomposition/test.dta")
+tempfile test
+nopoplot2 edu, save(`test')
+use `test', clear
+browse

@@ -231,19 +231,19 @@ end
 
 cap program drop nopoplot2
 program define nopoplot2
-syntax varname [if] [aweight], ///
+syntax varname [aweight], ///
 	[NOSORT] /// do not sort by depvar
 	[DESCending] /// sort descending (as opposed to ascending if nosort is not specified)
 	[KEEPALLlevels] /// keep all levels of var (if cond. ignored)
 	[FORCE] /// do not check for no. of levels in var
-	[cellmin(real 1)] /// minimum number of weighted obs per cell to be printed 
+	[nmin(real 1)] /// minimum number of unmatched weighted obs per cat. be printed
 	[twopts(string asis)] ///
 	[twoptsbar(string asis)] ///
 	[twoptsscatter(string asis)] ///
 	[twoptsby(string asis)] ///
 	[SAVE(string asis)]
 
-	//quietly {
+	quietly {
 
 		// check if prior command was nopo
 		if ("`e(cmd)'" != "nopodecomp") {
@@ -251,12 +251,24 @@ syntax varname [if] [aweight], ///
 			error 301
 			exit
 		}
+		
+		// plotvar
+		tempvar plotby
+		clonevar `plotby' = `varlist'
+		local plotbyname `varlist' // for renaming tempvar upon save
+		local plotbylbl : variable label `plotbyname'
+
+		// check if plotvar is in matching set (otherwise it does not make much sense)
+		if (ustrregexm("`e(match_set)'", "\b`plotbyname'\b") == 0) {
+			noisily dis as error "Variable `varlist' not in matching set (`e(match_set)')."
+			error 321
+			exit
+		}
 
 		// set input from syntax and nopo returns
 		// sample
 		tempvar touse
-		mark `touse' `if'
-		replace `touse' = 0 if !e(sample)
+		mark `touse' if e(sample)
 		// depvar
 		local depvar "`e(depvar)'"
 		// strata
@@ -299,13 +311,8 @@ syntax varname [if] [aweight], ///
 			gen `weight' = 1
 			local weightexp "[aw = `weight']"
 		}
-		// plotvar
-		tempvar plotby
-		clonevar `plotby' = `varlist'
-		local plotbyname `varlist' // for renaming tempvar upon save
-		local plotbylbl : variable label `plotbyname'
 
-		// save all levels of plotby
+		// save levels of plotby
 		if ("`keepalllevels'" != "") levelsof `plotby', local(plotbylvls)
 			else levelsof `plotby' if `touse', local(plotbylvls)
 
@@ -317,10 +324,10 @@ syntax varname [if] [aweight], ///
 			exit
 		}
 
-		// sort by dv?
-		// in any case: gen variable with no gaps
-		tempvar plotbysorted
-		gen `plotbysorted' = .
+		// relevel plotby: gen variable with no gaps
+		// default: sort by depvar
+		tempvar plotbyreleveled
+		gen `plotbyreleveled' = .
 		// gen means
 		if ("`nosort'" == "") {	
 			preserve
@@ -336,29 +343,28 @@ syntax varname [if] [aweight], ///
 			merge m:1 `plotby' using `sorted', nogen
 		}	
 		// reorder and relabel
-		local vallbl : value label `plotby'
+		local plotbyvallbl : value label `plotby'
 		local s = 0
 		foreach l in `plotbylvls' {
 			if ("`nosort'" == "") levelsof `sorter' if `plotby' == `l', local(s)
 				else local ++s
-			replace `plotbysorted' = `s' if `plotby' == `l'
-			if ("`vallbl'" != "") {
+			replace `plotbyreleveled' = `s' if `plotby' == `l'
+			if ("`plotbyvallbl'" != "") {
 				local lbl : label `varlist' `l'
-				lab def _sortedlbl `s' "`lbl'", modify
+				lab def _releveledlbl `s' "`lbl'", modify
 			}
 		}
-		lab val `plotbysorted' _sortedlbl
+		lab val `plotbyreleveled' _releveledlbl
 		if ("`nosort'" == "") {
 			drop `sorter'
-			lab var `plotbysorted' "`plotbylbl' releveled by mean `depvar' `descending'"
+			lab var `plotbyreleveled' "`plotbylbl' releveled by mean `depvar' `descending'"
 		} 
 		else {
-			lab var `plotbysorted' "`plotbylbl' releveled"
+			lab var `plotbyreleveled' "`plotbylbl' releveled"
 		}
-
+		
+		// build plot components
 		preserve
-
-			keep if `touse'
 
 			// calculate values by levels of plotby
 			cap drop mdepvar_matched
@@ -370,58 +376,50 @@ syntax varname [if] [aweight], ///
 			gen n_weighted = .
 
 			foreach l in `plotbylvls' {
-
-				// DA
-				sum `depvar' `weightexp' if `treat' == 0 & `support' == 1
-				local w2 = r(mean)
-				sum `depvar' `weightexp' if `treat' == 0
-				local n2 = r(sum_w)
-				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 0 & `support' == 0
-				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 0 & `support' == 0
-				replace mdepvar_diff_weighted = mdepvar_diff * (`weight'/`n2') ///
-					if `plotby' == `l' & `treat' == 0 & `support' == 0
-				count if `treat' == 0
-				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 0 & `support' == 0
-
-				// DB
-				sum `depvar' `weightexp' if `treat' == 1 & `support' == 1
-				local w2 = r(mean)
-				sum `depvar' `weightexp' if `treat' == 1
-				local n2 = r(sum_w)
-				replace mdepvar_matched = `w2' if `plotby' == `l' & `treat' == 1 & `support' == 0
-				replace mdepvar_diff = wage - `w2' if `plotby' == `l' & `treat' == 1 & `support' == 0
-				replace mdepvar_diff_weighted = -mdepvar_diff * (`weight'/`n2') ///
-					if `plotby' == `l' & `treat' == 1 & `support' == 0
-				count if `treat' == 1
-				replace n_weighted = `weight'*(r(N)/`n2') if `plotby' == `l' & `treat' == 1 & `support' == 0
-
+				// DA/DB
+				forvalues t = 0/1 {
+					sum `depvar' `weightexp' if `treat' == `t' & `support' == 1 & `touse'
+					local mdepvar_matched = r(mean)
+					sum `depvar' `weightexp' if `treat' == `t' & `touse'
+					local wntotal = r(sum_w)
+					replace mdepvar_diff = `depvar' - `mdepvar_matched' ///
+						if `plotby' == `l' & `treat' == `t' & `support' == 0 & `touse'
+					replace mdepvar_diff_weighted = mdepvar_diff * (`weight'/`wntotal') ///
+						if `plotby' == `l' & `treat' == `t' & `support' == 0 & `touse'
+					count if `treat' == `t' & `touse'
+					replace n_weighted = `weight' * (r(N)/`wntotal') ///
+						if `plotby' == `l' & `treat' == `t' & `support' == 0 & `touse'
+				}
 			}
+			replace mdepvar_diff_weighted = -mdepvar_diff_weighted if `treat' == 1 // reverse for DB
 
 			// check if values the same as in nopo table
 			noisily dis "Component sum check:"
 			noisily table `treat' if `support' == 0, stat(sum mdepvar_diff_weighted)
-			
+
+			// keep all levels for plot? 
+			// useful if plotted comparisons do not have the same plotby levels due to missings
+			if ("`keepallevels'" == "") keep if `touse' 
+
 			// collapse
 			collapse ///
 				(mean) mdepvar_diff (sum) mdepvar_diff_weighted ///
-				(sum) n_weighted (mean) `plotby' /// if `support' == 0
-				, by(`plotbysorted' `treat')
+				(sum) n_weighted (mean) `plotby' ///
+				, by(`plotbyreleveled' `treat')
+			replace mdepvar_diff_weighted = . if n_weighted == 0
 
-			// rmake nice when weighted n < 1
-			replace mdepvar_diff = 0 if n_weighted < 0.5
-			replace mdepvar_diff_weighted = 0 if n_weighted < 0.5
-			//replace n_weighted = 0 if n_weighted < 0.5
-			tostring n_weighted, replace format(%9.0f) force
-			
-			// N as text: get coordinates from data
+			// N as text: get plot area and coordinates from data
+			tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
 			sum mdepvar_diff
-			local mmax = r(max) * 1.75 // extend to make room for obs text (has to be symmetric)
+			if (abs(r(max)) > abs(r(min))) local mmax = abs(r(max)) * 1.75 // make room for obs text
+				else local mmax = abs(r(min)) * 1.75
 			sum mdepvar_diff_weighted
-			local wmmax = r(max) * 1.75 // extend to make room for obs text (has to be symmetric)
+			if (abs(r(max)) > abs(r(min))) local wmmax = abs(r(max)) * 1.75 // make room for obs text
+				else local wmmax = abs(r(min)) * 1.75
 			if (`nplotbylvls'/10 < 1) local yrangemax = `nplotbylvls' + 1
-				else `nplotbylvls'/10 + `nplotbylvls'
-			cap drop mx
-			gen mx = `mmax' // x value for n counts (added as mlabel)
+				else local yrangemax = `nplotbylvls'/10 + `nplotbylvls'
+			cap drop nx
+			gen nx = `mmax' // x value for n counts (added as mlabel)
 			local text `" text(`yrangemax' `mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
 			local ysize = `nplotbylvls'/10 + 5
 
@@ -454,19 +452,24 @@ syntax varname [if] [aweight], ///
 
 			// plot
 			twoway ///
-				(bar mdepvar_diff `plotbysorted', horizontal xaxis(2) `text' `twoptsbar') ///
-				(scatter `plotbysorted' mdepvar_diff_weighted, `twoptsscatter') ///
-				(scatter `plotbysorted' mx ///
-					, xaxis(2) mcolor(none) mlabel(n_weighted) mlabpos(9) mlabgap(0) msize(vtiny)) ///
+				(bar mdepvar_diff `plotbyreleveled' if n_weighted >= `nmin' ///
+					, horizontal xaxis(2) `text' `twoptsbar') ///
+				(scatter `plotbyreleveled' mdepvar_diff_weighted if n_weighted >= `nmin' ///
+					, `twoptsscatter') ///
+				(scatter `plotbyreleveled' nx ///
+					, xaxis(2) mcolor(none) mlabel(n_weighted_str) mlabpos(9) mlabgap(0) ///
+					msize(vtiny)) ///
 				, by(`treat', `twoptsby') `twopts'
 				
-			// save data?
+			// save plot data?
 			if (`"`save'"' != "") {
-				drop mx
-				// rename and label
+				drop nx n_weighted_str
+				// order, rename and label
+				order `treat' `plotby' `plotbyreleveled'
 				lab var `plotby' "`plotbylbl'"
+				lab val `plotby' `plotbyvallbl'
 				rename `plotby' `plotbyname'
-				rename `plotbysorted' `plotbyname'_sorted
+				rename `plotbyreleveled' `plotbyname'_relevel
 				lab var `treat' "`treatlbl'"
 				rename `treat' `treatname'
 				rename mdepvar_diff `depvar'_diff
@@ -474,12 +477,12 @@ syntax varname [if] [aweight], ///
 				rename mdepvar_diff_weighted `depvar'_diff_weighted
 				lab var `depvar'_diff_weighted "Contribution of unmatched to D"
 				lab var n_weighted "N unmatched (weighted)"
-				noisily desc
+				// save
 				noisily save `save', replace
 			}
 
 		restore
-	//}
+	}
 
 end
 

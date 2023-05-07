@@ -10,8 +10,17 @@ program define nopodecomp , eclass
 	*/ONLYMATCH /*  not finished yet, but the idea is to omit the gap-estimation to run the same analysis on different samples
 	*/ ]
 	
-
+	* ATM no if condition: we should have one
+	* and: estimation sample returned should be non-missing sample only (this is done)
+	* calculation of DA/DB is wrong at the moment (as in nopomatch) because observations
+	* with missings in `varlist' are not dropped
+	* the returned variables _matched _strata should also be missing if !`touse'
+	tempvar touse
 	marksample touse
+	foreach var in `varlist' {
+		replace `touse' = 0 if mi(`var')
+	}
+	tab `touse'
 	
 	if "`onlymatch'" == "" {
 		gettoken outcome match_set:varlist
@@ -155,7 +164,7 @@ program define nopo_match
 	/* generating matching indicator */
 	tempvar _min _max
 	bys `_strata': egen `_min' = min(`by')
-	bys `_strata': egen `_max' = max(`by')  
+	bys `_strata': egen `_max' = max(`by') 
 	replace `_matched' = `_min' == 0 & `_max' == 1
 					
 	/* Estimating weights */
