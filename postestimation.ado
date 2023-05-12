@@ -76,7 +76,7 @@ syntax [if] [aweight], ///
 
 		// set defaults
 		if ("`twtype'" == "") local twtype "line"
-		if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) yline(0) scheme(s1mono) "'
+		if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) "'
 		if ("`twtype'" == "line") {
 			if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
 			if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
@@ -105,16 +105,10 @@ syntax [if] [aweight], ///
 		tempfile d0
 		nopo_gapdist `depvar' if `touse' & `support' [aw = `mweight'] ///
 			, by(`treat') `opts' save(`d0')
-		// DX (requires new var containing stratum specific wages for treatment group)
+		// DX (requires passing of matching weight)
 		tempfile dx
-		tempvar depvar_strata_mt
-		bys `strata' `support': egen `depvar_strata_mt' = mean(`depvar') ///
-			if `support' & `treat' == `bref'
-		tempvar depvar_strata_m
-		bys `strata' `support': egen `depvar_strata_m' = max(`depvar_strata_mt')
-		replace `depvar_strata_m' = . if !`support'
-		nopo_gapdist `depvar_strata_m' if `touse' & `support' `weightexp' ///
-			, by(`treat') `opts' save(`dx')
+		nopo_gapdist `depvar' if `touse' & `support' `weightexp' ///
+			, by(`treat') comp(dx) mweight(`mweight') `opts' save(`dx')
 		// DA
 		tempfile da
 		nopo_gapdist `depvar' if `touse' & `treat' == 1 `weightexp' ///
@@ -156,7 +150,8 @@ cap program drop nopo_gapdist
 program define nopo_gapdist 
 syntax varname [if] [aweight], ///
 	by(varlist max=1) ///
-	[comp(string)] /// gap components, only relevant for D_A, D_B
+	[mweight(varlist max=1)] ///
+	[comp(string)] /// gap components, used as filter
 	[NQuantiles(integer 100)] ///
 	[QMIN(integer 1)] ///
 	[QMAX(integer 100)] ///
@@ -165,12 +160,21 @@ syntax varname [if] [aweight], ///
 
 quietly {
 	preserve
-
+		
 		// weight
 		local weightvar = (subinstr("`exp'","=","",.))
 
 		// subset
-		if "`if'" != "" keep `if'
+		if ("`if'" != "") keep `if'
+
+		// dx: for by-logic, we just expand the data for `treat' == 0 and assign `treat' == 1
+		if ("`comp'" == "dx") {
+			keep if `by' == 0
+			cap drop _expanded
+			expand 2, gen(_expanded)
+			replace `by' = 1 if _expanded == 1
+			replace `weightvar' = `mweight' if _expanded == 1 // replace weight with matching weight
+		}
 		
 		// allow for quantile mean (or any other stat) estimation'
 		// xtile aggregates quantiles if they contain constant values. Fill up to avoid empty cells.
@@ -490,3 +494,6 @@ end
 //
 // postestimation: balance/desc table by group/matching status/weight
 //
+/*
+ This table can be directly build from the summary table functions provided by kmatch.
+*/

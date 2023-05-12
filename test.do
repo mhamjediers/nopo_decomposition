@@ -35,7 +35,7 @@ timer clear
 // see comment in nopodecomp; same with nopomatch, see below
 // compare to nopoplot2 output below (which is correct I believe)
 // needs `touse' handling
-replace age = . if edu == 3 & t == 1
+//replace age = . if edu == 3 & t == 1
 
 // nopo
 timer on 1
@@ -57,7 +57,11 @@ nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap p
 
 ereturn list
 
-// Post-Estimation commands
+// distplot
+nopoplot
+stop
+
+// DA/DB contribution plot 
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
