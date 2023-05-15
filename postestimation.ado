@@ -241,9 +241,9 @@ program define nopopost_decomp, eclass
 		
 		// estimate DX from other components in the same model
 		mat b5 = b4[1,1], b4[1,2], ., b4[1,3], b4[1,4]
-		matname b5 D D0 DX DA DB, columns(1..5) explicit // just for this usecase
+		matname b5 D D0 DX DA DB, columns(1..5) explicit
 		mat V5 = V4[1,1], V4[1,2], ., V4[1,3], V4[1,4]
-		matname V5 D D0 DX DA DB, columns(1..5) explicit // just for this usecase
+		matname V5 D D0 DX DA DB, columns(1..5) explicit
 		mat V4 = diag(V4)
 		ereturn post b4 V4
 		nlcom (_b[D] - _b[D0] - _b[DA] - _b[DB]), post
@@ -364,8 +364,8 @@ syntax [if] [in], /// might produce strange results if if/in are used
 		gen `treat' = 1 if `e(tvar)' == `e(tval)'
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
 		// b reference
-		if ("`e(teffect)'" == "ATC") local _bref = 0
-			else local _bref = 1
+		if ("`e(teffect)'" == "ATC") local _bref = 1
+			else local _bref = 0
 		// support
 		local _support = e(matched)
 		// matching weights
@@ -479,10 +479,10 @@ quietly {
 
 		// dx: for by-logic, we just expand the data for `treat' == 0 and assign `treat' == 1
 		if ("`comp'" == "dx") {
-			keep if `by' != `bref'
+			keep if `by' == `bref'
 			cap drop _expanded
 			expand 2, gen(_expanded)
-			replace `by' = `bref' if _expanded == 1
+			replace `by' = abs(1 - `bref') if _expanded == 1
 			replace `weightvar' = `mweight' if _expanded == 1 // replace weight with matching weight
 		}
 		
@@ -815,12 +815,137 @@ end
 */
 
 cap program drop nopopost_summarize
-program define nopopost_summarize
-syntax varname [if] [in], ///
-	[stat(string)] /// mean mean/sd?
-	[groups(string)] /// choose groups from (A_um, A_m, A_m^B / B_m^A, B_m, B_um)
+program define nopopost_summarize, rclass
+syntax [varlist (default=none)] [if] [in], ///
+	[STATistics(string)] /// mean mean/sd?
+	[groups(string)] /// choose groups from (A_um, A_m, A_m^B / B_m^A, B_m, B_um)? Allow?
 	[SAVE(string asis)]
 
-	dis "tbd..."
+	quietly {
+		
+		// check if prior command was nopo
+		if ("`e(cmd)'" != "nopopost") {
+			noisily dis as error "Previous command was not nopopost decomp."
+			error 301
+			exit
+		}
 
-end 
+		// set input from syntax and nopo returns
+		// sample
+		tempvar touse
+		mark `touse' `if' `in'
+		replace `touse' = 0 if !e(sample)
+		// depvar
+		local _depvar = e(depvar)
+		// treatment indicator (fix to 0/1)
+		tempvar treat
+		gen `treat' = 1 if `e(tvar)' == `e(tval)'
+		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
+		// x reference (opposite for b)
+		if ("`e(teffect)'" == "ATC") local _bref = 1
+			else local _bref = 0
+		// support
+		local _support = e(matched)
+		// matching weights
+		local _mweight = e(mweight)
+		// weights
+		if ("`e(wtype)'" != "") {
+			local _weightexp "[`e(wtype)' = `e(wexp)']"
+			if ("`e(wtype)'" == "pweight") local _weightexp = usubinstr("`_weightexp'", "pweight", "aweight", .)
+		}
+		
+		// vars to tab; defaults to matching set
+		if ("`varlist'" == "") local varlist "`_depvar' `e(matchset)'"
+		if ("`statistics'" == "") local statistics "mean sd"
+
+		//
+		// create table as matrix
+		// provide appropriate names (prefix)
+
+		// A_um
+		tabstat `varlist' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
+			, stat(`statistics') save
+		mat A_um = r(StatTotal)
+		nopopost_stacktbl A_um
+		mat A_um = r(A_um)
+
+		// A_m
+		tabstat `varlist' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
+			, stat(`statistics') save
+		mat A_m = r(StatTotal)
+		nopopost_stacktbl A_m
+		mat A_m = r(A_m)
+
+		// A_m_weighted or B_m_weighted
+		if (`_bref' == 0) {
+			// A: b ref group for which treat == 0
+			tabstat `varlist' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
+				, stat(`statistics') save
+			local _matweighted = "A_m_weighted"
+		}
+		else if (`_bref' == 1) {
+			// B: b ref group for which treat == 1
+			tabstat `varlist' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
+				, stat(`statistics') save
+			local _matweighted = "B_m_weighted"
+		}
+		mat `_matweighted' = r(StatTotal)
+		nopopost_stacktbl `_matweighted'
+		mat `_matweighted' = r(`_matweighted')
+
+		// B_m
+		tabstat `varlist' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
+			, stat(`statistics') save
+		mat B_m = r(StatTotal)
+		nopopost_stacktbl B_m
+		mat B_m = r(B_m)
+
+		// B_um
+		tabstat `varlist' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
+			, stat(`statistics') save
+		mat B_um = r(StatTotal)
+		nopopost_stacktbl B_um
+		mat B_um = r(B_um)
+
+		// here needs to be a nice SMCL output
+
+		// combine and return
+		mat _M = A_um, A_m, `_matweighted', B_m, B_um
+		return mat npsum = _M
+
+	}
+
+end
+
+// stack tabstat results for multiple statistics into a single column
+cap program drop nopopost_stacktbl
+program define nopopost_stacktbl, rclass
+	syntax namelist (max=1)
+
+	mat _IN = `namelist'
+	local _nrows : rowsof(_IN)
+	local _rownames : rownames _IN
+	local _ncols : colsof(_IN)
+	local _colnames : colnames _IN
+	mat _OUT = J(`_nrows' * `_ncols', 1, .)
+    
+    local _cidx = 0
+    foreach _colname in `_colnames' {
+        local ++_cidx
+        local _ridx = 0
+        foreach _rowname in `_rownames' {
+            local ++_ridx
+			// gather later row names
+			local _stackednames = "`_stackednames' `_colname':`_rowname'"
+			// replace values in placeholder matrix
+			local _nidx = `_nrows' * (`_cidx' - 1) + `_ridx'
+			mat _OUT[`_nidx', 1] = _IN[`_ridx', `_cidx']
+		}
+	}
+	mat rownames _OUT = `_stackednames'
+    mat colnames _OUT = `namelist'
+    
+	// return
+	return mat `namelist' = _OUT
+	
+end

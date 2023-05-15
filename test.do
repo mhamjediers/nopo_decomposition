@@ -59,7 +59,7 @@ lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
 
-nopomatch age edu, outcome(wage) by(groups) replace abs
+//nopomatch age edu, outcome(wage) by(groups) replace abs
 kmatch em groups age edu (wage), ate atc att wgenerate generate tval(4)
 qui estimates store kmatch
 nopopost decomp, att
@@ -73,4 +73,6 @@ nopopost decomp, atc
 tempfile test
 nopopost dadb edu, save(`test')
 nopopost gapoverdist
+nopopost summarize
+mat list r(npsum)
 ereturn list
