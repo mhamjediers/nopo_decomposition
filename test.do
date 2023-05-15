@@ -51,7 +51,7 @@ qui foreach v in age edu strata {
 // timer list
 //
 
-// // labels are appropriately captured in matching table
+// labels are appropriately captured in matching table
 recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
 lab var groups "Groups"
 lab var edu "Edu"
@@ -65,7 +65,7 @@ qui estimates store kmatch
 nopopost decomp, att
 qui estimates restore kmatch
 nopopost decomp, atc
-qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(4) replace
+qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(0) replace
 qui estimates store kmatch
 nopopost decomp, att
 qui estimates restore kmatch

@@ -148,10 +148,22 @@ program define nopopost_decomp, eclass
         tempvar treat // fix treatment tempvar to 0/1
 		gen `treat' = 0 if !mi(`_tvar')
         replace `treat' = 1 if `_tvar' == `_tval'
+		// determine matching set from kmatch for return passthru; drop doublettes
+		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words'
+		foreach _w in `_varset' {
+			gettoken _word _rest : _varset
+			// save first occurence
+			local _matchset "`_matchset' `_word'"
+			// delete the rest
+			if (ustrregexm("`_rest'", "\b`_word'\b") == 1) {
+				local _varset = ustrregexra("`_rest'", "\b`_word'\b", "")
+			} 
+		}
+		local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
 		// weights
 		if ("`e(wtype)'" != "") {
-			local _wtype = `e(wtype)'
-			local _wexp = `e(wexp)'
+			local _wtype = e(wtype)
+			local _wexp = e(wexp)
 			local _weightexp = "[`_wtype'`_wexp']"
 			if ("`_wtype'" == "pweight") local _sum_weightexp = "[aw`_wexp']"
 				else local _sum_weightexp = `_weightexp'
@@ -205,9 +217,9 @@ program define nopopost_decomp, eclass
 		sum `_depvar' if `treat' == 0 & `sample' `_sum_weightexp'
 		local n2 = r(sum_w)
 		reg `_depvar' i.`matched' if `treat' == 0 & `sample' `_weightexp', vce(`vce')
-        scalar _mgapA = _b[1.`matched']
+		scalar _mgapA = _b[1.`matched']
 		nlcom _b[1.`matched'] * (`n1'/`n2'), post
-        scalar _msharewA = (1 - `n1' / `n2') * 100
+		scalar _msharewA = (1 - `n1' / `n2') * 100
 		mat b = e(b)
 		mat b4[1,3] = b[1,1]
 		mat V = e(V)
@@ -219,9 +231,9 @@ program define nopopost_decomp, eclass
 		sum `_depvar' if `treat' == 1 & `sample' `_sum_weightexp'
 		local n2 = r(sum_w)
 		reg `_depvar' i.`matched' if `treat' == 1 & `sample' `_weightexp', vce(`vce')
-        scalar _mgapB = _b[1.`matched']
+		scalar _mgapB = _b[1.`matched']
 		nlcom _b[1.`matched'] * -1 * (`n1'/`n2'), post
-        scalar _msharewB = (1 - `n1' / `n2') * 100
+		scalar _msharewB = (1 - `n1' / `n2') * 100
 		mat b = e(b)
 		mat b4[1,4] = b[1,1]
 		mat V = e(V)
@@ -239,7 +251,7 @@ program define nopopost_decomp, eclass
 		mat b5[1,3] = b[1,1]
 		mat V = e(V)
 		mat V5[1,3] = V[1,1]
-        mat V5 = diag(V5)
+		mat V5 = diag(V5)
         
         // reverse gap direction?
         if ("`reverse'" != "") {
@@ -253,6 +265,9 @@ program define nopopost_decomp, eclass
 		scalar _mshareuwB = Nsupport[1,4] / Nsupport[1,6] * 100
 		
 		// return
+		/*
+		 Things to do: We could return a nice table in the style you already prepared.
+		*/
 		ereturn post b5 V5, obs(`N') esample(`sample') depname(`_depvar')
 		ereturn local cmd = "nopopost"
 		ereturn local subcmd = "`subcmd'"
@@ -260,23 +275,23 @@ program define nopopost_decomp, eclass
 		ereturn local teffect = "`_TE'"
 		ereturn local tvar = "`_tvar'"
 		ereturn local tval = "`_tval'"
-		//ereturn local match_set = strltrim("`match_set'")
+		ereturn local matchset = strltrim("`_matchset'")
 		ereturn local strata = "`_strata'"
-		ereturn scalar n_strata = _nstrata
-		ereturn scalar n_strata_matched = _nmstrata
+		ereturn scalar nstrata = _nstrata
+		ereturn scalar nstrata_matched = _nmstrata
 		ereturn local matched = "_matched"
 		cap drop _matched
 		rename `matched' _matched
 		lab var _matched "Matching indicator (dummy)"
 		ereturn matrix _N = Nsupport
-		ereturn scalar _nA = _nA
-		ereturn scalar _mshareuwA = _mshareuwA // unweighted
-        ereturn scalar _msharewA = _msharewA // weighted
-        ereturn scalar _mgapA = _mgapA // raw diff by matching status
-		ereturn scalar _nB = _nB
-		ereturn scalar _mshareuwB = _mshareuwB // unweighted
-        ereturn scalar _msharewB = _msharewB // weighted
-        ereturn scalar _mgapB = _mgapB // raw diff by matching status
+		ereturn scalar nA = _nA
+		ereturn scalar mshareuwA = _mshareuwA // unweighted
+		ereturn scalar msharewA = _msharewA // weighted
+		ereturn scalar mgapA = _mgapA // raw diff by matching status
+		ereturn scalar nB = _nB
+		ereturn scalar mshareuwB = _mshareuwB // unweighted
+		ereturn scalar msharewB = _msharewB // weighted
+        ereturn scalar mgapB = _mgapB // raw diff by matching status
 		if ("`_wtype'" != "") {
 			ereturn local wtype = "`_wtype'"
 			ereturn local wexp = "`_wexp'"
@@ -301,10 +316,10 @@ groups. So, the mean across all these comparisons is the same as the decompositi
 produced by nopo. But that also means that:
 
 - At each quantile, the single component values do not add up to d
-- D_A and D_B are scaled as the nopo decomp, so higher values can mean more people or larger gaps
+- D_A and D_B are scaled as in the nopo decomp, so higher values can mean more people or larger gaps
   (though the factor is always the same due to the quantile logic: n0/(n0+n1) is the same for each
   quantile). The `rawumdiff' option circumvents the scaling and shows the absolute differences,
-  but then the values do not sum up do D_A/D_B
+  but then the values do not sum up to D_A/D_B
 
 Does that sound sensible?
 
@@ -343,7 +358,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
 		mark `touse' `if' `in'
 		replace `touse' = 0 if !e(sample)
 		// depvar
-		local _depvar "`e(depvar)'"
+		local _depvar = e(depvar)
 		// treatment indicator (fix to 0/1)
 		tempvar treat
 		gen `treat' = 1 if `e(tvar)' == `e(tval)'
@@ -352,9 +367,9 @@ syntax [if] [in], /// might produce strange results if if/in are used
 		if ("`e(teffect)'" == "ATC") local _bref = 0
 			else local _bref = 1
 		// support
-		local _support "`e(matched)'"
+		local _support = e(matched)
 		// matching weights
-		local _mweight "`e(mweight)'"
+		local _mweight = e(mweight)
 		// weights
 		if ("`e(wtype)'" != "") {
 			local _weightexp "[`e(wtype)' = `e(wexp)']"
@@ -367,7 +382,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
 
 		// set defaults
 		if ("`twtype'" == "") local twtype "line"
-		if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) "'
+		if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
 		if ("`twtype'" == "line") {
 			if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
 			if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
@@ -564,11 +579,11 @@ syntax varname [if] [in], ///
 		local _plotbylbl : variable label `_plotbyname'
 
 		// check if plotvar is in matching set (otherwise it does not make much sense)
-		/* if (ustrregexm("`e(match_set)'", "\b`plotbyname'\b") == 0) {
-			noisily dis as error "Variable `varlist' not in matching set (`e(match_set)')."
+		if (ustrregexm("`e(matchset)'", "\b`_plotbyname'\b") == 0) {
+			noisily dis as error "Variable `varlist' not in matching set (`e(matchset)')."
 			error 321
 			exit
-		} */
+		}
 		
 		// set input from syntax and nopo returns
 		// sample
@@ -576,12 +591,12 @@ syntax varname [if] [in], ///
 		mark `touse' `if' `in'
 		replace `touse' = 0 if !e(sample)
 		// depvar
-		local _depvar "`e(depvar)'"
+		local _depvar = e(depvar)
 		// treatment indicator (fix to 0/1)
 		tempvar treat
 		gen `treat' = 1 if `e(tvar)' == `e(tval)'
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
-		local _treatname `e(tvar)' // for renaming tempvar upon save
+		local _treatname = e(tvar) // for renaming tempvar upon save
 		local _treatlbl : variable label `_treatname'
 		lab var `treat' `_treatlbl'
 		local _vallbl : value label `_treatname'
@@ -598,7 +613,7 @@ syntax varname [if] [in], ///
 		}
 	
 		// support
-		local _support "`e(matched)'"
+		local _support = e(matched)
 		// weights
 		if ("`e(wtype)'" != "") {
 			local _weightexp "[`e(wtype)' = `e(wexp)']"
@@ -698,7 +713,7 @@ syntax varname [if] [in], ///
 
 			// keep all levels for plot? 
 			// useful if plotted comparisons do not have the same plotby levels due to missings
-			if ("`keepallevels'" == "") keep if `touse' 
+			if ("`keepalllevels'" == "") keep if `touse' 
 
 			// collapse
 			collapse ///
@@ -717,12 +732,15 @@ syntax varname [if] [in], ///
 				sum mdepvar_diff_weighted
 				if (abs(r(max)) > abs(r(min))) local _wmmax = abs(r(max)) * 1.75 // make room for obs text
 					else local _wmmax = abs(r(min)) * 1.75
-				if (`_nplotbylvls'/10 < 1) local _yrangemax = `_nplotbylvls' + 1
-					else local _yrangemax = `_nplotbylvls'/10 + `_nplotbylvls'
+				if (`_nplotbylvls'/5 < 1) local _yrangemax = `_nplotbylvls' + 1
+					else if (`_nplotbylvls'/5 < 2) local _yrangemax = `_nplotbylvls' + 2
+					else local _yrangemax = `_nplotbylvls'/5 + `_nplotbylvls'
 				cap drop nx
 				gen nx = `_mmax' // x value for n counts (added as mlabel)
 				local _text `" text(`_yrangemax' `_mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
-				local _ysize = `_nplotbylvls'/10 + 5
+				local _ysize = `_nplotbylvls'/5 + 5
+				if (`_ysize' < 8) local _xsize = 9
+					else local _xsize = 9 + `_ysize'/3
 
 				// set default plot options
 				#delimit ;
@@ -730,14 +748,14 @@ syntax varname [if] [in], ///
 					legend(order(
 						3 "Contribution of unmatched to D (top x-axis)"
 						1 "Category-specific mean of unmatched - overall mean of matched (bottom x-axis)"
-						) rows(2) margin(zero)  region(style(none)))
-					ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal)) 
+						) rows(2) margin(zero)  region(style(none)) size(small))
+					ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
 					yscale(range(`_yrangemax' 1)) ytitle("")
 					xscale(range(-`_wmmax' `_wmmax') axis(1))
-					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(, axis(2) grid)
+					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(, axis(2) grid labsize(small))
 					xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
 					subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
-					scheme(s1mono) xsize(9) ysize(`_ysize')
+					scheme(s1mono) xsize(`_xsize') ysize(`_ysize')
 					"';
 				if (`"`twoptsby'"' == "") local twoptsby `" 
 					ixtitle note("") b1title("") graphregion(margin(zero)) 
@@ -793,7 +811,7 @@ end
 // Summary table by group/matching status/weight
 //
 /*
- Build from kmatch summary tables or do your own?
+ Build from kmatch summary tables or do our own?
 */
 
 cap program drop nopopost_summarize
