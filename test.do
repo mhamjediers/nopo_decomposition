@@ -52,15 +52,14 @@ qui foreach v in age edu strata {
 //
 
 // labels are appropriately captured in matching table
-recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
+recode t (0 = 0 "Immigrant women") (1 = 1 "Native men"), gen(groups)
 lab var groups "Groups"
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
-
-//nopomatch age edu, outcome(wage) by(groups) replace abs
-kmatch em groups age edu (wage), ate atc att wgenerate generate tval(4)
+nopomatch age edu, outcome(wage) by(groups) replace abs sd
+kmatch em groups age edu (wage), ate atc att wgenerate generate tval(1)
 qui estimates store kmatch
 nopopost decomp, att
 qui estimates restore kmatch
