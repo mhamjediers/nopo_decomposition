@@ -29,43 +29,48 @@ qui foreach v in age edu strata {
 	tab `v', gen(`v'_)
 }
 
-timer clear
+// timer clear
+//
+// // mi check: DA/DB AND N UNMATCHED NOT CORRECT!
+// // see comment in nopodecomp; same with nopomatch, see below
+// // compare to nopoplot2 output below (which is correct I believe)
+// // needs `touse' handling
+// //replace age = . if edu == 3 & t == 1
+//
+// // nopo
+// timer on 1
+//nopomatch age edu, outcome(wage) by(t) replace abs
+// nopomatch age edu if !mi(age), outcome(wage) by(t) replace abs
+// timer off 1
+//
+// // new command
+// timer on 2
+// nopodecomp wage age edu, by(t)  //normalize replace
+// timer off 2
+//
+// timer list
+//
 
-// mi check: DA/DB AND N UNMATCHED NOT CORRECT!
-// see comment in nopodecomp; same with nopomatch, see below
-// compare to nopoplot2 output below (which is correct I believe)
-// needs `touse' handling
-//replace age = . if edu == 3 & t == 1
-
-// nopo
-timer on 1
-nopomatch age edu, outcome(wage) by(t) replace abs
-nopomatch age edu if !mi(age), outcome(wage) by(t) replace abs
-timer off 1
-
-// new command
-timer on 2
-nopodecomp wage age edu, by(t)  //normalize replace
-timer off 2
-
-timer list
-
-// labels are appropriately captured in matching table
+// // labels are appropriately captured in matching table
 recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
 lab var groups "Groups"
-nopodecomp wage age edu, by(groups) swap prefix(new) // normalize replace swap prefix
-
-ereturn list
-
-// distplot
-nopoplot
-stop
-
-// DA/DB contribution plot 
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
+
+
+nopomatch age edu, outcome(wage) by(groups) replace abs
+kmatch em groups age edu (wage), ate atc att wgenerate generate tval(4)
+qui estimates store kmatch
+nopopost decomp, att
+qui estimates restore kmatch
+nopopost decomp, atc
+qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(4) replace
+qui estimates store kmatch
+nopopost decomp, att
+qui estimates restore kmatch
+nopopost decomp, atc
 tempfile test
-nopoplot2 edu, save(`test')
-use `test', clear
-browse
+nopopost dadb edu, save(`test')
+nopopost gapoverdist
+ereturn list
