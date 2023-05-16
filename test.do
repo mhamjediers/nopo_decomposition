@@ -72,7 +72,7 @@ nopopost decomp wage age edu, by(groups)
 *for standalone option kmatch(em|ps|md) (default is em)
 * and potentially some of the further options kmatch_options(...)
 *and ereturn internally called kmatch line for potential adjustment (with atc and att); then everybody can work with this is they want to
-*noisily option to display kmatch-output with all its specifications/bandwith 
+*noisily option to display kmatch-output with all its specifications/bandwith  --> add the notable and nose options, as these should not be part of it
 *scalar passthrough
 
 *This should be somehow the final result:
