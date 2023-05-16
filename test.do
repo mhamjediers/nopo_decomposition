@@ -1,4 +1,4 @@
-//cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
+cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "postestimation.ado"
 run "nopodecomp.ado"
@@ -58,6 +58,40 @@ lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
+
+*Standalone
+nopopost decomp wage age edu, by(groups) 
+
+/* Standalone to dos: 
+
+*Change the atc/att naming
+*The default should be reference in gap estimation is also reference in vector (now atc)
+*Swap option flips group-indicator (and thereby both references)
+*Reference option allows groups == # to indicate which reference vector 
+
+*for standalone option kmatch(em|ps|md) (default is em)
+* and potentially some of the further options kmatch_options(...)
+*and ereturn internally called kmatch line for potential adjustment (with atc and att); then everybody can work with this is they want to
+*noisily option to display kmatch-output with all its specifications/bandwith 
+*scalar passthrough
+
+*This should be somehow the final result:
+nopopost decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisly passthrough(bw)
+
+*/
+
+
+
+/* Output to dos:
+
+*Output tables should be shown as in previous version (indicating group A/B and which one is reference)
+*Show both tables also when used as post-estimation
+*indicate also the matching algorithm in output
+*indicate number of strata in exact matching or some other scalars(bw?) when other matching algorithm
+
+*output for summarize via matlist (and option with labels for rownames)
+*/
+
 nopomatch age edu, outcome(wage) by(groups) replace abs sd
 kmatch em groups age edu (wage), ate atc att wgenerate generate tval(1)
 qui estimates store kmatch
@@ -75,3 +109,6 @@ nopopost gapoverdist
 nopopost summarize
 mat list r(npsum)
 ereturn list
+
+
+*bootstrap: nopopost decomp wage age edu, by(groups)

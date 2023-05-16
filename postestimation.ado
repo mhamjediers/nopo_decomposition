@@ -60,12 +60,12 @@ program define nopopost, eclass
 				local att = "att"
 			}
 			// most simple spec! anything else will require running kmatch prior
-			gettoken depvar varlist : varlist
+			gettoken _depvar varlist : varlist
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
-			kmatch em t `varlist' (wage) `if' `in' `_weightexp' ///
+			qui kmatch em t `varlist' (`_depvar') `if' `in' `_weightexp' ///
 				, `atc' `att' generate wgenerate replace
 			// save matching weight variable for passthru
-			local _mweight = e(wgenerate) // only one possible
+			local _mweight = "mweight(`e(wgenerate)')" // only one possible
 			// clear varlist
 			local varlist
 		}
