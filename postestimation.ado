@@ -18,7 +18,7 @@ program define nopopost, eclass
 	 (2) Call postestimation stuff:
 	 	 - plot gap components over the outcome distribution
 		 - plot contributions to DA/DB by variable level
-		 - show summary table by group (A_um, A_m, A_m^B / B_m^A, B_m, B_um); atm only mean (sd)
+		 - show summary table by group (A_unmatched, A_matched, A_matched^B / B_matched^A, B_matched, B_unmatched); atm only mean (sd)
 
 	*/
 
@@ -62,7 +62,7 @@ program define nopopost, eclass
 			// most simple spec! anything else will require running kmatch prior
 			gettoken _depvar varlist : varlist
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
-			qui kmatch em t `varlist' (`_depvar') `if' `in' `_weightexp' ///
+			qui kmatch em `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
 				, `atc' `att' generate wgenerate replace
 			// save matching weight variable for passthru
 			local _mweight = "mweight(`e(wgenerate)')" // only one possible
@@ -278,7 +278,7 @@ program define nopopost_decomp, eclass
 		ereturn local matchset = strltrim("`_matchset'")
 		ereturn local strata = "`_strata'"
 		ereturn scalar nstrata = _nstrata
-		ereturn scalar nstrata_matched = _nmstrata
+		ereturn scalar nstratA_matchedatched = _nmstrata
 		ereturn local matched = "_matched"
 		cap drop _matched
 		rename `matched' _matched
@@ -610,6 +610,7 @@ syntax varname [if] [in], ///
 					else lab def _bylbl 0 "`_lbl'", modify
 			}
 			lab val `treat' _bylbl
+			local _haslabel
 		}
 	
 		// support
@@ -818,7 +819,7 @@ cap program drop nopopost_summarize
 program define nopopost_summarize, rclass
 syntax [varlist (default=none)] [if] [in], ///
 	[STATistics(string)] /// mean mean/sd?
-	[groups(string)] /// choose groups from (A_um, A_m, A_m^B / B_m^A, B_m, B_um)? Allow?
+	[label] ///
 	[SAVE(string asis)]
 
 	quietly {
@@ -841,6 +842,20 @@ syntax [varlist (default=none)] [if] [in], ///
 		tempvar treat
 		gen `treat' = 1 if `e(tvar)' == `e(tval)'
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
+		// assign correct labels
+		local _treatname = e(tvar) // for renaming tempvar upon save
+		local _vallbl : value label `_treatname'
+		if ("`_vallbl'" != "") {
+			label list `_vallbl'
+			levelsof `_treatname', local(_bylvls)
+			levelsof `_treatname' if `treat' == 1, local(_reflvl)
+			foreach _lvl in `_bylvls' {
+				local _lbl : label `_vallbl' `_lvl'
+				if (`_lvl' == `_reflvl') lab def _bylbl 1 "`_lbl'", modify
+					else lab def _bylbl 0 "`_lbl'", modify
+			}
+			lab val `treat' _bylbl
+		}
 		// x reference (opposite for b)
 		if ("`e(teffect)'" == "ATC") local _bref = 1
 			else local _bref = 0
@@ -862,55 +877,70 @@ syntax [varlist (default=none)] [if] [in], ///
 		// create table as matrix
 		// provide appropriate names (prefix)
 
-		// A_um
+		// A_unmatched
 		tabstat `varlist' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
 			, stat(`statistics') save
-		mat A_um = r(StatTotal)
-		nopopost_stacktbl A_um
-		mat A_um = r(A_um)
+		mat A_unmatched = r(StatTotal)
+		nopopost_stacktbl A_unmatched, `label'
+		mat A_unmatched = r(A_unmatched)
 
-		// A_m
+		// A_matched
 		tabstat `varlist' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
 			, stat(`statistics') save
-		mat A_m = r(StatTotal)
-		nopopost_stacktbl A_m
-		mat A_m = r(A_m)
+		mat A_matched = r(StatTotal)
+		nopopost_stacktbl A_matched, `label'
+		mat A_matched = r(A_matched)
 
-		// A_m_weighted or B_m_weighted
+		// A_matched_weighted or B_matched_weighted
 		if (`_bref' == 0) {
 			// A: b ref group for which treat == 0
 			tabstat `varlist' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
 				, stat(`statistics') save
-			local _matweighted = "A_m_weighted"
+			local _matweighted = "A_matched_weighted"
 		}
 		else if (`_bref' == 1) {
 			// B: b ref group for which treat == 1
 			tabstat `varlist' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
 				, stat(`statistics') save
-			local _matweighted = "B_m_weighted"
+			local _matweighted = "B_matched_weighted"
 		}
 		mat `_matweighted' = r(StatTotal)
-		nopopost_stacktbl `_matweighted'
+		nopopost_stacktbl `_matweighted', `label'
 		mat `_matweighted' = r(`_matweighted')
 
-		// B_m
+		// B_matched
 		tabstat `varlist' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
 			, stat(`statistics') save
-		mat B_m = r(StatTotal)
-		nopopost_stacktbl B_m
-		mat B_m = r(B_m)
+		mat B_matched = r(StatTotal)
+		nopopost_stacktbl B_matched, `label'
+		mat B_matched = r(B_matched)
 
-		// B_um
+		// B_unmatched
 		tabstat `varlist' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
 			, stat(`statistics') save
-		mat B_um = r(StatTotal)
-		nopopost_stacktbl B_um
-		mat B_um = r(B_um)
+		mat B_unmatched = r(StatTotal)
+		nopopost_stacktbl B_unmatched, `label'
+		mat B_unmatched = r(B_unmatched)
 
-		// here needs to be a nice SMCL output
+		// combine
+		mat _M = A_unmatched, A_matched, `_matweighted', B_matched, B_unmatched
 
-		// combine and return
-		mat _M = A_um, A_m, `_matweighted', B_m, B_um
+		// label (always provide headings via equations)
+		local _colnames : colnames _M, quoted
+		local _colnames = usubinstr(`"`_colnames'"', "A_", "A:", .)
+		local _colnames = usubinstr(`"`_colnames'"', "B_", "B:", .)
+		if ("`label'" != "") {
+			if ("`_vallbl'" != "") {
+				local _Albl : label _bylbl 0
+				local _colnames = usubinstr(`"`_colnames'"', "A:", "`_Albl':", .)
+				local _Blbl : label _bylbl 1
+				local _colnames = usubinstr(`"`_colnames'"', "B:", "`_Blbl':", .)
+			}
+			local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
+		}
+		mat colnames _M = `_colnames'
+		// list and return
+		noisily matlist _M, lines(columns) showcoleq(combined)
 		return mat npsum = _M
 
 	}
@@ -920,7 +950,8 @@ end
 // stack tabstat results for multiple statistics into a single column
 cap program drop nopopost_stacktbl
 program define nopopost_stacktbl, rclass
-	syntax namelist (max=1)
+	syntax namelist (max=1), ///
+		[label]
 
 	mat _IN = `namelist'
 	local _nrows : rowsof(_IN)
@@ -936,7 +967,14 @@ program define nopopost_stacktbl, rclass
         foreach _rowname in `_rownames' {
             local ++_ridx
 			// gather later row names
-			local _stackednames = "`_stackednames' `_colname':`_rowname'"
+			if ("`label'" == "") {
+				local _stackednames = "`_stackednames' `_colname':`_rowname'"
+			}
+			else {
+				local _lbl : variable label `_colname'
+				if ("`_lbl'" == "") local _lbl = "`_colname'"
+				local _stackednames = "`_stackednames' `_lbl':`_rowname'"
+			}
 			// replace values in placeholder matrix
 			local _nidx = `_nrows' * (`_cidx' - 1) + `_ridx'
 			mat _OUT[`_nidx', 1] = _IN[`_ridx', `_cidx']

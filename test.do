@@ -1,4 +1,4 @@
-cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
+//cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "postestimation.ado"
 run "nopodecomp.ado"
@@ -92,23 +92,22 @@ nopopost decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch
 *output for summarize via matlist (and option with labels for rownames)
 */
 
-nopomatch age edu, outcome(wage) by(groups) replace abs sd
-kmatch em groups age edu (wage), ate atc att wgenerate generate tval(1)
-qui estimates store kmatch
-nopopost decomp, att
-qui estimates restore kmatch
-nopopost decomp, atc
-qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(0) replace
-qui estimates store kmatch
-nopopost decomp, att
-qui estimates restore kmatch
-nopopost decomp, atc
-tempfile test
-nopopost dadb edu, save(`test')
-nopopost gapoverdist
-nopopost summarize
-mat list r(npsum)
-ereturn list
+// nopomatch age edu, outcome(wage) by(groups) replace abs sd
+// kmatch em groups age edu (wage), ate atc att wgenerate generate tval(1)
+// qui estimates store kmatch
+// nopopost decomp, att
+// qui estimates restore kmatch
+// nopopost decomp, atc
+// qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(0) replace
+// qui estimates store kmatch
+// nopopost decomp, att
+// qui estimates restore kmatch
+// nopopost decomp, atc
+// tempfile test
+// nopopost dadb edu, save(`test')
+// nopopost gapoverdist
+nopopost summarize, label
+//ereturn list
 
 
 *bootstrap: nopopost decomp wage age edu, by(groups)
