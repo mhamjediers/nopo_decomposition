@@ -60,7 +60,7 @@ lab val edu edu
 
 
 *Standalone
-nopopost decomp wage age edu, by(groups) 
+nopo decomp wage age edu, by(groups) 
 
 /* Standalone to dos: 
 
@@ -76,10 +76,9 @@ nopopost decomp wage age edu, by(groups)
 *scalar passthrough
 
 *This should be somehow the final result:
-nopopost decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisly passthrough(bw)
+nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisly passthrough(bw)
 
 */
-
 
 
 /* Output to dos:
@@ -95,19 +94,19 @@ nopopost decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch
 // nopomatch age edu, outcome(wage) by(groups) replace abs sd
 // kmatch em groups age edu (wage), ate atc att wgenerate generate tval(1)
 // qui estimates store kmatch
-// nopopost decomp, att
+// nopo decomp, att
 // qui estimates restore kmatch
-// nopopost decomp, atc
+// nopo decomp, atc
 // qui kmatch em groups age edu (wage), ate atc att wgenerate generate tval(0) replace
 // qui estimates store kmatch
-// nopopost decomp, att
+// nopo decomp, att
 // qui estimates restore kmatch
-// nopopost decomp, atc
+// nopo decomp, atc
 // tempfile test
-// nopopost dadb edu, save(`test')
-// nopopost gapoverdist
-nopopost summarize, label
+// nopo dadb edu, save(`test')
+// nopo gapoverdist
+nopo summarize, label
 //ereturn list
 
 
-*bootstrap: nopopost decomp wage age edu, by(groups)
+*bootstrap: nopo decomp wage age edu, by(groups)

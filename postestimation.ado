@@ -2,18 +2,24 @@
 // wrapper
 //
 
-cap program drop nopopost
-program define nopopost, eclass
+cap program drop nopo
+program define nopo, eclass
 
     syntax [namelist] [if] [in] [fweight pweight iweight], ///
         [by(varlist max=1) *] ///
-		[atc att]
+		[swap] ///
+		[bref(string)] ///
+		[kmatch(string)] ///
+		[kmatchopts(string asis)] ///
+		[att atc]
+
+		// also add noisily and returns passthru
 
 	/*
 	 In essence, this wrapper does two things:
 
 	 (1) Call a Nopo (2008) style decomposition after matching via kmatch. If a varlist is
-	     specified, this wrapper calls a basic cem version of kmatch, otherwise it checks if all requirements are met by the kmatch performed before nopopost. Estimates are returned for
+	     specified, this wrapper calls a basic cem version of kmatch, otherwise it checks if all requirements are met by the kmatch performed before nopo. Estimates are returned for
 		 the decomposition components and a few auxiliary things.
 	 (2) Call postestimation stuff:
 	 	 - plot gap components over the outcome distribution
@@ -26,15 +32,8 @@ program define nopopost, eclass
 	if ("`namelist'" != "") gettoken subcmd varlist : namelist
 		else local subcmd "decomp"
 	if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize")) {
-		dis as error "nopopost subcommand must be one of:"
+		dis as error "nopo subcommand must be one of:"
 		dis as error "'decomp', 'gapoverdist', 'dadb', 'summarize'"
-		error 198
-		exit
-	}
-
-	// ATT/ATC check
-	if ("`atc'" != "" & "`att'" != "") {
-		dis as error "Specify either 'ate' or 'atc' as options, not both."
 		error 198
 		exit
 	}
@@ -43,27 +42,73 @@ program define nopopost, eclass
 	if ("`subcmd'" == "decomp" & "`varlist'" != "") {
 		local nvars : word count `varlist'
 		if (`nvars' == 1) {
-			dis as error "'nopopost decomp `varlist'' invalid. Valid options are:"
+			dis as error "'nopo decomp `varlist'' invalid. Valid options are:"
 			dis as error "(1) Provide at least one matching variable in addition to depvar `varlist'."
-			dis as error "(2) Use only 'nopopost decomp' after running 'kmatch'"
+			dis as error "(2) Use only 'nopo decomp' after running 'kmatch'"
 			error 100
 			exit
 		}
 		else if ("`by'" == "") {
-				dis as error "Option 'by(groupvar)' required for decomposition."
-				error 102
-				exit
+			dis as error "Option 'by(groupvar)' required for decomposition."
+			error 102
+			exit
 		}
 		else {
-			if ("`atc'" == "" & "`att'" == "") {
-				dis "Estimating default ATT."
-				local att = "att"
+			// no strings
+			cap confirm numeric variable `by'
+			if (_rc == 7) {
+				dis as error "`by' must be numeric."
+				error 7
+				exit
 			}
+			// assert 2 levels
+			levelsof `by', local(_bylvls)
+			if (r(r) < 2) {
+				dis as error "`by' must have 2 levels."
+				error 148
+				exit
+			} 
+			else if (r(r) > 2) {
+				dis as error "`by' must have 2 levels."
+				error 149
+				exit
+			}
+			dis "debug"
+
+			// convert top-level syntax into ATT/ATC logic which is used in kmatch
+			/*
+			- treatment indicator 0/1
+				- group A = treat == 0
+				- group B = treat == 1
+				- ref is B
+			- option swap:
+				- group B = treat == 0
+				- group A = treat == 1
+				- ref is A
+			- manually specify reference group for COEFFICIENTS bref(1)
+			*/
+			// treatment value = group order
+			if ("`swap'" == "") local _tval : word 2 of `_bylvls'
+				else local _tval : word 1 of `_bylvls'
+			// att/atc logic depending on swap/bref
+			if ("`bref'" != "") {
+				// get numeric value
+				local _bref = stritrim("`_bref'")
+				local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
+				if ("`swap'" == "") local _te = "att"
+					else local _te = "atc"
+			}
+			else {
+				if ("`swap'" == "") local _te = "atc"
+					else local _te = "att"
+			}
+
 			// most simple spec! anything else will require running kmatch prior
 			gettoken _depvar varlist : varlist
+			if ("`kmatch'" == "") local kmatch = "em"
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
 			qui kmatch em `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-				, `atc' `att' generate wgenerate replace
+				, `_te' generate wgenerate replace `kmatchopts' // prehaps strip opts of gen commands
 			// save matching weight variable for passthru
 			local _mweight = "mweight(`e(wgenerate)')" // only one possible
 			// clear varlist
@@ -78,8 +123,13 @@ program define nopopost, eclass
 			exit
 		} 
 		else if (!inlist("`e(subcmd)'", "md", "ps", "em")) {
-			dis as error "nopopost only works after kmatch md, kmatch ps, and kmatch em."
+			dis as error "nopo only works after kmatch md, kmatch ps, and kmatch em."
 			error 301
+			exit
+		} 
+		else if ("`atc'" != "" & "`att'" != "") {
+			dis as error "Specify either 'att' or 'atc' as options, not both."
+			error 198
 			exit
 		}
 		else if ("`e(att)'" == "" & "`att'" != "") {
@@ -93,13 +143,13 @@ program define nopopost, eclass
 			exit
 		}
 		else if (e(N_over) > 1 | "`e(ovar2)'" != "") {
-			dis as error "nopopost requires kmatch to be specifcied with a single outcome (ovar) and without the 'over()' option."
+			dis as error "nopo requires kmatch to be specifcied with a single outcome (ovar) and without the 'over()' option."
 			error 301
 			exit
 		}
 		else if ("`e(generate)'" == "" | "`e(wgenerate)'" == "") {
 			// rerun with matching variables if missing
-			dis "nopopost requires matching variables generated by kmatch. Re-running with options 'generate' and 'wgenerate'..."
+			dis "nopo requires matching variables generated by kmatch. Re-running with options 'generate' and 'wgenerate'..."
 			local _cmdline `" `e(cmdline)' "'
 			if ("`e(generate)'" == "") local _cmdline `" `_cmdline' generate "' 
 			if ("`e(wgenerate)'" == "") local _cmdline `" `_cmdline' wgenerate "'
@@ -117,7 +167,7 @@ program define nopopost, eclass
 	}
 
 	// run subcommand with option passthru
-	nopopost_`subcmd' `varlist', `_mweight' `atc' `att' `options'
+	nopo_`subcmd' `varlist', `_mweight' `atc' `att' `options'
 
 end
 
@@ -126,8 +176,8 @@ end
 // Nopo (2008) style decomposition
 //
 
-cap program drop nopopost_decomp
-program define nopopost_decomp, eclass
+cap program drop nopo_decomp
+program define nopo_decomp, eclass
 
     syntax , ///
 		mweight(varlist max=1) ///
@@ -149,7 +199,7 @@ program define nopopost_decomp, eclass
 		gen `treat' = 0 if !mi(`_tvar')
         replace `treat' = 1 if `_tvar' == `_tval'
 		// determine matching set from kmatch for return passthru; drop doublettes
-		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words'
+		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
 		foreach _w in `_varset' {
 			gettoken _word _rest : _varset
 			// save first occurence
@@ -269,7 +319,7 @@ program define nopopost_decomp, eclass
 		 Things to do: We could return a nice table in the style you already prepared.
 		*/
 		ereturn post b5 V5, obs(`N') esample(`sample') depname(`_depvar')
-		ereturn local cmd = "nopopost"
+		ereturn local cmd = "nopo"
 		ereturn local subcmd = "`subcmd'"
 		//ereturn matrix match_table = mtab
 		ereturn local teffect = "`_TE'"
@@ -278,12 +328,12 @@ program define nopopost_decomp, eclass
 		ereturn local matchset = strltrim("`_matchset'")
 		ereturn local strata = "`_strata'"
 		ereturn scalar nstrata = _nstrata
-		ereturn scalar nstratA_matchedatched = _nmstrata
+		ereturn scalar nstrata_matched = _nmstrata
 		ereturn local matched = "_matched"
 		cap drop _matched
 		rename `matched' _matched
 		lab var _matched "Matching indicator (dummy)"
-		ereturn matrix _N = Nsupport
+		ereturn matrix _N = Nsupport // original support matrix from kmatch
 		ereturn scalar nA = _nA
 		ereturn scalar mshareuwA = _mshareuwA // unweighted
 		ereturn scalar msharewA = _msharewA // weighted
@@ -326,8 +376,8 @@ Does that sound sensible?
 */
 
 // gap over distribution plotting wrapper: 5 plots needed (one for each gap component)
-cap program drop nopopost_gapoverdist
-program define nopopost_gapoverdist
+cap program drop nopo_gapoverdist
+program define nopo_gapoverdist
 syntax [if] [in], /// might produce strange results if if/in are used
 	[NQuantiles(integer 100)] ///
 	[QMIN(integer 1)] ///
@@ -346,8 +396,8 @@ syntax [if] [in], /// might produce strange results if if/in are used
 	quietly {
 
 		// check if prior command was nopo
-		if ("`e(cmd)'" != "nopopost") {
-			noisily dis as error "Previous command was not nopopost decomp."
+		if ("`e(cmd)'" != "nopo") {
+			noisily dis as error "Previous command was not nopo decomp."
 			error 301
 			exit
 		}
@@ -406,22 +456,22 @@ syntax [if] [in], /// might produce strange results if if/in are used
 		// create plot values for each component
 		// D
 		tempfile d
-		nopopost_gapdist `_depvar' if `touse' `_weightexp', by(`treat') `opts' save(`d')
+		nopo_gapdist `_depvar' if `touse' `_weightexp', by(`treat') `opts' save(`d')
 		// D0
 		tempfile d0
-		nopopost_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
+		nopo_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
 			, by(`treat') `opts' save(`d0')
 		// DX (requires passing of matching weight)
 		tempfile dx
-		nopopost_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
+		nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
 			, by(`treat') bref(`_bref') comp(dx) mweight(`_mweight') `opts' save(`dx')
 		// DA
 		tempfile da
-		nopopost_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
+		nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
 			, by(`_support') comp(da) `rawumdiff' `opts' save(`da')
 		// DB
 		tempfile db
-		nopopost_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
+		nopo_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
 			, by(`_support') comp(db) `rawumdiff' `opts' save(`db')
 
 		// output
@@ -455,8 +505,8 @@ syntax [if] [in], /// might produce strange results if if/in are used
 end
 
 // get nopo decomposition component values over distribution of depvar
-cap program drop nopopost_gapdist
-program define nopopost_gapdist
+cap program drop nopo_gapdist
+program define nopo_gapdist
 syntax varname [if] [fweight pweight iweight], ///
 	by(varlist max=1) ///
 	[bref(integer 1)] ///
@@ -548,8 +598,8 @@ end
  Plot the contribution of each X level to DA/DB (weighted) and absolute difference in the outcome.
 */
 
-cap program drop nopopost_dadb
-program define nopopost_dadb
+cap program drop nopo_dadb
+program define nopo_dadb
 syntax varname [if] [in], ///
 	[NOSORT] /// do not sort by depvar
 	[DESCending] /// sort descending (as opposed to ascending if nosort is not specified)
@@ -566,8 +616,8 @@ syntax varname [if] [in], ///
 	quietly {
 		
 		// check if prior command was nopo
-		if ("`e(cmd)'" != "nopopost") {
-			noisily dis as error "Previous command was not nopopost decomp."
+		if ("`e(cmd)'" != "nopo") {
+			noisily dis as error "Previous command was not nopo decomp."
 			error 301
 			exit
 		}
@@ -815,8 +865,8 @@ end
  Build from kmatch summary tables or do our own?
 */
 
-cap program drop nopopost_summarize
-program define nopopost_summarize, rclass
+cap program drop nopo_summarize
+program define nopo_summarize, rclass
 syntax [varlist (default=none)] [if] [in], ///
 	[STATistics(string)] /// mean mean/sd?
 	[label] ///
@@ -825,8 +875,8 @@ syntax [varlist (default=none)] [if] [in], ///
 	quietly {
 		
 		// check if prior command was nopo
-		if ("`e(cmd)'" != "nopopost") {
-			noisily dis as error "Previous command was not nopopost decomp."
+		if ("`e(cmd)'" != "nopo") {
+			noisily dis as error "Previous command was not nopo decomp."
 			error 301
 			exit
 		}
@@ -881,14 +931,14 @@ syntax [varlist (default=none)] [if] [in], ///
 		tabstat `varlist' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
 			, stat(`statistics') save
 		mat A_unmatched = r(StatTotal)
-		nopopost_stacktbl A_unmatched, `label'
+		nopo_stacktbl A_unmatched, `label'
 		mat A_unmatched = r(A_unmatched)
 
 		// A_matched
 		tabstat `varlist' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
 			, stat(`statistics') save
 		mat A_matched = r(StatTotal)
-		nopopost_stacktbl A_matched, `label'
+		nopo_stacktbl A_matched, `label'
 		mat A_matched = r(A_matched)
 
 		// A_matched_weighted or B_matched_weighted
@@ -905,21 +955,21 @@ syntax [varlist (default=none)] [if] [in], ///
 			local _matweighted = "B_matched_weighted"
 		}
 		mat `_matweighted' = r(StatTotal)
-		nopopost_stacktbl `_matweighted', `label'
+		nopo_stacktbl `_matweighted', `label'
 		mat `_matweighted' = r(`_matweighted')
 
 		// B_matched
 		tabstat `varlist' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
 			, stat(`statistics') save
 		mat B_matched = r(StatTotal)
-		nopopost_stacktbl B_matched, `label'
+		nopo_stacktbl B_matched, `label'
 		mat B_matched = r(B_matched)
 
 		// B_unmatched
 		tabstat `varlist' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
 			, stat(`statistics') save
 		mat B_unmatched = r(StatTotal)
-		nopopost_stacktbl B_unmatched, `label'
+		nopo_stacktbl B_unmatched, `label'
 		mat B_unmatched = r(B_unmatched)
 
 		// combine
@@ -939,6 +989,7 @@ syntax [varlist (default=none)] [if] [in], ///
 			local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
 		}
 		mat colnames _M = `_colnames'
+
 		// list and return
 		noisily matlist _M, lines(columns) showcoleq(combined)
 		return mat npsum = _M
@@ -948,8 +999,8 @@ syntax [varlist (default=none)] [if] [in], ///
 end
 
 // stack tabstat results for multiple statistics into a single column
-cap program drop nopopost_stacktbl
-program define nopopost_stacktbl, rclass
+cap program drop nopo_stacktbl
+program define nopo_stacktbl, rclass
 	syntax namelist (max=1), ///
 		[label]
 
