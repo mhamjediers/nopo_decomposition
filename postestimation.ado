@@ -9,23 +9,24 @@ program define nopo, eclass
         [by(varlist max=1) *] ///
 		[swap] ///
 		[bref(string)] ///
-		[kmatch(string)] ///
-		[kmatchopts(string asis)] ///
-		[att atc]
-
-		// also add noisily and returns passthru
+		[kmatch(string)] /// kmatch subcmd: md ps em
+		[kmatchopts(string asis)] /// pass on kmatch options
+		[passthru(string)] /// pass on additional ereturns from kmatch to nopo decomp
+		[noisily] /// show kmatch output
+		[att atc] // allow for these options for those using nopo as postestimation
 
 	/*
 	 In essence, this wrapper does two things:
 
 	 (1) Call a Nopo (2008) style decomposition after matching via kmatch. If a varlist is
-	     specified, this wrapper calls a basic cem version of kmatch, otherwise it checks if all requirements are met by the kmatch performed before nopo. Estimates are returned for
+	     specified, this wrapper calls a default version of kmatch, otherwise it checks if all 
+		 requirements are met by the kmatch performed before nopo. Estimates are returned for
 		 the decomposition components and a few auxiliary things.
 	 (2) Call postestimation stuff:
 	 	 - plot gap components over the outcome distribution
 		 - plot contributions to DA/DB by variable level
-		 - show summary table by group (A_unmatched, A_matched, A_matched^B / B_matched^A, B_matched, B_unmatched); atm only mean (sd)
-
+		 - show summary table by group:
+		   A_unmatched, A_matched, A_matched_weighted/B_matched_weighted, B_matched, B_unmatched
 	*/
 
 	// tokenize; determine decomp operation
@@ -49,7 +50,7 @@ program define nopo, eclass
 			exit
 		}
 		else if ("`by'" == "") {
-			dis as error "Option 'by(groupvar)' required for decomposition."
+			dis as error "Option 'by(groupvar)' required for decomposition"
 			error 102
 			exit
 		}
@@ -57,25 +58,26 @@ program define nopo, eclass
 			// no strings
 			cap confirm numeric variable `by'
 			if (_rc == 7) {
-				dis as error "`by' must be numeric."
+				dis as error "`by' must be numeric"
 				error 7
 				exit
 			}
 			// assert 2 levels
-			levelsof `by', local(_bylvls)
+			qui levelsof `by', local(_bylvls)
 			if (r(r) < 2) {
-				dis as error "`by' must have 2 levels."
+				dis as error "`by' must have 2 levels"
 				error 148
 				exit
 			} 
 			else if (r(r) > 2) {
-				dis as error "`by' must have 2 levels."
+				dis as error "`by' must have 2 levels"
 				error 149
 				exit
 			}
-			dis "debug"
 
+			//
 			// convert top-level syntax into ATT/ATC logic which is used in kmatch
+			//
 			/*
 			- treatment indicator 0/1
 				- group A = treat == 0
@@ -90,27 +92,34 @@ program define nopo, eclass
 			// treatment value = group order
 			if ("`swap'" == "") local _tval : word 2 of `_bylvls'
 				else local _tval : word 1 of `_bylvls'
-			// att/atc logic depending on swap/bref
+			// att/atc logic depending on beta reference vector
 			if ("`bref'" != "") {
 				// get numeric value
-				local _bref = stritrim("`_bref'")
+				local _bref = stritrim("`bref'")
 				local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
-				if ("`swap'" == "") local _te = "att"
+				if (`_tval' == `_bref') local _te = "att"
 					else local _te = "atc"
 			}
-			else {
-				if ("`swap'" == "") local _te = "atc"
-					else local _te = "att"
-			}
-
-			// most simple spec! anything else will require running kmatch prior
+			local att // unset (in case it was passed)
+			local atc // unset (in case it was passed)
+			if ("`_te'" == "atc") local atc = "atc"
+				else local att = "att" // no _te defaults to att (correct for swap/non-swap) 
+			
+			//
+			// Run kmatch
+			//
+			dis as error "`noisily'"
 			gettoken _depvar varlist : varlist
 			if ("`kmatch'" == "") local kmatch = "em"
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
-			qui kmatch em `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-				, `_te' generate wgenerate replace `kmatchopts' // prehaps strip opts of gen commands
+			quietly {	
+				`noisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
+					, tval(`_tval') `att' `atc' generate wgenerate replace `kmatchopts' 
+					// perhaps strip opts of gen commands
+			}
 			// save matching weight variable for passthru
 			local _mweight = "mweight(`e(wgenerate)')" // only one possible
+			
 			// clear varlist
 			local varlist
 		}
@@ -123,27 +132,27 @@ program define nopo, eclass
 			exit
 		} 
 		else if (!inlist("`e(subcmd)'", "md", "ps", "em")) {
-			dis as error "nopo only works after kmatch md, kmatch ps, and kmatch em."
+			dis as error "nopo only works after kmatch md, kmatch ps, and kmatch em"
 			error 301
 			exit
 		} 
 		else if ("`atc'" != "" & "`att'" != "") {
-			dis as error "Specify either 'att' or 'atc' as options, not both."
+			dis as error "Specify either 'att' or 'atc' as options, not both"
 			error 198
 			exit
 		}
 		else if ("`e(att)'" == "" & "`att'" != "") {
-			dis as error "No kmatch estimates found for ATT (use kmatch option 'att')."
+			dis as error "No kmatch estimates found for ATT (use kmatch option 'att')"
 			error 301
 			exit
 		}
 		else if ("`e(atc)'" == "" & "`atc'" != "") {
-			dis as error "No kmatch estimates found for ATC (use kmatch option 'atc')."
+			dis as error "No kmatch estimates found for ATC (use kmatch option 'atc')"
 			error 301
 			exit
 		}
 		else if (e(N_over) > 1 | "`e(ovar2)'" != "") {
-			dis as error "nopo requires kmatch to be specifcied with a single outcome (ovar) and without the 'over()' option."
+			dis as error "nopo requires kmatch to be specifcied with a single outcome (ovar) and without the 'over()' option"
 			error 301
 			exit
 		}
@@ -181,8 +190,7 @@ program define nopo_decomp, eclass
 
     syntax , ///
 		mweight(varlist max=1) ///
-		[att atc] ///
-        [REVerse] // reverse direction of coefficients
+		[att atc]
 
 	quietly {
 		
@@ -200,14 +208,15 @@ program define nopo_decomp, eclass
         replace `treat' = 1 if `_tvar' == `_tval'
 		// determine matching set from kmatch for return passthru; drop doublettes
 		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
-		foreach _w in `_varset' {
+		local _nvarset : word count `_varset'
+		while (`_nvarset' > 0) {
 			gettoken _word _rest : _varset
 			// save first occurence
 			local _matchset "`_matchset' `_word'"
 			// delete the rest
-			if (ustrregexm("`_rest'", "\b`_word'\b") == 1) {
-				local _varset = ustrregexra("`_rest'", "\b`_word'\b", "")
-			} 
+			local _varset = ustrregexra("`_rest'", "\b`_word'\b", "")
+			// save new list
+			local _nvarset : word count `_varset'
 		}
 		local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
 		// weights
@@ -235,6 +244,14 @@ program define nopo_decomp, eclass
 		gen `sample' = e(sample)
 		local N = e(N)
 		mat Nsupport = e(_N)
+
+		// abort if nobody has been matched
+		count if `matched' == 1 & `sample'
+		if (r(N) == 0) {
+			dis as error "0 matched observations. Aborting ..."
+			error 2000
+			exit
+		}
 
 		//
 		// gather/estimate components
@@ -302,11 +319,6 @@ program define nopo_decomp, eclass
 		mat V = e(V)
 		mat V5[1,3] = V[1,1]
 		mat V5 = diag(V5)
-        
-        // reverse gap direction?
-        if ("`reverse'" != "") {
-            mat b5 = b5 * -1
-        }
 		
 		// N
 		scalar _nA = Nsupport[1,3]
@@ -350,7 +362,7 @@ program define nopo_decomp, eclass
 	}
 	
 	// display results
-	ereturn display, noomitted
+	ereturn display
 	
 end
 
@@ -397,7 +409,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
 
 		// check if prior command was nopo
 		if ("`e(cmd)'" != "nopo") {
-			noisily dis as error "Previous command was not nopo decomp."
+			noisily dis as error "Previous command was not nopo decomp"
 			error 301
 			exit
 		}
@@ -441,42 +453,33 @@ syntax [if] [in], /// might produce strange results if if/in are used
 			if (`"`twoptsdb'"' == "") local twoptsdb "lp(longdash_dot)"
 		}
 
-		// abort if quantiles > depvar groups
-		qui levelsof `_depvar' if `touse', local(depvarlvls)
-		local nqlvls : word count `depvarlvls'
-		if (`nquantiles' > `nqlvls') {
-			noisily dis as error "Groups in `_depvar' < quantiles requested (`nquantiles')."
-			error 148
-			exit
-		}
-
 		// options passthru
 		local opts `"nq(`nquantiles') qmin(`qmin') qmax(`qmax') `revsign' `relative'"'
 
 		// create plot values for each component
 		// D
 		tempfile d
-		nopo_gapdist `_depvar' if `touse' `_weightexp', by(`treat') `opts' save(`d')
+		noisily nopo_gapdist `_depvar' if `touse' `_weightexp', by(`treat') comp(d) `opts' save(`d')
 		// D0
 		tempfile d0
-		nopo_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
-			, by(`treat') `opts' save(`d0')
+		noisily nopo_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
+			, by(`treat') comp(d0) `opts' save(`d0')
 		// DX (requires passing of matching weight)
 		tempfile dx
-		nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
+		noisily nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
 			, by(`treat') bref(`_bref') comp(dx) mweight(`_mweight') `opts' save(`dx')
 		// DA
 		tempfile da
-		nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
+		noisily nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
 			, by(`_support') comp(da) `rawumdiff' `opts' save(`da')
 		// DB
 		tempfile db
-		nopo_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
+		noisily nopo_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
 			, by(`_support') comp(db) `rawumdiff' `opts' save(`db')
 
 		// output
 		preserve
-			use "`d'", clear
+			use `d', clear
 			rename diff d
 			foreach c in d0 dx da db {
 				merge 1:1 q using "``c''", nogen
@@ -540,51 +543,67 @@ quietly {
 		// xtile aggregates quantiles if they contain constant values. Fill up to avoid empty cells.
 		tempvar quantile
 		gen `quantile' = .
-		lab var `quantile' "Compared `varlist' quantile between groups (component-specific)"
 		tempvar totweight
+		local _qsuccess = 1 // use as trigger conditional on success in quantile estimation
 		forvalues i = 0/1 {
 			// quantiles
-		    xtile `quantile'_`i' = `varlist' if `by' == `i' [`weight'`exp'], nquantiles(`nquantiles')
-			bys `by': egen `totweight' = total(`weightvar')
-			bys `by' (`quantile'_`i'): replace `quantile'_`i' = ///
-				ceil(sum(`weightvar') * `nquantiles' / `totweight') if `by' == `i'
-		    replace `quantile' = `quantile'_`i' if `by' == `i'
-			drop `totweight'
+		    cap xtile `quantile'_`i' = `varlist' if `by' == `i' [`weight'`exp'], nquantiles(`nquantiles')
+			// handle situation where requested quantiles are more than available obs per group
+			if (_rc != 198) {
+				bys `by': egen `totweight' = total(`weightvar')
+				bys `by' (`quantile'_`i'): replace `quantile'_`i' = ///
+					ceil(sum(`weightvar') * `nquantiles' / `totweight') if `by' == `i'
+				replace `quantile' = `quantile'_`i' if `by' == `i'
+				drop `totweight'
+			} 
+			else {
+				local _qsuccess = 0
+				noisily dis "`comp' omitted from plot: Quantiles requested > obs present in the groups compared to estimate component."
+			}
 		}
 		
-		// collapse, use sum of weights (passed via `exp') as N
-		tempvar meanq
-		tempvar nq
-		collapse ///
-            (mean) `meanq' = `varlist' ///
-            (sum) `nq' = `weightvar' ///
-            if !mi(`varlist') [`weight'`exp'] ///
-            , by(`by' `quantile')
-		reshape wide `meanq' `nq', i(`quantile') j(`by')
-		
-		// gen diff
-		tempvar diff
-		if ("`comp'" == "db") {
-			gen `diff' = `meanq'0 - `meanq'1
+		// do only if estimation was successful; othewise save empty data
+		if (`_qsuccess' == 1) {
+			// collapse, use sum of weights (passed via `exp') as N
+			tempvar meanq
+			tempvar nq
+			collapse ///
+				(mean) `meanq' = `varlist' ///
+				(sum) `nq' = `weightvar' ///
+				if !mi(`varlist') [`weight'`exp'] ///
+				, by(`by' `quantile')
+			reshape wide `meanq' `nq', i(`quantile') j(`by')
+			
+			// gen diff
+			tempvar diff
+			if ("`comp'" == "db") {
+				gen `diff' = `meanq'0 - `meanq'1
+			}
+			else {
+				gen `diff' = `meanq'1 - `meanq'0
+			}
+
+			// scale D_A/D_B if not otherwise requested
+			if (inlist("`comp'", "da", "db") & "`rawumdiff'" == "") {
+				replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
+			}
+
+			drop if !inrange(`quantile', `qmin', `qmax')
+			keep `diff' `quantile'
+			rename `diff' diff
 		}
 		else {
-			gen `diff' = `meanq'1 - `meanq'0
+			keep if _n == 1
+			gen diff = .
+			keep diff `quantile' 
 		}
-		lab var `diff' "Gap"
-
-		// scale D_A/D_B if not otherwise requested
-		if (inlist("`comp'", "da", "db") & "`rawumdiff'" == "") {
-			replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
-		}
-
+		
 		// save temp data
-		if ("`save'" != "") {
-			drop if !inrange(`quantile', `qmin', `qmax')
-			keep `diff' `quantile' // PERHAPS keep group values per quantile with correct labels to allow for manual processing
-			rename `diff' diff
-			rename `quantile' q		
-			save `save'
-		}
+		rename `quantile' q
+		lab var q "Compared `varlist' quantile between groups (component-specific)"
+		lab var diff "Gap"
+		if ("`save'" != "")	save `save'
+
 	restore
 }
 
@@ -617,7 +636,7 @@ syntax varname [if] [in], ///
 		
 		// check if prior command was nopo
 		if ("`e(cmd)'" != "nopo") {
-			noisily dis as error "Previous command was not nopo decomp."
+			noisily dis as error "Previous command was not nopo decomp"
 			error 301
 			exit
 		}
@@ -665,6 +684,21 @@ syntax varname [if] [in], ///
 	
 		// support
 		local _support = e(matched)
+		// abort if complete support
+		count if `_support' == 0
+		if (r(N) == 0) {
+			dis as error "0 unmatched observations. Aborting ..."
+			error 2000
+			exit
+		}
+		else {
+			// or drop group which has full support
+			count if `_support' == 0 & `treat' == 0
+			if (r(N) == 0) replace `treat' = . if `treat' == 0
+			count if `_support' == 0 & `treat' == 1
+			if (r(N) == 0) replace `treat' = . if `treat' == 1
+		}		
+		
 		// weights
 		if ("`e(wtype)'" != "") {
 			local _weightexp "[`e(wtype)' = `e(wexp)']"
@@ -684,7 +718,7 @@ syntax varname [if] [in], ///
 		// check if levels sensible
 		local _nplotbylvls : word count `_plotbylvls'
 		if ("`force'" == "" & `_nplotbylvls' > 30) {
-			noisily dis as error "`plotby' has more than 30 levels. Specify 'force' option to override."
+			noisily dis as error "`plotby' has more than 30 levels. Specify 'force' option to override"
 			error 134
 			exit
 		}
@@ -876,7 +910,7 @@ syntax [varlist (default=none)] [if] [in], ///
 		
 		// check if prior command was nopo
 		if ("`e(cmd)'" != "nopo") {
-			noisily dis as error "Previous command was not nopo decomp."
+			noisily dis as error "Previous command was not nopo decomp"
 			error 301
 			exit
 		}
@@ -925,7 +959,7 @@ syntax [varlist (default=none)] [if] [in], ///
 
 		//
 		// create table as matrix
-		// provide appropriate names (prefix)
+		// provide appropriate names (eq prefix)
 
 		// A_unmatched
 		tabstat `varlist' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///

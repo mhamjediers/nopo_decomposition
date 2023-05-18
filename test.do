@@ -14,7 +14,7 @@ gen edu = _n - 4*floor((_n-1)/4)
 gen t = -0.25*edu - 0.1*age + runiform()
 qui sum t, d
 replace t = t > 0.7 * `r(mean)'
-replace t = 1 if age==1 & edu==1
+//replace t = 1 if age==1 & edu==1
 
 // wage
 gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
@@ -60,7 +60,11 @@ lab val edu edu
 
 
 *Standalone
-nopo decomp wage age edu, by(groups) 
+nopomatch age edu, outcome(wage) by(groups) replace abs sd
+nopo decomp wage age edu, by(groups)
+nopo decomp wage age edu, by(groups) swap
+nopo decomp wage age edu, by(groups) swap bref(groups == 1)
+nopo decomp wage age edu, by(groups) bref(groups == 0)
 
 /* Standalone to dos: 
 
@@ -105,7 +109,7 @@ nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_opt
 // tempfile test
 // nopo dadb edu, save(`test')
 // nopo gapoverdist
-nopo summarize, label
+// nopo summarize, label
 //ereturn list
 
 
