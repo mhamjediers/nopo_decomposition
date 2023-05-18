@@ -68,6 +68,8 @@ nopo decomp wage age edu, by(groups) bref(groups == 0)
 
 /* Standalone to dos: 
 
+DONE:
+
 *Change the atc/att naming
 *The default should be reference in gap estimation is also reference in vector (now atc)
 *Swap option flips group-indicator (and thereby both references)
@@ -75,6 +77,9 @@ nopo decomp wage age edu, by(groups) bref(groups == 0)
 
 *for standalone option kmatch(em|ps|md) (default is em)
 * and potentially some of the further options kmatch_options(...)
+
+OPEN:
+
 *and ereturn internally called kmatch line for potential adjustment (with atc and att); then everybody can work with this is they want to
 *noisily option to display kmatch-output with all its specifications/bandwith  --> add the notable and nose options, as these should not be part of it
 *scalar passthrough
@@ -87,12 +92,18 @@ nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_opt
 
 /* Output to dos:
 
+DONE:
+
+*output for summarize via matlist (and option with labels for rownames)
+
+OPEN:
+
 *Output tables should be shown as in previous version (indicating group A/B and which one is reference)
 *Show both tables also when used as post-estimation
 *indicate also the matching algorithm in output
 *indicate number of strata in exact matching or some other scalars(bw?) when other matching algorithm
 
-*output for summarize via matlist (and option with labels for rownames)
+
 */
 
 // nopomatch age edu, outcome(wage) by(groups) replace abs sd
