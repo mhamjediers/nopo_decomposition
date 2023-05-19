@@ -61,14 +61,13 @@ lab val edu edu
 
 *Standalone
 nopomatch age edu, outcome(wage) by(groups) replace abs sd
-nopo decomp wage age edu, by(groups)
+nopo decomp wage age edu, by(groups) kmpassthru(_N generate k_omit bwidth) kmnoisily
+stop
 nopo decomp wage age edu, by(groups) swap
 nopo decomp wage age edu, by(groups) swap bref(groups == 1)
 nopo decomp wage age edu, by(groups) bref(groups == 0)
 
-/* Standalone to dos: 
-
-DONE:
+/* Standalone to dos: ALL DONE
 
 *Change the atc/att naming
 *The default should be reference in gap estimation is also reference in vector (now atc)
@@ -78,14 +77,13 @@ DONE:
 *for standalone option kmatch(em|ps|md) (default is em)
 * and potentially some of the further options kmatch_options(...)
 
-OPEN:
-
 *and ereturn internally called kmatch line for potential adjustment (with atc and att); then everybody can work with this is they want to
-*noisily option to display kmatch-output with all its specifications/bandwith  --> add the notable and nose options, as these should not be part of it
 *scalar passthrough
 
 *This should be somehow the final result:
-nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisly passthrough(bw)
+nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisily passthrough(bw)
+
+*noisily option to display kmatch-output with all its specifications/bandwith  --> add the notable and nose options, as these should not be part of it
 
 */
 

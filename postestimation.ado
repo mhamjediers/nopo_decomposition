@@ -9,10 +9,10 @@ program define nopo, eclass
         [by(varlist max=1) *] ///
 		[swap] ///
 		[bref(string)] ///
-		[kmatch(string)] /// kmatch subcmd: md ps em
-		[kmatchopts(string asis)] /// pass on kmatch options
-		[passthru(string)] /// pass on additional ereturns from kmatch to nopo decomp
-		[noisily] /// show kmatch output
+		[KMatch(string)] /// kmatch subcmd: md ps em
+		[KMOpts(string asis)] /// pass on kmatch options
+		[KMPASSthru(string)] /// pass on additional ereturns from kmatch to nopo decomp
+		[KMNOISily] /// show kmatch output
 		[att atc] // allow for these options for those using nopo as postestimation
 
 	/*
@@ -112,9 +112,10 @@ program define nopo, eclass
 			gettoken _depvar varlist : varlist
 			if ("`kmatch'" == "") local kmatch = "em"
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
+			if ("`kmnoisily'" != "") local kmnoisily = "noisily"
 			quietly {	
-				`noisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-					, tval(`_tval') `att' `atc' generate wgenerate replace `kmatchopts' 
+				`kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
+					, tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' 
 					// perhaps strip opts of gen commands
 			}
 			// save matching weight variable for passthru
@@ -151,7 +152,7 @@ program define nopo, eclass
 			error 301
 			exit
 		}
-		else if (e(N_over) > 1 | "`e(ovar2)'" != "") {
+		else if (e(N_over) > 1 | e(N_ovars) > 1) {
 			dis as error "nopo requires kmatch to be specifcied with a single outcome (ovar) and without the 'over()' option"
 			error 301
 			exit
@@ -176,7 +177,8 @@ program define nopo, eclass
 	}
 
 	// run subcommand with option passthru
-	nopo_`subcmd' `varlist', `_mweight' `atc' `att' `options'
+	nopo_`subcmd' `varlist' ///
+		, `_mweight' `atc' `att' bref(`bref') kmpassthru(`kmpassthru') `options'
 
 end
 
@@ -190,7 +192,9 @@ program define nopo_decomp, eclass
 
     syntax , ///
 		mweight(varlist max=1) ///
-		[att atc]
+		[att atc] ///
+		[bref(string)] ///
+		[kmpassthru(string)]
 
 	quietly {
 		
@@ -242,8 +246,56 @@ program define nopo_decomp, eclass
 		// sample
 		tempvar sample
 		gen `sample' = e(sample)
-		local N = e(N)
+		local _Nsample = e(N)
 		mat Nsupport = e(_N)
+		// determine bref if not passed
+		if ("`bref'" == "") {
+			levelsof `_tvar', local(_tvarlvls)
+			if ("`atc'" != "") {
+				local bref = usubinstr("`_tvarlvls'", "`_tval'", "", .)
+				local bref = "`_tvar' == `bref'"
+			}
+			else {
+				local bref = "`_tvar' == `_tval'"
+			}
+		}
+		// log kmatch cmd
+		local _kmatch_subcmd = e(subcmd)
+		local _kmatch_cmdline = stritrim(`"`e(cmdline)'"')
+		
+		// save everything from kmatch which has been requested for passthru
+		/*
+		 - We exclude everything we return and stuff that does not make sense for subcmds offered
+		 - But: no idea what's possible with what, so just check everything and return if not empty
+		 - There are a few returns with dynamic names, these are also not possible
+		*/
+		if ("`passthru'" != "") {
+			local _escalars ///
+				k_omit N_clust N_outsup df_r ridge nn nn_min nn_max pm_quantile pm_factor ///
+				cv_factor maxiter btolerance
+			local _emacros ///
+				xvars ematch emxvars psvars pscore comsup generate wgenerate dygenerate ///
+				idgenerate dxgenerate cemgenerate ifgenerate metric kernel keepall wor ///
+				pscmd psopts pspredict bw_method cv_outcome cv_weighted cv_nopenalty ///
+				cv_nolimit cv_exact ebalance ebvars csonly targets covariances nconstraint ///
+				fitopts att atc vce clustvar title 
+			local _ematrices ///
+			 	bwidth S cv
+			foreach _r in `passthru' {
+				if (ustrregexm("`_escalars'", "\b`_r'\b")) {
+					scalar _`_r' = e(`_r') // save as local to be able to reference in loop later
+					if (!mi(_`_r')) local _kmatch_escalars = "`_kmatch_escalars' _`_r'"
+				}
+				else if (ustrregexm("`_emacros'", "\b`_r'\b")) {
+					local _`_r' = e(`_r')
+					if ("`_`_r''" != "") local _kmatch_emacros = "`_kmatch_emacros' _`_r'"
+				}
+				else if (ustrregexm("`_ematrices'", "\b`_r'\b")) {
+					cap mat _`_r' = e(`_r')
+					if (_rc != 198) local _kmatch_ematrices = "`_kmatch_ematrices' _`_r'"
+				}
+			}
+		}
 
 		// abort if nobody has been matched
 		count if `matched' == 1 & `sample'
@@ -325,18 +377,19 @@ program define nopo_decomp, eclass
 		scalar _nB = Nsupport[1,6]
 		scalar _mshareuwA = Nsupport[1,1] / Nsupport[1,3] * 100
 		scalar _mshareuwB = Nsupport[1,4] / Nsupport[1,6] * 100
-		
+
 		// return
 		/*
 		 Things to do: We could return a nice table in the style you already prepared.
 		*/
-		ereturn post b5 V5, obs(`N') esample(`sample') depname(`_depvar')
+		ereturn post b5 V5, obs(`_Nsample') esample(`sample') depname(`_depvar')
 		ereturn local cmd = "nopo"
 		ereturn local subcmd = "`subcmd'"
 		//ereturn matrix match_table = mtab
 		ereturn local teffect = "`_TE'"
 		ereturn local tvar = "`_tvar'"
 		ereturn local tval = "`_tval'"
+		ereturn local bref = "`bref'"
 		ereturn local matchset = strltrim("`_matchset'")
 		ereturn local strata = "`_strata'"
 		ereturn scalar nstrata = _nstrata
@@ -345,6 +398,7 @@ program define nopo_decomp, eclass
 		cap drop _matched
 		rename `matched' _matched
 		lab var _matched "Matching indicator (dummy)"
+		ereturn scalar N = `_Nsample'
 		ereturn matrix _N = Nsupport // original support matrix from kmatch
 		ereturn scalar nA = _nA
 		ereturn scalar mshareuwA = _mshareuwA // unweighted
@@ -359,6 +413,18 @@ program define nopo_decomp, eclass
 			ereturn local wexp = "`_wexp'"
 		}
 		ereturn local mweight = "`mweight'"
+		ereturn local kmatch_subcmd = "`_kmatch_subcmd'"
+		ereturn local kmatch_cmdline = "`_kmatch_cmdline'"
+		// return from passthru
+		foreach _escalar in `_kmatch_escalars' {
+			ereturn scalar kmatch`_escalar' = `_escalar'
+		}
+		foreach _emacro in `_kmatch_emacros' {
+			ereturn local kmatch`_emacro' = "``_emacro''"
+		}
+		foreach _ematrix in `_kmatch_ematrices' {
+			ereturn matrix kmatch`_ematrix' = `_ematrix'
+		}
 	}
 	
 	// display results
