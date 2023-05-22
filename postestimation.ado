@@ -203,13 +203,13 @@ program define nopo_decomp, eclass
 		//
 
 		// depvar
-        local _depvar = e(depvar)
+		local _depvar = e(depvar)
 		// treatment
-        local _tvar = e(tvar)
+		local _tvar = e(tvar)
 		local _tval = e(tval)
-        tempvar treat // fix treatment tempvar to 0/1
+		tempvar treat // fix treatment tempvar to 0/1
 		gen `treat' = 0 if !mi(`_tvar')
-        replace `treat' = 1 if `_tvar' == `_tval'
+		replace `treat' = 1 if `_tvar' == `_tval'
 		// determine matching set from kmatch for return passthru; drop doublettes
 		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
 		local _nvarset : word count `_varset'
@@ -407,7 +407,7 @@ program define nopo_decomp, eclass
 		ereturn scalar nB = _nB
 		ereturn scalar mshareuwB = _mshareuwB // unweighted
 		ereturn scalar msharewB = _msharewB // weighted
-        ereturn scalar mgapB = _mgapB // raw diff by matching status
+		ereturn scalar mgapB = _mgapB // raw diff by matching status
 		if ("`_wtype'" != "") {
 			ereturn local wtype = "`_wtype'"
 			ereturn local wexp = "`_wexp'"
@@ -1101,8 +1101,8 @@ end
 // stack tabstat results for multiple statistics into a single column
 cap program drop nopo_stacktbl
 program define nopo_stacktbl, rclass
-	syntax namelist (max=1), ///
-		[label]
+syntax namelist (max=1), ///
+	[label]
 
 	mat _IN = `namelist'
 	local _nrows : rowsof(_IN)
@@ -1132,7 +1132,7 @@ program define nopo_stacktbl, rclass
 		}
 	}
 	mat rownames _OUT = `_stackednames'
-    mat colnames _OUT = `namelist'
+	mat colnames _OUT = `namelist'
     
 	// return
 	return mat `namelist' = _OUT
