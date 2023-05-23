@@ -19,9 +19,7 @@ replace t = t > 0.7 * `r(mean)'
 // wage
 gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
 bys t: sum wage, d
-
-// norm. / log.
-sum wage if t==0, meanonly
+lab var wage "Hourly wage"
 
 // dummies/strata
 egen strata = group(age edu)
@@ -66,10 +64,11 @@ nopomatch age edu, outcome(wage) by(groups) replace abs sd
 //
 
 // see swap and bref
-nopo decomp wage age edu, by(groups)
-nopo decomp wage age edu, by(groups) swap
-nopo decomp wage age edu, by(groups) swap bref(groups == 1)
-nopo decomp wage age edu, by(groups) bref(groups == 0)
+nopo decomp wage age edu, by(groups) norm
+nopo decomp wage age edu, by(groups) swap norm
+nopo decomp wage age edu, by(groups) swap bref(groups == 1) norm
+nopo decomp wage age edu, by(groups) bref(groups == 0) norm
+stop
 
 // see noisily and passthru options
 nopo decomp wage age edu, by(groups) kmpassthru(_N generate k_omit bwidth) kmnoisily
