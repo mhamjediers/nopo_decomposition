@@ -64,11 +64,14 @@ nopomatch age edu, outcome(wage) by(groups) replace abs sd
 //
 
 // see swap and bref
-nopo decomp wage age edu, by(groups) norm
-nopo decomp wage age edu, by(groups) swap norm
-nopo decomp wage age edu, by(groups) swap bref(groups == 1) norm
-nopo decomp wage age edu, by(groups) bref(groups == 0) norm
+nopo decomp wage age edu, by(groups)
+nopo decomp wage age edu, by(groups) swap
+nopo decomp wage age edu, by(groups) swap bref(groups == 1)
+nopo decomp wage age edu, by(groups) bref(groups == 0)
 stop
+
+// see normalize
+nopo decomp wage age edu, by(groups) norm
 
 // see noisily and passthru options
 nopo decomp wage age edu, by(groups) kmpassthru(_N generate k_omit bwidth) kmnoisily
