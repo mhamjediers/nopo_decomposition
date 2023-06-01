@@ -1050,7 +1050,10 @@ syntax varname [if] [in], ///
 				rename `plotbyreleveled' `_plotbyname'_relevel
 				lab var `treat' "`_treatlbl'"
 				rename `treat' `_treatname'
-				recode `_treatname' (1 = `_tval') (0 = `_cval')
+				levelsof `_treatname', local(_treatlvls) // check if one group missing to label data nicely
+				if (`r(r)' == 2) recode `_treatname' (1 = `_tval') (0 = `_cval')
+					else if (`_treatlvls' == 0) recode `_treatname' (. = `_tval') (0 = `_cval')
+					else if (`_treatlvls' == 1) recode `_treatname' (1 = `_tval') (. = `_cval')
 				if ("`_treatvallbl'" != "") lab val `_treatname' `_treatvallbl'
 				rename mdepvar_diff `_depvar'_diff
 				lab var `_depvar'_diff "Difference mean unmatched - overall mean of matched"
