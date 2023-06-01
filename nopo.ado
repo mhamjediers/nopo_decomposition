@@ -495,7 +495,6 @@ program define nopo_decomp, eclass
 		ereturn local strata = "_nopo_strata"
 		if ("`kmkeepgen'" == "") drop `mweight' `_strata'
 
-		ereturn local strata = "`_strata'"
 		ereturn scalar nstrata = _nstrata
 		ereturn scalar nstrata_matched = _nmstrata
 		ereturn scalar N = `_Nsample'
