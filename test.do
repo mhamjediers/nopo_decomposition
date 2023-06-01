@@ -14,7 +14,7 @@ gen edu = _n - 4*floor((_n-1)/4)
 gen t = -0.25*edu - 0.1*age + runiform()
 qui sum t, d
 replace t = t > 0.7 * `r(mean)'
-replace t = 1 if age==1 & edu==1
+//replace t = 1 if age==1 & edu==1
 
 // wage
 gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
@@ -50,7 +50,7 @@ qui foreach v in age edu strata {
 //
 
 // labels are appropriately captured in matching table
-recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
+recode t (0 = 0 "Immigrant women") (1 = 1 "Native men"), gen(groups)
 lab var groups "Groups"
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
@@ -80,6 +80,9 @@ ereturn list
 // see subcmd changes
 nopo decomp wage age edu, by(groups) kmatch(ps)
 
+// see kmkeepgen
+nopo decomp wage age edu, by(groups) kmatch(ps) kmkeepgen
+
 //
 // Post kmatch
 //
@@ -90,44 +93,23 @@ nopo decomp // defaults to ATT if present, uses ATC if only ATC estimates presen
 kmatch ps groups age edu (wage), tval(1) atc att bwidth(0.5) generate wgenerate replace
 nopo decomp
 
+// see error if generated variables missing from kmatch
+// there is no way around this bc. of user intervention
+// theoretically it is also possible that the generated vars are there but
+// do not correspond to the estimates which are restored
+kmatch md t age edu (wage), atc generate wgenerate replace
+estimates store km
+nopo decomp
+estimates restore km
+nopo decomp
+
 //
 // Postestimation (see check estimates, these can be omitted after testing)
 //
 
-nopo decomp wage age edu, by(groups)
 tempfile test
 nopo dadb edu, save(`test')
 nopo gapoverdist, save(`test')
 nopo summarize, label // columns of unmactched omitted if not present (better than all mi, I think)
-/* Standalone to dos: ALL DONE
-
-*Change the atc/att naming
-*The default should be reference in gap estimation is also reference in vector (now atc)
-*Swap option flips group-indicator (and thereby both references)
-*Reference option allows groups == # to indicate which reference vector 
-
-*for standalone option kmatch(em|ps|md) (default is em)
-* and potentially some of the further options kmatch_options(...)
-
-*and ereturn internally called kmatch line for potential adjustment (with atc and att); then everybody can work with this is they want to
-*scalar passthrough
-
-*This should be somehow the final result:
-nopo decomp wage age edu, by(groups) swap ref(groups == 1) kmatch(md) kmatch_options(bw(0.2)) noisily passthrough(bw)
-
-*noisily option to display kmatch-output with all its specifications/bandwith  --> add the notable and nose options, as these should not be part of it
-
-*/
-
-
-/* Output to dos: ALL DONE
-
-*output for summarize via matlist (and option with labels for rownames)
-*Output tables should be shown as in previous version (indicating group A/B and which one is reference)
-*Show both tables also when used as post-estimation
-*indicate also the matching algorithm in output
-*indicate number of strata in exact matching or some other scalars(bw?) when other matching algorithm
-
-*/
 
 *bootstrap: nopo decomp wage age edu, by(groups)

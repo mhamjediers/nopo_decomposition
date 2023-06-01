@@ -13,6 +13,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 		KMatch(string) /// kmatch subcmd: md ps em
 		KMOpts(string asis) /// pass on kmatch options
 		KMPASSthru(string) /// pass on additional ereturns from kmatch to nopo decomp
+		KMKEEPgen /// keep all generated variables
 		KMNOISily /// show kmatch output
 		/// post
 		att atc /// allow for these optiosn to keep terminology consistent
@@ -118,6 +119,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 			if ("`kmatch'" == "") local kmatch = "em"
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
 			if ("`kmnoisily'" != "") local kmnoisily = "noisily"
+			
 			// normalize depvar if requested: this results in a new variable!
 			if ("`normalize'" != "") {
 				local _depvarabbrev = abbrev("`_depvar'", 26)
@@ -142,7 +144,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 				if ("`_depvarlbl'" != "") lab var `_depvar' "`_depvarlbl' (normalized)"
 				dis as text "Normalized outcome generated: `_depvar'"
 			}
-
+			
 			// run
 			quietly {	
 				`kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
@@ -226,7 +228,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
 	// run subcommand with option passthru
 	nopo_`subcmd' `varlist' ///
-		, `_mweight' `atc' `att' `kmpassthru' `options'
+		, `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `options'
 
 end
 
@@ -239,9 +241,10 @@ cap program drop nopo_decomp
 program define nopo_decomp, eclass
 
     syntax , ///
-		mweight(varlist max=1) ///
+		mweight(namelist max=1) ///
 		[att atc] ///
-		[kmpassthru(string)]
+		[kmpassthru(string)] ///
+		[kmkeepgen]
 
 	quietly {
 		
@@ -249,14 +252,20 @@ program define nopo_decomp, eclass
 		// use returns of kmatch for estimations or passthru
 		//
 
+		// log kmatch cmd
+		local _kmatch_subcmd = e(subcmd)
+		local _kmatch_cmdline = strrtrim(stritrim(`"`e(cmdline)'"'))
+
 		// depvar
 		local _depvar = e(depvar)
-		// treatment
+		
+		// treatment (fixed to 0/1)
 		local _tvar = e(tvar)
 		local _tval = e(tval)
-		tempvar treat // fix treatment tempvar to 0/1
+		tempvar treat
 		gen `treat' = 0 if !mi(`_tvar')
 		replace `treat' = 1 if `_tvar' == `_tval'
+		
 		// determine matching set from kmatch for return passthru; drop doublettes
 		local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
 		local _nvarset : word count `_varset'
@@ -270,6 +279,7 @@ program define nopo_decomp, eclass
 			local _nvarset : word count `_varset'
 		}
 		local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
+		
 		// weights
 		if ("`e(wtype)'" != "") {
 			local _wtype = e(wtype)
@@ -280,20 +290,58 @@ program define nopo_decomp, eclass
 			}
 		if ("`e(vce)'" == "analytic") local vce // unset for default
 			else local vce = e(vce)
+		
 		// generated matching vars processing
+		/*
+		 catch all for missing gen / wgen vars: 
+		 - if manually deleted before calling nopo decomp
+		 - if kmatch estimates are restored after nopo decomp without option 'kmkeepgen'
+		*/
+		cap desc `e(generate)'
+		if (_rc == 111) {
+			dis as error "kmatch variables `e(generate)' necessary for nopo decomp not found."
+			dis as error "Use 'nopo decomp ..., kmkeepgen' if you want to subsequently restore the estimates of kmatch and run nopo decomp again."
+			error 111
+			exit
+		}
+		cap desc `e(wgenerate)'
+		if (_rc == 111) {
+			dis as error "kmatch variables `e(wgenerate)' necessary for nopo decomp not found."
+			dis as error "Use 'nopo decomp ..., kmkeepgen' if you want to subsequently restore the estimates of kmatch and run nopo decomp again."
+			error 111
+			exit
+		}
 		tokenize `e(generate)'
 		tempvar matched
 		gen `matched' = 0 if `2' == 0 | `3' == 0
 		replace `matched' = 1 if (`2' > 0 & !mi(`2')) | (`3' > 0 & !mi(`3'))
-		local _strata = "`5'"
+		if ("`_kmatch_subcmd'" == "ps") {
+			local _strata = "`6'" // ps is returned as 5th element
+			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4' `5' 
+		}
+		else {
+			local _strata = "`5'"
+			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4'
+		}
+		
 		// obtaining number of strata and matched strata
 		mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
 		mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
+		
 		// sample
 		tempvar sample
 		gen `sample' = e(sample)
 		local _Nsample = e(N)
 		mat Nsupport = e(_N)
+
+		// abort if nobody has been matched
+		count if `matched' == 1 & `sample'
+		if (r(N) == 0) {
+			dis as error "0 observations have been matched: Nopo decomposition not possible."
+			error 2000
+			exit
+		}
+		
 		// determine A, B, and bref (if not passed)
 		levelsof `_tvar', local(_tvarlvls)
 		local _cval = strrtrim(strltrim(usubinstr("`_tvarlvls'", "`_tval'", "", .)))
@@ -301,11 +349,9 @@ program define nopo_decomp, eclass
 		local _groupB = "`_tvar' == `_tval'"
 		if ("`atc'" != "") local bref = "`_groupA'"
 			else if ("`att'" != "") local bref = "`_groupB'"
+		
 		// determine bandwidth
 		if ("`e(bwidth)'" != "") local _bwidth = e(bwidth)[1, "`att'`atc'"]
-		// log kmatch cmd
-		local _kmatch_subcmd = e(subcmd)
-		local _kmatch_cmdline = strrtrim(stritrim(`"`e(cmdline)'"'))
 		
 		// save everything from kmatch which has been requested for passthru
 		/*
@@ -340,15 +386,8 @@ program define nopo_decomp, eclass
 				}
 			}
 		}
-
-		// abort if nobody has been matched
-		count if `matched' == 1 & `sample'
-		if (r(N) == 0) {
-			dis as error "0 observations have been matched: Nopo decomposition not possible."
-			error 2000
-			exit
-		}
 		
+
 		//
 		// gather/estimate components
 		//
@@ -426,13 +465,13 @@ program define nopo_decomp, eclass
 		scalar _mshareuwB = Nsupport[1,4] / Nsupport[1,6] * 100
 
 		// return
-		/*
-		 Things to do: We could return a nice table in the style you already prepared.
-		*/
 		ereturn post b5 V5, obs(`_Nsample') esample(`sample') depname(`_depvar')
 		ereturn local cmd = "nopo"
 		ereturn local subcmd = "`subcmd'"
-		//ereturn matrix match_table = mtab
+		if ("`_wtype'" != "") {
+			ereturn local wtype = "`_wtype'"
+			ereturn local wexp = "`_wexp'"
+		}
 		ereturn local teffect = "`_TE'"
 		ereturn local tvar = "`_tvar'"
 		ereturn local tval = "`_tval'"
@@ -441,13 +480,24 @@ program define nopo_decomp, eclass
 		ereturn local groupB = "`_groupB'"
 		ereturn local bref = "`bref'"
 		ereturn local matchset = strltrim("`_matchset'")
+		// nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
+		cap drop _nopo_matched
+		rename `matched' _nopo_matched
+		lab var _nopo_matched "Matching indicator (dummy)"
+		ereturn local matched = "_nopo_matched"
+		cap drop _nopo_mweight
+		gen _nopo_mweight = `mweight'
+		lab var _nopo_mweight "Matching weight"
+		ereturn local mweight = "_nopo_mweight"
+		cap drop _nopo_strata
+		gen _nopo_strata = `_strata'
+		lab var _nopo_strata "Matching stratum"
+		ereturn local strata = "_nopo_strata"
+		if ("`kmkeepgen'" == "") drop `mweight' `_strata'
+
 		ereturn local strata = "`_strata'"
 		ereturn scalar nstrata = _nstrata
 		ereturn scalar nstrata_matched = _nmstrata
-		ereturn local matched = "_matched"
-		cap drop _matched
-		rename `matched' _matched
-		lab var _matched "Matching indicator (dummy)"
 		ereturn scalar N = `_Nsample'
 		ereturn matrix _N = Nsupport // original support matrix from kmatch
 		ereturn scalar nA = _nA
@@ -458,11 +508,7 @@ program define nopo_decomp, eclass
 		ereturn scalar mshareuwB = _mshareuwB // unweighted
 		ereturn scalar msharewB = _msharewB // weighted
 		ereturn scalar mgapB = _mgapB // raw diff by matching status
-		if ("`_wtype'" != "") {
-			ereturn local wtype = "`_wtype'"
-			ereturn local wexp = "`_wexp'"
-		}
-		ereturn local mweight = "`mweight'"
+
 		ereturn local kmatch_subcmd = "`_kmatch_subcmd'"
 		ereturn local kmatch_cmdline = "`_kmatch_cmdline'"
 		// return from passthru
