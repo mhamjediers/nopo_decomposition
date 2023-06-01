@@ -4,7 +4,7 @@
 
 cap program drop nopo
 program define nopo, eclass
-syntax [namelist] [if] [in] [fweight pweight iweight], ///
+syntax [anything] [if] [in] [fweight pweight iweight] , ///
 	[ 	/// standalone onlys
 		by(varlist max=1) /// matching groups
 		swap /// swap groups and reference vector; standalone only
@@ -34,7 +34,7 @@ syntax [namelist] [if] [in] [fweight pweight iweight], ///
 	*/
 
 	// tokenize; determine decomp operation
-	if ("`namelist'" != "") gettoken subcmd varlist : namelist
+	if ("`anything'" != "") gettoken subcmd varlist : anything
 		else local subcmd "decomp"
 	if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize")) {
 		dis as error "nopo subcommand must be one of:"
@@ -112,7 +112,7 @@ syntax [namelist] [if] [in] [fweight pweight iweight], ///
 			//
 			// Run kmatch
 			//
-
+			
 			// get input
 			gettoken _depvar varlist : varlist
 			if ("`kmatch'" == "") local kmatch = "em"
@@ -157,7 +157,7 @@ syntax [namelist] [if] [in] [fweight pweight iweight], ///
 		}
 	}
 	else if ("`subcmd'" == "decomp" & "`varlist'" == "") {
-		// check if prior command was kmatch
+		// perform checks on prior kmatch
 		if ("`e(cmd)'" != "kmatch") {
 			dis as error "Previous command was not kmatch."
 			error 301
@@ -278,7 +278,7 @@ program define nopo_decomp, eclass
 			if ("`_wtype'" == "pweight") local _sum_weightexp = "[aw`_wexp']"
 				else local _sum_weightexp = `_weightexp'
 			}
-		if ("`e(vce)'" == "analytic") local vce = "ols"
+		if ("`e(vce)'" == "analytic") local vce // unset for default
 			else local vce = e(vce)
 		// generated matching vars processing
 		tokenize `e(generate)'
@@ -345,7 +345,7 @@ program define nopo_decomp, eclass
 		// abort if nobody has been matched
 		count if `matched' == 1 & `sample'
 		if (r(N) == 0) {
-			dis as error "0 matched observations. Aborting ..."
+			dis as error "0 observations have been matched: Nopo decomposition not possible."
 			error 2000
 			exit
 		}
@@ -479,23 +479,24 @@ program define nopo_decomp, eclass
 
 	// display general info
 	if ("`_kmatch_subcmd'" == "em") {
-		local _mtype "exact matching"
+		local _mtype "Exact matching"
 		local _stype "(unique combinations of matching set)"
 	}
 	else if ("`_kmatch_subcmd'" == "ps") {
-		local _mtype "propensity-score matching"
+		local _mtype "Propensity-score matching"
 		local _stype "(unique values of propensity-score)"
 	}
 	else {
-		local _mtype "multivariate-distance matching"
+		local _mtype "Multivariate-distance matching"
 		local _stype "(unique values from distance metric)"
 	}
 	if ("`_groupA'" == "`bref'") local _refA "(ref)"
 		else local _refB "(ref)"
 	
 	di as text " "
-	di as text "Nopo decomposition using" _col(42) "N strata" _col(68) "= " _col(71) %8.0g _nstrata
-	di as text "`_mtype':" _col(42) "N matched strata" _col(68) "= " _col(71) %8.0g _nmstrata
+	di as text "Nopo decomposition" _col(42) "N" _col(68) "= " _col(71) %8.0g `_Nsample'
+	di as text "`_mtype':" _col(42) "N strata" _col(68) "= " _col(71) %8.0g _nstrata
+	di as text _col(42) "N matched strata" _col(68) "= " _col(71) %8.0g _nmstrata
 	di as text _col(42) "`_stype'"
 	if ("`_bwidth'" != "") di as text _col(42) "Bandwidth:" _col(68) "= " _col(74) %05.3f `_bwidth'
 	dis ""
@@ -527,7 +528,8 @@ program define nopo_decomp, eclass
 		*/ as result _col(33) %7.1f _mshareuwB /*
 		*/ _col(46) %7.1f `=100-_mshareuwB'
 	di as text "{hline 29}{c BT}{hline 48}"
-	di as text "Note: N and % are unweighted, mean is weighted if specified." _newline
+	if ("`_wtype'" != "") di as text "Note: N and % are unweighted." 
+	dis ""
 
 	// display estimates
 	ereturn display
@@ -855,7 +857,7 @@ syntax varname [if] [in], ///
 		// abort if complete support
 		count if `_support' == 0
 		if (r(N) == 0) {
-			dis as error "0 unmatched observations. Aborting ..."
+			dis as error "0 unmatched observations: Plot not possible."
 			error 2000
 			exit
 		}
@@ -1207,8 +1209,21 @@ syntax [varlist (default=none)] [if] [in], ///
 		}
 		mat colnames _M = `_colnames'
 
+		// determine column format by no. of columns
+		if (colsof(_M) == 3) {
+			local _twidth = 14
+			local _format = "%18.3g"	
+		}
+		else if (colsof(_M) == 4) {
+			local _twidth = 13
+			local _format = "%13.3g"
+		}
+		else {
+			local _twidth = 12
+			local _format = "%10.3g"
+		}
 		// list and return
-		noisily matlist _M, lines(columns) showcoleq(combined)
+		noisily matlist _M, lines(columns) showcoleq(combined) twidth(`_twidth') format(`_format')
 		return mat npsum = _M
 
 	}
@@ -1236,12 +1251,12 @@ syntax namelist (max=1), ///
 			local ++_ridx
 			// gather later row names
 			if ("`label'" == "") {
-				local _stackednames = "`_stackednames' `_colname':`_rowname'"
+				local _stackednames = `"`_stackednames' "`_colname':`_rowname'""'
 			}
 			else {
 				local _lbl : variable label `_colname'
 				if ("`_lbl'" == "") local _lbl = "`_colname'"
-				local _stackednames = "`_stackednames' `_lbl':`_rowname'"
+				local _stackednames = `"`_stackednames' "`_lbl':`_rowname'""'
 			}
 			// replace values in placeholder matrix
 			local _nidx = `_nrows' * (`_cidx' - 1) + `_ridx'

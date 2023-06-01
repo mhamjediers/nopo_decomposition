@@ -1,4 +1,4 @@
-//cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
+cap cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "nopo.ado"
 run "nopodecomp.ado"
@@ -14,7 +14,7 @@ gen edu = _n - 4*floor((_n-1)/4)
 gen t = -0.25*edu - 0.1*age + runiform()
 qui sum t, d
 replace t = t > 0.7 * `r(mean)'
-//replace t = 1 if age==1 & edu==1
+replace t = 1 if age==1 & edu==1
 
 // wage
 gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
@@ -68,7 +68,7 @@ nopo decomp wage age edu, by(groups)
 nopo decomp wage age edu, by(groups) swap
 nopo decomp wage age edu, by(groups) swap bref(groups == 1)
 nopo decomp wage age edu, by(groups) bref(groups == 0)
-stop
+
 
 // see normalize
 nopo decomp wage age edu, by(groups) norm
@@ -99,7 +99,6 @@ tempfile test
 nopo dadb edu, save(`test')
 nopo gapoverdist
 nopo summarize, label // columns of unmactched omitted if not present (better than all mi, I think)
-
 /* Standalone to dos: ALL DONE
 
 *Change the atc/att naming
