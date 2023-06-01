@@ -50,14 +50,14 @@ qui foreach v in age edu strata {
 //
 
 // labels are appropriately captured in matching table
-recode t (0 = 0 "Immigrant women") (1 = 1 "Native men"), gen(groups)
+recode t (0 = 0 "Immigrant women") (1 = 4 "Native men"), gen(groups)
 lab var groups "Groups"
 lab var edu "Edu"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
 // nopomatch comparison
-nopomatch age edu, outcome(wage) by(groups) replace abs sd
+//nopomatch age edu, outcome(wage) by(groups) replace abs sd
 
 //
 // Standalone
@@ -97,7 +97,7 @@ nopo decomp
 nopo decomp wage age edu, by(groups)
 tempfile test
 nopo dadb edu, save(`test')
-nopo gapoverdist
+nopo gapoverdist, save(`test')
 nopo summarize, label // columns of unmactched omitted if not present (better than all mi, I think)
 /* Standalone to dos: ALL DONE
 

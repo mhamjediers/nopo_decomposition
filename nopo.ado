@@ -436,6 +436,7 @@ program define nopo_decomp, eclass
 		ereturn local teffect = "`_TE'"
 		ereturn local tvar = "`_tvar'"
 		ereturn local tval = "`_tval'"
+		ereturn local cval = "`_cval'"
 		ereturn local groupA = "`_groupA'"
 		ereturn local groupB = "`_groupB'"
 		ereturn local bref = "`bref'"
@@ -653,6 +654,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
 			foreach c in d0 dx da db {
 				merge 1:1 q using "``c''", nogen
 				rename diff `c'
+				lab var `c' "Decomposition component `c'"
 			}
 			// checking
 			noisily {
@@ -831,24 +833,26 @@ syntax varname [if] [in], ///
 		// depvar
 		local _depvar = e(depvar)
 		// treatment indicator (fix to 0/1)
-		tempvar treat
-		gen `treat' = 1 if `e(tvar)' == `e(tval)'
-		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
+		local _tval = e(tval)
+		local _cval = e(cval)
 		local _treatname = e(tvar) // for renaming tempvar upon save
+		tempvar treat
+		gen `treat' = 1 if `_treatname' == `_tval'
+		replace `treat' = 0 if `_treatname' == `_cval'
 		local _treatlbl : variable label `_treatname'
 		lab var `treat' `_treatlbl'
-		local _vallbl : value label `_treatname'
-		if ("`_vallbl'" != "") {
-			label list `_vallbl'
+		// label for plot putput; revert to original bylabel when saved
+		local _treatvallbl : value label `_treatname'
+		if ("`_treatvallbl'" != "") {
+			label list `_treatvallbl'
 			levelsof `_treatname', local(_bylvls)
 			levelsof `_treatname' if `treat' == 1, local(_reflvl)
 			foreach _lvl in `_bylvls' {
-				local _lbl : label `_vallbl' `_lvl'
+				local _lbl : label `_treatvallbl' `_lvl'
 				if (`_lvl' == `_reflvl') lab def _bylbl 1 "`_lbl'", modify
 					else lab def _bylbl 0 "`_lbl'", modify
 			}
 			lab val `treat' _bylbl
-			local _haslabel
 		}
 	
 		// support
@@ -1046,6 +1050,8 @@ syntax varname [if] [in], ///
 				rename `plotbyreleveled' `_plotbyname'_relevel
 				lab var `treat' "`_treatlbl'"
 				rename `treat' `_treatname'
+				recode `_treatname' (1 = `_tval') (0 = `_cval')
+				if ("`_treatvallbl'" != "") lab val `_treatname' `_treatvallbl'
 				rename mdepvar_diff `_depvar'_diff
 				lab var `_depvar'_diff "Difference mean unmatched - overall mean of matched"
 				rename mdepvar_diff_weighted `_depvar'_diff_weighted
