@@ -286,10 +286,9 @@ program define nopo_decomp, eclass
 		gen `matched' = 0 if `2' == 0 | `3' == 0
 		replace `matched' = 1 if (`2' > 0 & !mi(`2')) | (`3' > 0 & !mi(`3'))
 		local _strata = "`5'"
-		levelsof `_strata', matrow(strata)
-		scalar _nstrata = rowsof(strata)
-		levelsof `_strata' if `matched' == 1, matrow(strata)
-		scalar _nmstrata = rowsof(strata)
+		// obtaining number of strata and matched strata
+		mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
+		mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
 		// sample
 		tempvar sample
 		gen `sample' = e(sample)
