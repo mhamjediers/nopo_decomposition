@@ -3,7 +3,7 @@
 //
 
 cap program drop nopo
-program define nopo, eclass
+program define nopo, eclass properties(svyb)
 syntax [anything] [if] [in] [fweight pweight iweight] , ///
 	[ 	/// standalone onlys
 		by(varlist max=1) /// matching groups
