@@ -79,6 +79,9 @@ ereturn list
 
 // see subcmd changes
 nopo decomp wage age edu, by(groups) kmatch(ps)
+nopo decomp wage age edu, by(groups) kmatch(md)
+nopo decomp wage age edu, by(groups) kmatch(md) kmopts(nn(4))
+nopo decomp wage age edu, by(groups) kmatch(md) kmopts(ridge)
 
 // see kmkeepgen
 nopo decomp wage age edu, by(groups) kmatch(ps) kmkeepgen

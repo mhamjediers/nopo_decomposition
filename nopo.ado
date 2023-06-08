@@ -316,17 +316,21 @@ program define nopo_decomp, eclass
 		gen `matched' = 0 if `2' == 0 | `3' == 0
 		replace `matched' = 1 if (`2' > 0 & !mi(`2')) | (`3' > 0 & !mi(`3'))
 		if ("`_kmatch_subcmd'" == "ps") {
-			local _strata = "`6'" // ps is returned as 5th element
-			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4' `5' 
+			local _strata
+			local _ps = "`5'"
+			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4' `6' 
 		}
 		else {
 			local _strata = "`5'"
+			local _ps // unset
 			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4'
 		}
 		
-		// obtaining number of strata and matched strata
-		mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
-		mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
+		// obtaining number of strata and matched strata only for eexact matching
+		if ("`_kmatch_subcmd'" == "em") {
+			mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
+			mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
+		}
 		
 		// sample
 		tempvar sample
@@ -350,8 +354,10 @@ program define nopo_decomp, eclass
 		if ("`atc'" != "") local bref = "`_groupA'"
 			else if ("`att'" != "") local bref = "`_groupB'"
 		
-		// determine bandwidth
+		// save nn / kernel bandwidth / ridge param for display
+		if ("`e(nn)'" != "") local _nn = e(nn)
 		if ("`e(bwidth)'" != "") local _bwidth = e(bwidth)[1, "`att'`atc'"]
+		if ("`e(ridge)'" != "") local _ridge = e(ridge)
 		
 		// save everything from kmatch which has been requested for passthru
 		/*
@@ -481,6 +487,7 @@ program define nopo_decomp, eclass
 		ereturn local bref = "`bref'"
 		ereturn local matchset = strltrim("`_matchset'")
 		// nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
+		// empty locals are not returned by Stata by default
 		cap drop _nopo_matched
 		rename `matched' _nopo_matched
 		lab var _nopo_matched "Matching indicator (dummy)"
@@ -489,14 +496,26 @@ program define nopo_decomp, eclass
 		gen _nopo_mweight = `mweight'
 		lab var _nopo_mweight "Matching weight"
 		ereturn local mweight = "_nopo_mweight"
-		cap drop _nopo_strata
-		gen _nopo_strata = `_strata'
-		lab var _nopo_strata "Matching stratum"
-		ereturn local strata = "_nopo_strata"
-		if ("`kmkeepgen'" == "") drop `mweight' `_strata'
+		if ("`_kmatch_subcmd'" == "em") {
+			cap drop _nopo_strata
+			gen _nopo_strata = `_strata'
+			lab var _nopo_strata "Matching stratum"
+			ereturn local strata = "_nopo_strata"
+			ereturn scalar nstrata = _nstrata
+			ereturn scalar nstrata_matched = _nmstrata
+		}
+		if ("`_kmatch_subcmd'" == "ps") {
+			cap drop _nopo_ps
+			gen _nopo_ps = `_ps'
+			lab var _nopo_ps "Matching propensity score"
+			ereturn local ps = "_nopo_ps"
+		}
+		if ("`kmkeepgen'" == "") drop `mweight' `_strata' `_ps'
+	
+		if ("`_nn'" != "") ereturn scalar nn = `_nn'
+		if ("`_bwidth'" != "") ereturn scalar bwidth = `_bwidth'
+		if ("`_ridge'" != "") ereturn scalar ridge = `_ridge'
 
-		ereturn scalar nstrata = _nstrata
-		ereturn scalar nstrata_matched = _nmstrata
 		ereturn scalar N = `_Nsample'
 		ereturn matrix _N = Nsupport // original support matrix from kmatch
 		ereturn scalar nA = _nA
@@ -523,27 +542,32 @@ program define nopo_decomp, eclass
 	}
 
 	// display general info
-	if ("`_kmatch_subcmd'" == "em") {
-		local _mtype "Exact matching"
-		local _stype "(unique combinations of matching set)"
-	}
-	else if ("`_kmatch_subcmd'" == "ps") {
-		local _mtype "Propensity-score matching"
-		local _stype "(unique values of propensity-score)"
-	}
-	else {
-		local _mtype "Multivariate-distance matching"
-		local _stype "(unique values from distance metric)"
-	}
 	if ("`_groupA'" == "`bref'") local _refA "(ref)"
 		else local _refB "(ref)"
+	if ("`_nn'" != "") {
+		local _param "NN requested:"
+		local _paramval = `_nn'
+	}
+	else if ("`_bwidth'" != "") {
+		// always set, irrespective if ridge matching or not
+		local _param "Kernel bandwidth:"
+		local _paramval = `_bwidth'
+	}
 	
 	di as text " "
 	di as text "Nopo decomposition" _col(42) "N" _col(68) "= " _col(71) %8.0g `_Nsample'
-	di as text "`_mtype':" _col(42) "N strata" _col(68) "= " _col(71) %8.0g _nstrata
-	di as text _col(42) "N matched strata" _col(68) "= " _col(71) %8.0g _nmstrata
-	di as text _col(42) "`_stype'"
-	if ("`_bwidth'" != "") di as text _col(42) "Bandwidth:" _col(68) "= " _col(74) %05.3f `_bwidth'
+	if ("`_kmatch_subcmd'" == "em") {
+		di as text "Exact matching:" _col(42) "N strata" _col(68) "= " _col(71) %8.0g _nstrata
+		di as text _col(42) "N matched strata" _col(68) "= " _col(71) %8.0g _nmstrata
+		di as text _col(42) "(unique combinations of matching set)"
+	}
+	else if ("`_kmatch_subcmd'" == "ps") {
+		di as text "Propensity-score matching:" _col(42) "`_param'" _col(68) "= " _col(74) %05.3f `_paramval'
+	}
+	else if ("`_kmatch_subcmd'" == "md") {
+		di as text "Multivariate-distance matching:" _col(42) "`_param'" _col(68) "= " _col(74) %05.3f `_paramval'
+	}
+	if ("`_ridge'" != "") di as text _col(42) "Ridge parameter:" _col(68) "= " _col(74) %05.3f `_ridge'
 	dis ""
 	di as text "{hline 29}{c TT}{hline 48}"
 	di as text _col(30) "{c |}" /*
