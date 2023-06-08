@@ -7,9 +7,9 @@ program define nopo, eclass properties(svyb)
 syntax [anything] [if] [in] [fweight pweight iweight] , ///
 	[ 	/// standalone onlys
 		by(varlist max=1) /// matching groups
-		swap /// swap groups and reference vector; standalone only
-		bref(string) /// set coefficient reference group like group == 0; standalone only
-		NORMalize /// normalize by dividing by reference group mean; standalone only
+		swap /// swap groups and reference vector
+		bref(string) /// set coefficient reference group like group == 0
+		NORMalize /// normalize by dividing by reference group mean
 		KMatch(string) /// kmatch subcmd: md ps em
 		KMOpts(string asis) /// pass on kmatch options
 		KMPASSthru(string) /// pass on additional ereturns from kmatch to nopo decomp
@@ -326,7 +326,7 @@ program define nopo_decomp, eclass
 			if ("`kmkeepgen'" == "") drop `1' `2' `3' `4'
 		}
 		
-		// obtaining number of strata and matched strata only for eexact matching
+		// obtaining number of strata and matched strata only for exact matching
 		if ("`_kmatch_subcmd'" == "em") {
 			mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
 			mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
@@ -346,7 +346,7 @@ program define nopo_decomp, eclass
 			exit
 		}
 		
-		// determine A, B, and bref (if not passed)
+		// determine A, B, and bref
 		levelsof `_tvar', local(_tvarlvls)
 		local _cval = strrtrim(strltrim(usubinstr("`_tvarlvls'", "`_tval'", "", .)))
 		local _groupA = "`_tvar' == `_cval'"
@@ -367,7 +367,7 @@ program define nopo_decomp, eclass
 		*/
 		if ("`kmpassthru'" != "") {
 			local _escalars ///
-				k_omit N_clust N_outsup df_r ridge nn nn_min nn_max pm_quantile pm_factor ///
+				k_omit N_clust N_outsup df_r nn_min nn_max pm_quantile pm_factor ///
 				cv_factor maxiter btolerance
 			local _emacros ///
 				xvars ematch emxvars psvars pscore comsup generate wgenerate dygenerate ///
