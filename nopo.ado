@@ -424,13 +424,16 @@ program define nopo_decomp, eclass
 		
 		// DA
 		sum `_depvar' if `treat' == 0 & `matched' == 0 & `sample' `_sum_weightexp'
-		local n1 = r(sum_w)
+		scalar _numA = r(N)
+		scalar _numwA = r(sum_w)
 		sum `_depvar' if `treat' == 0 & `sample' `_sum_weightexp'
-		local n2 = r(sum_w)
+		scalar _nA = r(N)
+		scalar _nwA = r(sum_w)
 		reg `_depvar' i.`matched' if `treat' == 0 & `sample' `_weightexp', vce(`vce')
 		scalar _mgapA = _b[1.`matched']
-		nlcom _b[1.`matched'] * (`n1'/`n2'), post
-		scalar _msharewA = (1 - `n1' / `n2') * 100
+		nlcom _b[1.`matched'] * ( _numwA / _nwA ), post
+		scalar _mshareuwA = (1 - _numA / _nA ) * 100
+		scalar _msharewA = (1 - _numwA / _nwA ) * 100
 		mat b = e(b)
 		mat b4[1,3] = b[1,1]
 		mat V = e(V)
@@ -438,13 +441,16 @@ program define nopo_decomp, eclass
 
 		// DB
 		sum `_depvar' if `treat' == 1 & `matched' == 0 & `sample' `_sum_weightexp'
-		local n1 = r(sum_w)
+		scalar _numB = r(N)
+		scalar _numwB = r(sum_w)
 		sum `_depvar' if `treat' == 1 & `sample' `_sum_weightexp'
-		local n2 = r(sum_w)
+		scalar _nB = r(N)
+		scalar _nwB = r(sum_w)
 		reg `_depvar' i.`matched' if `treat' == 1 & `sample' `_weightexp', vce(`vce')
 		scalar _mgapB = _b[1.`matched']
-		nlcom _b[1.`matched'] * -1 * (`n1'/`n2'), post
-		scalar _msharewB = (1 - `n1' / `n2') * 100
+		nlcom _b[1.`matched'] * -1 * ( _numwB / _nwB ), post
+		scalar _mshareuwB = (1 - _numB / _nB ) * 100
+		scalar _msharewB = (1 - _numwB / _nwB ) * 100
 		mat b = e(b)
 		mat b4[1,4] = b[1,1]
 		mat V = e(V)
@@ -463,12 +469,6 @@ program define nopo_decomp, eclass
 		mat V = e(V)
 		mat V5[1,3] = V[1,1]
 		mat V5 = diag(V5)
-		
-		// N
-		scalar _nA = Nsupport[1,3]
-		scalar _nB = Nsupport[1,6]
-		scalar _mshareuwA = Nsupport[1,1] / Nsupport[1,3] * 100
-		scalar _mshareuwB = Nsupport[1,4] / Nsupport[1,6] * 100
 
 		// return
 		ereturn post b5 V5, obs(`_Nsample') esample(`sample') depname(`_depvar')
@@ -589,8 +589,8 @@ program define nopo_decomp, eclass
 		*/ as result _col(33) %7.1f _mshareuwA /*
 		*/ _col(46) %7.1f `=100-_mshareuwA'
 	di as text "B: " abbrev("`_tvar'", 8) " == `_tval' `_refB'"  _col(30) "{c |}" /*
-		*/ as result _col(32) %8.0f `=_nA*_mshareuwB/100' /*
-		*/ _col(45) %8.0f `=_nA*(1-_mshareuwB/100)' /*
+		*/ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
+		*/ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
 		*/ _col(57) %8.0f _nB /*
 		*/ _col(74) %05.3g `_meanB'
 	di as text _col(30) "{c |}" /*
@@ -681,17 +681,6 @@ syntax [if] [in], /// might produce strange results if if/in are used
 			local _weightexp "[pw = `w1']"
 		}
 
-		// set defaults
-		if ("`twtype'" == "") local twtype "line"
-		if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" 4 "DA" 5 "DB") rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
-		if ("`twtype'" == "line") {
-			if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
-			if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
-			if (`"`twoptsdx'"' == "") local twoptsdx "lp(dash)"
-			if (`"`twoptsda'"' == "") local twoptsda "lp(dash_dot)"
-			if (`"`twoptsdb'"' == "") local twoptsdb "lp(longdash_dot)"
-		}
-
 		// options passthru
 		local opts `"nq(`nquantiles') qmin(`qmin') qmax(`qmax') `revsign' `relative'"'
 
@@ -732,6 +721,27 @@ syntax [if] [in], /// might produce strange results if if/in are used
 			}
 			// plot
 			if ("`nodraw'" == "") {
+				
+				// defaults
+				local _i = 4 
+				foreach _comp in da db {
+					local _lbl = strupper("`_comp'")
+					count if !mi(`_comp')
+					if (r(N) > 0) {
+						local _dadblegend `" `_i' "`_lbl'" "'
+						local ++_i
+					}
+				}
+				if ("`twtype'" == "") local twtype "line"
+				if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" `_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
+				if ("`twtype'" == "line") {
+					if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
+					if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
+					if (`"`twoptsdx'"' == "") local twoptsdx "lp(dash)"
+					if (`"`twoptsda'"' == "") local twoptsda "lp(dash_dot)"
+					if (`"`twoptsdb'"' == "") local twoptsdb "lp(longdash_dot)"
+				}
+
 				twoway ///
 					(`twtype' d q, `twoptsd') ///
 					(`twtype' d0 q, `twoptsd0') ///
@@ -802,7 +812,7 @@ quietly {
 			}
 		}
 		
-		// do only if estimation was successful; othewise save empty data
+		// do only if estimation was successful; otherwise save empty data
 		if (`_qsuccess' == 1) {
 			// collapse, use sum of weights (passed via `exp') as N
 			tempvar meanq

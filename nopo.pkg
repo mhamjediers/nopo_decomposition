@@ -1,0 +1,11 @@
+v 2.3.0
+d 'NOPO': nopo (2008) matching decomposition
+d 
+d decompose gaps between groups A and B in Y into:
+d D0, DX (among matched), and DA, DB (due to unmatched)
+d 
+d Distribution-Date:   202306
+d License: MIT
+d 
+F nopo.ado
+F nopo.sthlp

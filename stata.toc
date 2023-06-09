@@ -1,0 +1,14 @@
+v 0.1
+d Maximilian Sprengholz & Maik Hamjediers
+d Humboldt Universität zu Berlin
+d maximilian.sprengholz@hu-berlin.de
+d
+d Maik Hamjediers
+d Humboldt Universität zu Berlin
+d maik.hamjediers@hu-berlin.de
+d
+d https://github.com/mhamjediers/nopo_decomposition
+
+d 'nopo': nopo (2008) matching decomposition
+
+p nopo
