@@ -3,7 +3,7 @@
 {title:Title}
 
 {pstd}
-{help matil()} {hline 2} Interlace rows into columns or columns into rows in matrices
+{help nopo} {hline 2} Interlace rows into columns or columns into rows in matrices
 
 {marker syntax}{...}
 {title:Syntax}
