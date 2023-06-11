@@ -562,12 +562,12 @@ program define nopo_decomp, eclass
 		di as text _col(42) "(unique combinations of matching set)"
 	}
 	else if ("`_kmatch_subcmd'" == "ps") {
-		di as text "Propensity-score matching:" _col(42) "`_param'" _col(68) "= " _col(74) %05.3f `_paramval'
+		di as text "Propensity-score matching:" _col(42) "`_param'" _col(68) "= " _col(71) %05.3g `_paramval'
 	}
 	else if ("`_kmatch_subcmd'" == "md") {
-		di as text "Multivariate-distance matching:" _col(42) "`_param'" _col(68) "= " _col(74) %05.3f `_paramval'
+		di as text "Multivariate-distance matching:" _col(42) "`_param'" _col(68) "= " _col(71) %05.3g `_paramval'
 	}
-	if ("`_ridge'" != "") di as text _col(42) "Ridge parameter:" _col(68) "= " _col(74) %05.3f `_ridge'
+	if ("`_ridge'" != "") di as text _col(42) "Ridge parameter:" _col(68) "= " _col(71) %05.3g `_ridge'
 	dis ""
 	di as text "{hline 29}{c TT}{hline 48}"
 	di as text _col(30) "{c |}" /*
@@ -584,7 +584,7 @@ program define nopo_decomp, eclass
 		*/ as result _col(32) %8.0f `=_nA*_mshareuwA/100' /*
 		*/ _col(45) %8.0f `=_nA*(1-_mshareuwA/100)' /*
 		*/ _col(57) %8.0f _nA /*
-		*/ _col(74) %05.3g `_meanA'
+		*/ _col(71) %05.3g `_meanA'
 	di as text _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwA /*
 		*/ _col(46) %7.1f `=100-_mshareuwA'
@@ -592,7 +592,7 @@ program define nopo_decomp, eclass
 		*/ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
 		*/ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
 		*/ _col(57) %8.0f _nB /*
-		*/ _col(74) %05.3g `_meanB'
+		*/ _col(71) %05.3g `_meanB'
 	di as text _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwB /*
 		*/ _col(46) %7.1f `=100-_mshareuwB'
@@ -919,7 +919,7 @@ syntax varname [if] [in], ///
 		gen `treat' = 1 if `_treatname' == `_tval'
 		replace `treat' = 0 if `_treatname' == `_cval'
 		local _treatlbl : variable label `_treatname'
-		lab var `treat' `_treatlbl'
+		if ("`treatlbl'" != "") lab var `treat' `_treatlbl'
 		// label for plot putput; revert to original bylabel when saved
 		local _treatvallbl : value label `_treatname'
 		if ("`_treatvallbl'" != "") {
@@ -933,7 +933,7 @@ syntax varname [if] [in], ///
 			}
 			lab val `treat' _bylbl
 		}
-	
+
 		// support
 		local _support = e(matched)
 		// abort if complete support
@@ -974,7 +974,7 @@ syntax varname [if] [in], ///
 			error 134
 			exit
 		}
-
+		
 		// relevel plotby: gen variable with no gaps
 		// default: sort by depvar
 		tempvar plotbyreleveled
@@ -1062,22 +1062,24 @@ syntax varname [if] [in], ///
 			if ("`nodraw'" == "") {
 
 				// N as text: get plot area and coordinates from data
-				tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
-				sum mdepvar_diff
-				if (abs(r(max)) > abs(r(min))) local _mmax = abs(r(max)) * 1.75 // make room for obs text
-					else local _mmax = abs(r(min)) * 1.75
-				sum mdepvar_diff_weighted
-				if (abs(r(max)) > abs(r(min))) local _wmmax = abs(r(max)) * 1.75 // make room for obs text
+				sum mdepvar_diff if n_weighted >= `nmin'
+				if (abs(r(max)) > abs(r(min))) local _mmax = abs(r(max)) * 1.75 // room obs text
+					else local _mmax = abs(r(min)) * 1.8
+				sum mdepvar_diff_weighted if n_weighted >= `nmin'
+				if (abs(r(max)) > abs(r(min))) local _wmmax = abs(r(max)) * 1.75 // room obs text
 					else local _wmmax = abs(r(min)) * 1.75
 				if (`_nplotbylvls'/5 < 1) local _yrangemax = `_nplotbylvls' + 1
 					else if (`_nplotbylvls'/5 < 2) local _yrangemax = `_nplotbylvls' + 2
 					else local _yrangemax = `_nplotbylvls'/5 + `_nplotbylvls'
-				cap drop nx
-				gen nx = `_mmax' // x value for n counts (added as mlabel)
-				local _text `" text(`_yrangemax' `_mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
 				local _ysize = `_nplotbylvls'/5 + 5
 				if (`_ysize' < 8) local _xsize = 9
 					else local _xsize = 9 + `_ysize'/3
+
+				// N as text
+				tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
+				cap drop nx
+				gen nx = `_mmax' // x value for n counts (added as mlabel)
+				local _text `" text(`_yrangemax' `_mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
 
 				// set default plot options
 				#delimit ;
@@ -1088,7 +1090,7 @@ syntax varname [if] [in], ///
 						) rows(2) margin(zero)  region(style(none)) size(small))
 					ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
 					yscale(range(`_yrangemax' 1)) ytitle("")
-					xscale(range(-`_wmmax' `_wmmax') axis(1))
+					xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(, axis(1) grid labsize(small))
 					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(, axis(2) grid labsize(small))
 					xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
 					subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
