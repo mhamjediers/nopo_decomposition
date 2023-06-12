@@ -1,0 +1,16 @@
+. qui: nopo decomp wage ${pred}, by(grp)
+
+. qui: est store em
+
+. qui: nopo decomp wage ${pred}, by(grp) kmatch(ps)
+
+. qui: est store ps
+
+. qui: nopo decomp wage ${pred}, by(grp) kmatch(md)
+
+. qui: est store md 
+
+. qui: nopo decomp wage ${pred}, by(grp) kmatch(ps) kmopt(pscmd(probit) bw(0.0001))
+
+. qui: est store ps_probbw
+

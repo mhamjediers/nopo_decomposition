@@ -1,0 +1,7 @@
+
+. qui: nopo decomp wage ${pred}, by(grp) kmatch(ps)
+
+. display "`e(kmatch_cmdline)'"
+kmatch ps grp age_c married edu lmexp parttime isco2d (wage) , tval(4) att generate wgenerate replace
+
+. log close
