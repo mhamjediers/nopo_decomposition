@@ -48,14 +48,11 @@ global pred age_c married edu lmexp parttime isco2d
 *First output
 logout using "log/standalone.log", cmd: nopo decomp wage age_c married edu lmexp parttime isco2d, by(grp)
 
-*MH: nur bei mir, weil ich wahrscheinlich im alten die INF eingebaut habe :/ hier sind die Gruppen vertauscht
-
 *Further options
 log using "log/main_options.log", replace
 nopo decomp wage ${pred}, by(grp) bref(grp == 1) swap normalize
 log close
 noheadlog using "log/main_options.log"
-*-> MH: DX ist null; funktioniert nicht --> muss was mit bref + swap zu tun haben; sonst geht's gut
 
 
 *other matching approaches
@@ -108,10 +105,7 @@ log close
 noheadlog using "log/nopo_summarize.log"
 
 
-nopo summarize age lmexp married, label
-
 *contribution to DA/DB
-
 logout using "log/dadb.log", cmd: nopo dadb edu
 graph export "log/dadb.pdf", replace
 
@@ -119,7 +113,6 @@ graph export "log/dadb.pdf", replace
 *Over the distribution
 logout using "log/gapoverdist.log", cmd: nopo gapoverdist
 graph export "log/gapoverdist.pdf", replace
-*DA not in legend
 
 
 
