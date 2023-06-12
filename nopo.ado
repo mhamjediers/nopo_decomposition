@@ -728,9 +728,9 @@ syntax [if] [in], /// might produce strange results if if/in are used
 					local _lbl = strupper("`_comp'")
 					count if !mi(`_comp')
 					if (r(N) > 0) {
-						local _dadblegend `" `_i' "`_lbl'" "'
-						local ++_i
+						local _dadblegend `" `_dadblegend' `_i' "`_lbl'" "'
 					}
+					local ++_i
 				}
 				if ("`twtype'" == "") local twtype "line"
 				if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" `_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
@@ -808,7 +808,7 @@ quietly {
 			} 
 			else {
 				local _qsuccess = 0
-				noisily dis "`comp' omitted from plot: Quantiles requested > obs present in the groups compared to estimate component."
+				noisily dis "`comp' omitted from plot: Quantiles requested > obs. present in the groups compared to estimate component."
 			}
 		}
 		
