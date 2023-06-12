@@ -71,7 +71,7 @@ noheadlog using "log/matchings.log"
 log using "log/match_table.log", replace
 esttab em ps md ps_probbw, se nonumbers nonotes ///
 	 mtitles("exact" "prop. score" "multi. dist." "probit ps") ///
-	stats(nA mshareuwA nB mshareuwB, label("N(A)" "% matched A" "N(B)" "% matched B"))
+	stats(nA mshareuwA nB mshareuwB bwidth, label("N(A)" "% matched A" "N(B)" "% matched B" "Bandwidth"))
 log close
 noheadlog using "log/match_table.log"
 

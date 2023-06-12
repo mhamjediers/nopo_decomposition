@@ -1,6 +1,6 @@
 . esttab em ps md ps_probbw, se nonumbers nonotes ///
 >          mtitles("exact" "prop. score" "multi. dist." "probit ps") ///
->         stats(nA mshareuwA nB mshareuwB, label("N(A)" "% matched A" "N(B)" "% matched B"))
+>         stats(nA mshareuwA nB mshareuwB bwidth, label("N(A)" "% matched A" "N(B)" "% matched B" "Bandwidth"))
 
 ----------------------------------------------------------------------------
                     exact     prop. score    multi. dist.       probit ps   
@@ -24,5 +24,6 @@ N(A)                 6049            6049            6049            6049
 % matched A         51.41             100             100           62.08   
 N(B)                 2905            2905            2905            2905   
 % matched B         47.75           96.73             100           55.42   
+Bandwidth                         0.00265           2.325        0.000100   
 ----------------------------------------------------------------------------
 
