@@ -640,8 +640,6 @@ cap program drop nopo_gapoverdist
 program define nopo_gapoverdist
 syntax [if] [in], /// might produce strange results if if/in are used
 	[NQuantiles(integer 100)] ///
-	[QMIN(integer 1)] ///
-	[QMAX(integer 100)] ///
 	[RAWUMdiff] ///
 	[twtype(string)] ///
 	[twopts(string asis)] ///
@@ -723,17 +721,40 @@ syntax [if] [in], /// might produce strange results if if/in are used
 				rename diff `c'
 				lab var `c' "Decomposition component `c'"
 			}
-			// checking
-			noisily {
-				dis "Check means over component quantiles (some precision lost):"
-				sum d d0 dx da db
+			
+			// summary table for sensibility checks
+			foreach c in d d0 dx da db {
+				tabstat `c' `c'_qcntmin `c'_nmin, save
+				if ("`c'" == "d") mat _M = r(StatTotal)
+					else mat _M = _M \ r(StatTotal)
 			}
+			mat _M = e(b)' , _M
+			mat rownames _M = D D0 DX DA DB
+			local colnames `" "Estimate" "Sum over q" "Minimum among compared groups: Unique q values" "Minimum among compared groups: N" "'
+			mat colnames _M = `colnames'
+			noisily dis "Component distribution across `nquantiles' quantiles of `_depvar' requested"
+			noisily matlist _M, border(all) showcoleq(combined) ///
+				rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g & %18.0g & %21.0g &)
+			noisily dis "Note:"
+			noisily dis "- The component sum across quantiles should correspond to the estimates with"
+			noisily dis "  well populated quantiles."
+			if (_M[2,3] < `nquantiles' | _M[3,3] < `nquantiles' | _M[4,3] < `nquantiles' | _M[5,3] < `nquantiles') {
+				noisily dis "- There are less unique quantile values than quantiles requested which means"
+				noisily dis "  that across some quantiles, the value of `_depvar' does not change for"
+				noisily dis "  (one of) the groups compared to estimate the component."
+			}
+			if (inlist(., _M[2,2], _M[3,2], _M[4,2], _M[5,2])) {
+				noisily dis "- No gap over the distribution could be estimated for the components where N"
+				noisily dis "  of compared groups < no. of requested quantiles."
+			}
+			if (`nquantiles' == 100) noisily dis "- Use the nquantiles(#) option to set the number of quantiles."
+			
 			// plot
 			if ("`nodraw'" == "") {
 				
 				// defaults
-				local _i = 4 
-				foreach _comp in da db {
+				local _i = 1 
+				foreach _comp in d d0 dx da db {
 					local _lbl = strupper("`_comp'")
 					count if !mi(`_comp')
 					if (r(N) > 0) {
@@ -742,7 +763,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
 					local ++_i
 				}
 				if ("`twtype'" == "") local twtype "line"
-				if (`"`twopts'"' == "") local twopts `" legend(order(1 "D" 2 "DX" 3 "D0" `_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
+				if (`"`twopts'"' == "") local twopts `" legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
 				if ("`twtype'" == "line") {
 					if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
 					if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
@@ -775,8 +796,6 @@ syntax varname [if] [fweight pweight iweight], ///
 	[mweight(varlist max=1)] ///
 	[comp(string)] /// gap components, used as filter
 	[NQuantiles(integer 100)] ///
-	[QMIN(integer 1)] ///
-	[QMAX(integer 100)] ///
 	[RAWUMdiff] /// do not scale by N_A/N_B
 	[SAVE(string asis)] * 
 
@@ -798,7 +817,6 @@ quietly {
 			replace `weightvar' = `mweight' if _expanded == 1 // replace weight with matching weight
 		}
 		
-		// allow for quantile mean (or any other stat) estimation'
 		// xtile aggregates quantiles if they contain constant values. Fill up to avoid empty cells.
 		tempvar quantile
 		gen `quantile' = .
@@ -809,15 +827,32 @@ quietly {
 		    cap xtile `quantile'_`i' = `varlist' if `by' == `i' [`weight'`exp'], nquantiles(`nquantiles')
 			// handle situation where requested quantiles are more than available obs per group
 			if (_rc != 198) {
+				// save number of quantiles (for info if they have been expanded)
+				levelsof `quantile'_`i'
+				if ("`_qcntmin'" == "") {
+					local _qcntmin = r(r)
+				}
+				else {
+					if (r(r) < `_qcntmin') local _qcntmin = r(r)
+				}
+				// expand and adjust weights
 				bys `by': egen `totweight' = total(`weightvar')
 				bys `by' (`quantile'_`i'): replace `quantile'_`i' = ///
 					ceil(sum(`weightvar') * `nquantiles' / `totweight') if `by' == `i'
 				replace `quantile' = `quantile'_`i' if `by' == `i'
 				drop `totweight'
+				
 			} 
 			else {
 				local _qsuccess = 0
-				noisily dis "`comp' omitted from plot: Quantiles requested > obs. present in the groups compared to estimate component."
+			}
+			// save minimum N for check display
+			count if `by' == `i'
+			if ("`_nmin'" == "") {
+				local _nmin = r(N)
+			} 
+			else {
+				if (r(N) < `_nmin') local _nmin = r(N)
 			}
 		}
 		
@@ -847,20 +882,27 @@ quietly {
 				replace `diff' = `diff' * (`nq'0/(`nq'0+`nq'1))
 			}
 
-			drop if !inrange(`quantile', `qmin', `qmax')
 			keep `diff' `quantile'
 			rename `diff' diff
+
+			// add quantile count to inform about contant values
+			gen `comp'_qcntmin = `_qcntmin'
+
 		}
 		else {
 			keep if _n == 1
 			gen diff = .
-			keep diff `quantile' 
+			keep diff `quantile'
+			gen `comp'_qcntmin = .
 		}
 		
 		// save temp data
 		rename `quantile' q
 		lab var q "Compared `varlist' quantile between groups (component-specific)"
 		lab var diff "Gap"
+		lab var `comp'_qcntmin "Min. number of different quantiles across compared groups"
+		gen `comp'_nmin = `_nmin'
+		lab var `comp'_nmin "Min. group N of compared groups"
 		if ("`save'" != "")	save `save'
 
 	restore
@@ -1054,8 +1096,8 @@ syntax varname [if] [in], ///
 			replace mdepvar_diff_weighted = -mdepvar_diff_weighted if `treat' == 0 // reverse for DA
 
 			// check if values the same as in nopo table
-			noisily dis "Component sum check:"
-			noisily table `treat' if `_support' == 0, stat(sum mdepvar_diff_weighted)
+			/* noisily dis "Component sum check:"
+			noisily table `treat' if `_support' == 0, stat(sum mdepvar_diff_weighted) */
 
 			// keep all levels for plot? 
 			// useful if plotted comparisons do not have the same plotby levels due to missings

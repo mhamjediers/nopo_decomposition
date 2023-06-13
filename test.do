@@ -21,6 +21,8 @@ gen wage = 5*t + 0.5*age + edu + age*edu - (age*edu*t/5) + runiform()
 bys t: sum wage, d
 lab var wage "Hourly wage"
 
+replace wage = round(wage) if t == 1
+
 // dummies/strata
 egen strata = group(age edu)
 qui foreach v in age edu strata {
@@ -65,6 +67,9 @@ lab val edu edu
 
 // see swap and bref
 nopo decomp wage age edu, by(groups)
+tempfile test
+nopo gapoverdist, save(`test')
+stop 
 nopo decomp wage age edu, by(groups) swap
 nopo decomp wage age edu, by(groups) swap bref(groups == 1)
 nopo decomp wage age edu, by(groups) bref(groups == 0)
@@ -90,7 +95,7 @@ nopo decomp wage age edu, by(groups) kmatch(ps) kmkeepgen
 // Post kmatch
 //
 
-kmatch em groups age edu (wage), tval(1) atc att generate wgenerate replace
+kmatch md groups age edu (wage), tval(1) atc att generate wgenerate replace nn(1) wor
 nopo decomp // defaults to ATT if present, uses ATC if only ATC estimates present
 
 kmatch ps groups age edu (wage), tval(1) atc att bwidth(0.5) generate wgenerate replace
