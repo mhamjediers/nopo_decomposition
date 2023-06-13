@@ -385,7 +385,7 @@ program define nopo_decomp, eclass
 				cv_nolimit cv_exact ebalance ebvars csonly targets covariances nconstraint ///
 				fitopts att atc vce clustvar title 
 			local _ematrices ///
-			 	bwidth S cv
+			 	_N S cv
 			foreach _r in `kmpassthru' {
 				if (ustrregexm("`_escalars'", "\b`_r'\b")) {
 					scalar _`_r' = e(`_r') // save as local to be able to reference in loop later
@@ -526,7 +526,6 @@ program define nopo_decomp, eclass
 		if ("`_ridge'" != "") ereturn scalar ridge = `_ridge'
 
 		ereturn scalar N = `_Nsample'
-		ereturn matrix _N = Nsupport // original support matrix from kmatch
 		ereturn scalar nA = _nA
 		ereturn scalar mshareuwA = _mshareuwA // unweighted
 		ereturn scalar msharewA = _msharewA // weighted
@@ -562,6 +561,13 @@ program define nopo_decomp, eclass
 		local _param "Kernel bandwidth:"
 		local _paramval = `_bwidth'
 	}
+
+	// get group labels
+	local _treatvallbl : value label `_tvar'
+	if ("`_treatvallbl'" != "") {
+		local _groupAlbl : label `_treatvallbl' `_cval'
+		local _groupBlbl : label `_treatvallbl' `_tval'
+	}
 	
 	di as text " "
 	di as text "Nopo decomposition" _col(42) "N" _col(68) "= " _col(71) %8.0g `_Nsample'
@@ -589,20 +595,20 @@ program define nopo_decomp, eclass
 		*/ _col(60) "Total"  /*
 		*/ _col(67) %12s abbrev("`_depvar'", 12)
 	di as text "{hline 29}{c +}{hline 48}"
-	di as text "A: " abbrev("`_tvar'", 8) " == `_cval' `_refA'"  _col(30) "{c |}" /*
+	di as text "A: " abbrev("`_groupAlbl'", 25)  _col(30) "{c |}" /*
 		*/ as result _col(32) %8.0f `=_nA*_mshareuwA/100' /*
 		*/ _col(45) %8.0f `=_nA*(1-_mshareuwA/100)' /*
 		*/ _col(57) %8.0f _nA /*
-		*/ _col(71) %05.3g `_meanA'
-	di as text _col(30) "{c |}" /*
+		*/ _col(71) %08.3g `_meanA'
+	di as text _col(4) abbrev("`_tvar'", 8) " == `_cval' `_refA'" _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwA /*
 		*/ _col(46) %7.1f `=100-_mshareuwA'
-	di as text "B: " abbrev("`_tvar'", 8) " == `_tval' `_refB'"  _col(30) "{c |}" /*
+	di as text "B: " abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
 		*/ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
 		*/ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
 		*/ _col(57) %8.0f _nB /*
-		*/ _col(71) %05.3g `_meanB'
-	di as text _col(30) "{c |}" /*
+		*/ _col(71) %08.3g `_meanB'
+	di as text _col(4) abbrev("`_tvar'", 8) " == `_tval' `_refB'" _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwB /*
 		*/ _col(46) %7.1f `=100-_mshareuwB'
 	di as text "{hline 29}{c BT}{hline 48}"
@@ -1247,7 +1253,7 @@ syntax [varlist (default=none)] [if] [in], ///
 			}
 			lab val `treat' _bylbl
 		}
-		// x reference (opposite for b)
+		// reference group
 		if ("`e(teffect)'" == "ATC") local _bref = 1
 			else local _bref = 0
 		// support

@@ -67,13 +67,10 @@ lab val edu edu
 
 // see swap and bref
 nopo decomp wage age edu, by(groups)
-tempfile test
-nopo gapoverdist, save(`test')
-stop 
 nopo decomp wage age edu, by(groups) swap
 nopo decomp wage age edu, by(groups) swap bref(groups == 1)
 nopo decomp wage age edu, by(groups) bref(groups == 0)
-
+stop
 
 // see normalize
 nopo decomp wage age edu, by(groups) norm
