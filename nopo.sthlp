@@ -18,11 +18,13 @@ help for {hi:nopo}
 {marker:syntax}{...}
 {title:Syntax}
 
-   {cmd:nopo decomp} {depvar} {varlist} {ifin} {weight} {cmd:, by(varname)} [{help nopo##comopt:{it:options}}]
+   {cmd:nopo decomp} {depvar} {varlist} {ifin} {weight} {cmd:, by(} varname{cmd:)} [{help nopo##comopt:{it:options}}]
    
  Decomposition as post-estimation to {help kmatch:{it:kmatch}}:
    
-   {cmd:nopo decomp} [{cmd:,} {help nopo##comopt:{it:options}}] mh: gehen hier optionen?
+   {cmd:nopo decomp}
+
+Allows for three different postestmation commands (nopo summarize, nopo dadb, nopo gapoverdist: described below)
  
  
 {synoptset 37 tabbed}{...}
@@ -93,6 +95,7 @@ Can also be used with bootstrapping.
 {title:Postestimation-commands}
   
 {dlgtab:nopo summarize}
+
    {cmd:nopo summarize} [{varlist}] [{cmd:,} label]
    
        Reports a descriptive table with means and standard devaitions by group-indicator and matching status.
@@ -112,6 +115,7 @@ Can also be used with bootstrapping.
 	   {it:twoway_options} allows for the inclusion of any additional {help twoway_options:graphing options} such as titles, axes, added lines, etc.
 
 {dlgtab: nopo dadb}
+
    {cmd:nopo dadb} {varname}  [{cmd:,} {help twoway_options:{it:twoway_options}}]
    
        Plotting contribution of {varname} to components {it:D_A} and {it:D_B}.

@@ -358,6 +358,15 @@ program define nopo_decomp, eclass
 		if ("`e(nn)'" != "") local _nn = e(nn)
 		if ("`e(bwidth)'" != "") local _bwidth = e(bwidth)[1, "`att'`atc'"]
 		if ("`e(ridge)'" != "") local _ridge = e(ridge)
+
+		// abort if matched without replacement (replacement necessary for correct weights)
+		if ("`e(wor)'" == "wor") {
+			dis as error "nopo decomp requires matching with replacement. Option wor not allowed in:"
+			dis as error " `_kmatch_cmdline'"
+			error 322
+			exit
+		}
+
 		
 		// save everything from kmatch which has been requested for passthru
 		/*
@@ -371,7 +380,7 @@ program define nopo_decomp, eclass
 				cv_factor maxiter btolerance
 			local _emacros ///
 				xvars ematch emxvars psvars pscore comsup generate wgenerate dygenerate ///
-				idgenerate dxgenerate cemgenerate ifgenerate metric kernel keepall wor ///
+				idgenerate dxgenerate cemgenerate ifgenerate metric kernel keepall ///
 				pscmd psopts pspredict bw_method cv_outcome cv_weighted cv_nopenalty ///
 				cv_nolimit cv_exact ebalance ebvars csonly targets covariances nconstraint ///
 				fitopts att atc vce clustvar title 
@@ -1090,8 +1099,8 @@ syntax varname [if] [in], ///
 						) rows(2) margin(zero)  region(style(none)) size(small))
 					ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
 					yscale(range(`_yrangemax' 1)) ytitle("")
-					xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(, axis(1) grid labsize(small))
-					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(, axis(2) grid labsize(small))
+					xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, axis(1) grid labsize(small))
+					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, axis(2) grid labsize(small))
 					xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
 					subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
 					scheme(s1mono) xsize(`_xsize') ysize(`_ysize')
