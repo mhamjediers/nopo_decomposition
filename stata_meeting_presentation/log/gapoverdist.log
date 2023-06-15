@@ -1,10 +1,20 @@
 . nopo gapoverdist
-Check means over component quantiles (some precision lost):
+Component distribution across 100 quantiles of wage requested
 
-    Variable |        Obs        Mean    Std. dev.       Min        Max
--------------+---------------------------------------------------------
-           d |        100   -8.389899    3.746187  -15.57688  -.7053149
-          d0 |        100   -2.367079    2.317407  -10.82858   1.179924
-          dx |        100    -5.09967    1.384975  -7.125555  -1.085782
-          da |        100    .7733719    .4105092   .0815315   1.925806
-          db |        100   -1.691672    1.181737  -6.096201  -.1096617
+-------------------------------------------------------------------------------
+    |                                       Minimum among compared groups     
+    |       Estimate      Sum over q     Unique q values                      N
+----+--------------------------------------------------------------------------
+  D |          -8.38           -8.39                 100                   2905
+ D0 |          -2.41           -2.36                  98                   1387
+ DX |          -5.06            -5.1                  98                   3110
+ DA |           .773            .773                 100                   2939
+ DB |          -1.69           -1.69                 100                   1387
+-------------------------------------------------------------------------------
+Note:
+- The component sum across quantiles should correspond to the estimates with
+  well populated quantiles.
+- There are less unique quantile values than quantiles requested which means
+  that across some quantiles, the value of wage does not change for
+  (one of) the groups compared to estimate the component.
+- Use the nquantiles(#) option to set the number of quantiles.

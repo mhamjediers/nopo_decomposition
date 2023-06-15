@@ -1,4 +1,3 @@
-
 . qui: nopo decomp wage ${pred}, by(grp)
 
 . nopo summarize wage age married edu_1 edu_2 edu_3, label
@@ -25,4 +24,3 @@ edu==Terti~y |            |            |            |            |
         Mean |       .188 |       .441 |       .311 |       .311 |       .269 
           SD |       .391 |       .497 |       .463 |       .463 |       .443 
 
-. log close
