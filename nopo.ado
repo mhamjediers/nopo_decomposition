@@ -595,20 +595,20 @@ program define nopo_decomp, eclass
 		*/ _col(60) "Total"  /*
 		*/ _col(67) %12s abbrev("`_depvar'", 12)
 	di as text "{hline 29}{c +}{hline 48}"
-	di as text "A: " abbrev("`_groupAlbl'", 25)  _col(30) "{c |}" /*
+	di as text "A: " abbrev("`_tvar'", 8) " == `_cval' `_refA'"  _col(30) "{c |}" /*
 		*/ as result _col(32) %8.0f `=_nA*_mshareuwA/100' /*
 		*/ _col(45) %8.0f `=_nA*(1-_mshareuwA/100)' /*
 		*/ _col(57) %8.0f _nA /*
 		*/ _col(71) %08.3g `_meanA'
-	di as text _col(4) abbrev("`_tvar'", 8) " == `_cval' `_refA'" _col(30) "{c |}" /*
+	di as text _col(4) abbrev("`_groupAlbl'", 25) _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwA /*
 		*/ _col(46) %7.1f `=100-_mshareuwA'
-	di as text "B: " abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
+	di as text "B: " abbrev("`_tvar'", 8) " == `_tval' `_refB'" _col(30) "{c |}" /*
 		*/ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
 		*/ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
 		*/ _col(57) %8.0f _nB /*
 		*/ _col(71) %08.3g `_meanB'
-	di as text _col(4) abbrev("`_tvar'", 8) " == `_tval' `_refB'" _col(30) "{c |}" /*
+	di as text _col(4) abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
 		*/ as result _col(33) %7.1f _mshareuwB /*
 		*/ _col(46) %7.1f `=100-_mshareuwB'
 	di as text "{hline 29}{c BT}{hline 48}"
