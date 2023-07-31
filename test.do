@@ -68,11 +68,6 @@ lab val edu edu
 // nopo summarize implementation with factors and labels
 //
 
-// default is em: all except depvar are treated as factors
-nopo decomp wage age edu, by(groups)
-nopo summarize
-nopo summarize, label
-
 // if md or ps: use factor notation in nopo call
 nopo decomp wage i.age i.edu, by(groups) kmatch(ps)
 nopo summarize
@@ -83,6 +78,21 @@ nopo summarize, label
 // but ok for md?
 nopo decomp wage age edu, by(groups) kmatch(ps)
 nopo summarize i.edu, label
+
+//
+// Plot options
+//
+
+// only xsize and ysize directly adjustable (should allow to correct most scale issues)
+// the other options per plot are returned in r()
+// either
+// - you adjust these returns and feed them back to the plot command or
+// - build your own plot via `save' and these returns
+nopo decomp wage i.age i.edu, by(groups)
+nopo gapoverdist
+return list
+nopo dadb edu
+return list
 
 stop
 

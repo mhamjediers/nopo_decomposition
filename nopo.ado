@@ -654,7 +654,7 @@ Does that sound sensible?
 
 // gap over distribution plotting wrapper: 5 plots needed (one for each gap component)
 cap program drop nopo_gapoverdist
-program define nopo_gapoverdist
+program define nopo_gapoverdist, rclass
 syntax [if] [in], /// might produce strange results if if/in are used
 	[NQuantiles(integer 100)] ///
 	[RAWUMdiff] ///
@@ -665,6 +665,8 @@ syntax [if] [in], /// might produce strange results if if/in are used
 	[twoptsdx(string asis)] ///
 	[twoptsda(string asis)] ///
 	[twoptsdb(string asis)] ///
+  [xsize(real 0)] ///
+  [ysize(real 0)] ///
 	[nodraw] ///
 	[SAVE(string asis)]
 
@@ -775,12 +777,14 @@ syntax [if] [in], /// might produce strange results if if/in are used
 					local _lbl = strupper("`_comp'")
 					count if !mi(`_comp')
 					if (r(N) > 0) {
-						local _dadblegend `" `_dadblegend' `_i' "`_lbl'" "'
+						local _dadblegend `"`_dadblegend' `_i' "`_lbl'""'
 					}
 					local ++_i
 				}
 				if ("`twtype'" == "") local twtype "line"
-				if (`"`twopts'"' == "") local twopts `" legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
+				if (`"`twopts'"' == "") local twopts `"legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
+        if (`xsize' > 0) local twopts `"`twopts' xsize(`xsize')"'
+        if (`ysize' > 0) local twopts `"`twopts' ysize(`ysize')"'
 				if ("`twtype'" == "line") {
 					if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
 					if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
@@ -796,10 +800,24 @@ syntax [if] [in], /// might produce strange results if if/in are used
 					(`twtype' da q, `twoptsda') ///
 					(`twtype' db q, `twoptsdb') ///
 					, `twopts'
+
 			}
-			// save if requested
+			
+      // save if requested
 			if (`"`save'"' != "") noisily save `save', replace
-		restore
+
+      // return plotoptions
+      return local twtype = `"`twtype'"'
+      return local twopts = `"`twopts'"'
+      return local twoptsd = `"`twoptsd'"'
+      return local twoptsd0 = `"`twoptsd0'"'
+      return local twoptsdx = `"`twoptsdx'"'
+      return local twoptsda = `"`twoptsda'"'
+      return local twoptsdb = `"`twoptsdb'"'
+      return scalar xsize = `xsize'
+      return scalar ysize = `ysize'
+		
+    restore
 	}
 
 end
@@ -936,7 +954,7 @@ end
 */
 
 cap program drop nopo_dadb
-program define nopo_dadb
+program define nopo_dadb, rclass
 syntax varname [if] [in], ///
 	[NOSORT] /// do not sort by depvar
 	[DESCending] /// sort descending (as opposed to ascending if nosort is not specified)
@@ -946,7 +964,10 @@ syntax varname [if] [in], ///
 	[twopts(string asis)] ///
 	[twoptsbar(string asis)] ///
 	[twoptsscatter(string asis)] ///
+	[twoptsn(string asis)] ///
 	[twoptsby(string asis)] ///
+  [xsize(real 0)] ///
+  [ysize(real 0)] ///
 	[nodraw] ///
 	[SAVE(string asis)]
 
@@ -1139,9 +1160,12 @@ syntax varname [if] [in], ///
 				if (`_nplotbylvls'/5 < 1) local _yrangemax = `_nplotbylvls' + 1
 					else if (`_nplotbylvls'/5 < 2) local _yrangemax = `_nplotbylvls' + 2
 					else local _yrangemax = `_nplotbylvls'/5 + `_nplotbylvls'
-				local _ysize = `_nplotbylvls'/5 + 5
-				if (`_ysize' < 8) local _xsize = 9
-					else local _xsize = 9 + `_ysize'/3
+        
+				if (`ysize' == 0) local ysize = `_nplotbylvls'/5 + 5
+        if (`xsize' == 0) {
+          if (`ysize' < 8) local xsize = 9
+            else local xsize = 9 + `ysize'/3
+        }
 
 				// N as text
 				tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
@@ -1162,29 +1186,28 @@ syntax varname [if] [in], ///
 					xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, axis(2) grid labsize(small))
 					xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
 					subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
-					scheme(s1mono) xsize(`_xsize') ysize(`_ysize')
-					"';
-				if (`"`twoptsby'"' == "") local twoptsby `" 
-					ixtitle note("") b1title("") graphregion(margin(zero)) 
+					scheme(s1mono) xsize(`xsize') ysize(`ysize')
 					"';
 				if (`"`twoptsbar'"' == "") local twoptsbar `"
-					fcolor(gs10%50) lcolor(gs10) lp(solid) lw(0.2)
+					horizontal xaxis(2) `_text' fcolor(gs10%50) lcolor(gs10) lp(solid) lw(0.2)
 					"';
 				if (`"`twoptsscatter'"' == "") local twoptsscatter `" 
 					mcolor(black) xline(0, lcolor(black) lwidth(0.2)) xaxis(1) 
 					xtitle("Contribution of unmatched to D", margin(0 0 3 3)) 
 					"';
+        if (`"`twoptsn'"' == "") local twoptsn `" 
+					xaxis(2) mcolor(none) mlabel(n_weighted_str) mlabpos(9) mlabgap(0) msize(vtiny))
+					"';
+        if (`"`twoptsby'"' == "") local twoptsby `" 
+					ixtitle note("") b1title("") graphregion(margin(zero)) 
+					"';
 				#delimit cr
 
 				// plot
 				twoway ///
-					(bar mdepvar_diff `plotbyreleveled' if n_weighted >= `nmin' ///
-						, horizontal xaxis(2) `_text' `twoptsbar') ///
-					(scatter `plotbyreleveled' mdepvar_diff_weighted if n_weighted >= `nmin' ///
-						, `twoptsscatter') ///
-					(scatter `plotbyreleveled' nx ///
-						, xaxis(2) mcolor(none) mlabel(n_weighted_str) mlabpos(9) mlabgap(0) ///
-						msize(vtiny)) ///
+					(bar mdepvar_diff `plotbyreleveled' if n_weighted >= `nmin', `twoptsbar') ///
+					(scatter `plotbyreleveled' mdepvar_diff_weighted if n_weighted >= `nmin', `twoptsscatter') ///
+					(scatter `plotbyreleveled' nx, `twoptsn' ///
 					, by(`treat', `twoptsby') `twopts'
 			}
 
@@ -1212,6 +1235,15 @@ syntax varname [if] [in], ///
 				// save
 				noisily save `save', replace
 			}
+
+      // return plotoptions
+      return local twopts =  ustrtrim(ustrregexra(`"`twopts'"', "[\s\t]+", " "))
+      return local twoptsbar =  ustrtrim(ustrregexra(`"`twoptsbar'"', "[\s\t]+", " "))
+      return local twoptsscatter =  ustrtrim(ustrregexra(`"`twoptsscatter'"', "[\s\t]+", " "))
+      return local twoptsn =  ustrtrim(ustrregexra(`"`twoptsn'"', "[\s\t]+", " "))
+      return local twoptsby =  ustrtrim(ustrregexra(`"`twoptsby'"', "[\s\t]+", " "))
+      return scalar xsize = `xsize'
+      return scalar ysize = `ysize'
 
 		restore
 	}
