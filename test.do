@@ -54,7 +54,10 @@ qui foreach v in age edu strata {
 // labels are appropriately captured in matching table
 recode t (0 = 0 "Immigrant women") (1 = 1 "Native men"), gen(groups)
 lab var groups "Groups"
-lab var edu "Edu"
+lab var age "Current age in years"
+lab def age 1 "18-27" 2 "28-37" 3 "38-47" 4 "48-57" 5 "58-67"
+lab val age age
+lab var edu "Education"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
@@ -62,15 +65,36 @@ lab val edu edu
 //nopomatch age edu, outcome(wage) by(groups) replace abs sd
 
 //
+// nopo summarize implementation with factors and labels
+//
+
+// default is em: all except depvar are treated as factors
+nopo decomp wage age edu, by(groups)
+nopo summarize
+nopo summarize, label
+
+// if md or ps: use factor notation in nopo call
+nopo decomp wage i.age i.edu, by(groups) kmatch(ps)
+nopo summarize
+nopo summarize, label
+
+// or use factor notation directly in nopo summarize
+// i guess the only usecase would be dummies, otherwise misspecified model for ps?
+// but ok for md?
+nopo decomp wage age edu, by(groups) kmatch(ps)
+nopo summarize i.edu, label
+
+stop
+
+//
 // Standalone
 //
 
 // see swap and bref
-nopo decomp wage age edu, by(groups)
+nopo decomp wage i.age edu, by(groups)
 nopo decomp wage age edu, by(groups) swap
 nopo decomp wage age edu, by(groups) swap bref(groups == 1)
 nopo decomp wage age edu, by(groups) bref(groups == 0)
-stop
 
 // see normalize
 nopo decomp wage age edu, by(groups) norm

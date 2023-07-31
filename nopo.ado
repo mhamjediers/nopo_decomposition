@@ -43,7 +43,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 		error 198
 		exit
 	}
-
+	
 	// run kmatch or check if kmatch requirements met
 	if ("`subcmd'" == "decomp" & "`varlist'" != "") {
 		local nvars : word count `varlist'
@@ -119,7 +119,18 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 			if ("`kmatch'" == "") local kmatch = "em"
 			if ("`weight'" != "") local _weightexp "[`weight'`exp']"
 			if ("`kmnoisily'" != "") local kmnoisily = "noisily"
-			
+
+			// clean factor notation if exact matching
+      // kmatch em treats everything as factor and so does nopo_summarize after kmatch em
+			if ("`kmatch'" == "em") {
+				local _varlist_nf = ""
+				foreach _var in `varlist' {
+					local _var = ustrregexra("`_var'", "^i.*\.", "")
+					local _varlist_nf "`_varlist_nf' `_var'"
+				}
+				local varlist = ustrltrim("`_varlist_nf'")
+			}
+
 			// normalize depvar if requested: this results in a new variable!
 			if ("`normalize'" != "") {
 				local _depvarabbrev = abbrev("`_depvar'", 26)
@@ -1214,10 +1225,9 @@ end
 
 cap program drop nopo_summarize
 program define nopo_summarize, rclass
-syntax [varlist (default=none)] [if] [in], ///
+syntax [varlist (default=none fv)] [if] [in], ///
 	[STATistics(string)] /// mean mean/sd?
-	[label] ///
-	[SAVE(string asis)]
+	[label]
 
 	quietly {
 		
@@ -1241,13 +1251,12 @@ syntax [varlist (default=none)] [if] [in], ///
 		replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
 		// assign correct labels
 		local _treatname = e(tvar) // for renaming tempvar upon save
-		local _vallbl : value label `_treatname'
-		if ("`_vallbl'" != "") {
-			label list `_vallbl'
+		local _treatvallbl : value label `_treatname'
+		if ("`_treatvallbl'" != "") {
 			levelsof `_treatname', local(_bylvls)
 			levelsof `_treatname' if `treat' == 1, local(_reflvl)
 			foreach _lvl in `_bylvls' {
-				local _lbl : label `_vallbl' `_lvl'
+				local _lbl : label `_treatvallbl' `_lvl'
 				if (`_lvl' == `_reflvl') lab def _bylbl 1 "`_lbl'", modify
 					else lab def _bylbl 0 "`_lbl'", modify
 			}
@@ -1265,10 +1274,8 @@ syntax [varlist (default=none)] [if] [in], ///
 			local _weightexp "[`e(wtype)' = `e(wexp)']"
 			if ("`e(wtype)'" == "pweight") local _weightexp = usubinstr("`_weightexp'", "pweight", "aweight", .)
 		}
-		
-		// vars to tab; defaults to matching set
-		if ("`varlist'" == "") local varlist "`_depvar' `e(matchset)'"
-		if ("`statistics'" == "") local statistics "mean sd"
+    // matching type
+    local _kmatch = e(kmatch_subcmd)
 
 		//
 		// Create table as matrix
@@ -1278,74 +1285,163 @@ syntax [varlist (default=none)] [if] [in], ///
 		 Here we only need to capture missing obs for the unmatched among A and B.
 
 		 Table labels come from matrix equation and col/row names.
+
+     Approach is var x comparison, and the rows are stacked. Rather inelegant, but most flexible
+     to accomodate that factors always need a mean estimation and need to be split into levels,
+     which just have a single output per level: the share.
+
 		*/
 
-		// A_matched
-		tabstat `varlist' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
-			, stat(`statistics') save
-		mat A_matched = r(StatTotal)
-		nopo_stacktbl A_matched, `label'
-		mat A_matched = r(A_matched)
+    // statistics
+		if ("`statistics'" == "") local statistics = "mean sd"
 
-		// A_unmatched
-		cap tabstat `varlist' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
-			, stat(`statistics') save
-		if (_rc == 2000) {
-			local _umA = "mi"
-		}
-		else {
-			mat A_unmatched = r(StatTotal)
-			nopo_stacktbl A_unmatched, `label'
-			mat A_unmatched = r(A_unmatched)
-		}
+    // vars to tab; defaults to matching set
+		if ("`varlist'" == "") local varlist "`_depvar' `e(matchset)'"
 
-		// A_matched_weighted or B_matched_weighted
-		if (`_bref' == 0) {
-			// A: b ref group for which treat == 0
-			tabstat `varlist' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
-				, stat(`statistics') save
-			local _matweighted = "A_matched_weighted"
-		}
-		else if (`_bref' == 1) {
-			// B: b ref group for which treat == 1
-			tabstat `varlist' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
-				, stat(`statistics') save
-			local _matweighted = "B_matched_weighted"
-		}
-		mat `_matweighted' = r(StatTotal)
-		nopo_stacktbl `_matweighted', `label'
-		mat `_matweighted' = r(`_matweighted')
+    // loop over variables and samples; table is built row by row
+    local _i = 0
+    foreach _var in `varlist' {
+      local ++_i
 
-		// B_matched
-		tabstat `varlist' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
-			, stat(`statistics') save
-		mat B_matched = r(StatTotal)
-		nopo_stacktbl B_matched, `label'
-		mat B_matched = r(B_matched)
+      // which vars to tabstat
+      local _tabstatvars = ""
 
-		// B_unmatched
-		cap tabstat `varlist' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
-			, stat(`statistics') save
-		if (_rc == 2000) {
-			local _umB = "mi"
-		}
-		else {
-			mat B_unmatched = r(StatTotal)
-			nopo_stacktbl B_unmatched, `label'
-			mat B_unmatched = r(B_unmatched)
-		}
+      // rownames
+      local _rownames = ""
+      
+      // factor variable processing
+      if ("`_var'" != "`_depvar'" & (ustrregexm("`_var'", "^i.*\.") == 1 | "`_kmatch'" == "em")) {
+        
+        // set factor indicator
+        local _factor = 1
 
-		// combine
-		if ("`_umA'" != "mi") mat _M = A_unmatched, A_matched, `_matweighted', B_matched
-			else mat _M = A_matched, `_matweighted', B_matched
-		if ("`_umB'" != "mi") mat _M = _M, B_unmatched
+        // set statistics
+        local _statistics = "mean"
+
+        // expand factors
+        local _var = ustrregexra("`_var'", "^i.*\.", "")
+        levelsof `_var', local(_varlvls)
+        local _j = 0
+        foreach _lvl in `_varlvls' {
+           local ++_j
+          // gen one variable by factor lvl; gather in local
+          gen _noposum_`_j' = `_var' == `_lvl' if !mi(`_var')
+          local _tabstatvars = "`_tabstatvars' _noposum_`_j'"
+          // gather rownames from value labels
+          if ("`label'" != "") {
+            local _lbl = ""
+            local _vallbl : value label `_var'
+		        if ("`_vallbl'" != "") local _lbl : label `_var' `_lvl'
+            if ("`_lbl'" != "") local _rownames = `" `_rownames' "`_lbl'" "' 
+              else local _rownames = `" `_rownames' "`_j'" "' // numval as fallback  
+          }
+          else {
+            local _rownames = `" `_rownames' "`_j'" "' // numval as fallback  
+          }
+        }
+      }
+      else {
+        local _factor = 0
+        local _statistics = "`statistics'"
+        local _tabstatvars = "`_var'"
+        foreach _stat in `_statistics' {
+          if (!inlist("`_stat'", "sd", "SD")) local _statlbl = strproper("`_stat'")
+            else local _statlbl "SD"
+          local _rownames = `" `_rownames' "`_statlbl'" "'
+        }
+      }
+
+      // get var label if present
+      local _varlbl = ""
+      if ("`label'" != "") local _varlbl : variable label `_var'
+      if ("`_varlbl'" == "") local _varlbl = "`_var'"
+
+      // build rownames as equations -> varname:star or varname:lvl
+      local _rownameseq = ""
+      foreach _rowname in `_rownames' {
+        local _rownameseq = `" `_rownameseq' "`_varlbl':`_rowname'" "'
+      }
+      local _rownames = `"`_rownameseq'"'
+
+
+      //
+      // estimate mean for each sample and concatenate
+      //
+      
+      // gather colnames
+      local _colnames = ""
+
+      // A_matched
+      tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
+        , stat(`_statistics') save
+      mat _S = r(StatTotal)
+      if (`_factor' == 1) mat _S = _S' * 100
+      mat _V = _S
+      local _colnames = `" `_colnames' "A_matched" "'
+
+      // A_matched_weighted or B_matched_weighted
+      if (`_bref' == 0) {
+        // A: b ref group for which treat == 0
+        tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
+          , stat(`_statistics') save
+        local _colnames = `" `_colnames' "A_matched_weighted" "'
+      }
+      else if (`_bref' == 1) {
+        // B: b ref group for which treat == 1
+        tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
+          , stat(`_statistics') save
+        local _colnames = `" `_colnames' "B_matched_weighted" "'
+      }
+      mat _S = r(StatTotal)
+      if (`_factor' == 1) mat _S = _S' * 100
+      mat _V = _V, _S
+
+      // B_matched
+      tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
+        , stat(`_statistics') save
+      mat _S = r(StatTotal)
+      if (`_factor' == 1) mat _S = _S' * 100
+      mat _V = _V, _S
+      local _colnames = `" `_colnames' "B_matched" "'
+
+      // A_unmatched
+      if (`e(mshareuwA)' < 100) {
+        tabstat `_tabstatvars' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
+          , stat(`_statistics') save
+        mat _S = r(StatTotal)
+        if (`_factor' == 1) mat _S = _S' * 100
+        mat _V = _S, _V
+        local _colnames = `" "A_unmatched" `_colnames' "'
+      }
+
+      // B_unmatched
+      if (`e(mshareuwB)' < 100) {
+        tabstat `_tabstatvars' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
+          , stat(`_statistics') save
+        mat _S = r(StatTotal)
+        if (`_factor' == 1) mat _S = _S' * 100
+        mat _V = _V, _S
+        local _colnames = `" `_colnames' "B_unmatched" "'
+      }
+
+      // assign row names
+      mat rownames _V = `_rownames'
+
+      // concatenate
+      if (`_i' == 1) mat _M = _V 
+        else mat _M = _M \ _V
+
+      // drop generated variables
+      if (`_factor' == 1) drop _noposum_*
+
+    }
 
 		// label (always provide headings via equations)
-		local _colnames : colnames _M, quoted
+		//local _colnames : colnames _M, quoted
 		local _colnames = usubinstr(`"`_colnames'"', "A_", "A:", .)
 		local _colnames = usubinstr(`"`_colnames'"', "B_", "B:", .)
 		if ("`label'" != "") {
-			if ("`_vallbl'" != "") {
+			if ("`_treatvallbl'" != "") {
 				local _Albl : label _bylbl 0
 				local _colnames = usubinstr(`"`_colnames'"', "A:", "`_Albl':", .)
 				local _Blbl : label _bylbl 1
@@ -1354,6 +1450,7 @@ syntax [varlist (default=none)] [if] [in], ///
 			local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
 		}
 		mat colnames _M = `_colnames'
+    noisily dis `" `_colnames' "'
 
 		// determine column format by no. of columns
 		if (colsof(_M) == 3) {
@@ -1370,49 +1467,9 @@ syntax [varlist (default=none)] [if] [in], ///
 		}
 		// list and return
 		noisily matlist _M, lines(columns) showcoleq(combined) twidth(`_twidth') format(`_format')
-		return mat npsum = _M
+    noisily dis "Note: For factors, the shares of factor levels are printed as %."
+		return mat table = _M
 
 	}
 
-end
-
-// stack tabstat results for multiple statistics into a single column
-cap program drop nopo_stacktbl
-program define nopo_stacktbl, rclass
-syntax namelist (max=1), ///
-	[label]
-
-	mat _IN = `namelist'
-	local _nrows : rowsof(_IN)
-	local _rownames : rownames _IN
-	local _ncols : colsof(_IN)
-	local _colnames : colnames _IN
-	mat _OUT = J(`_nrows' * `_ncols', 1, .)
-    
-	local _cidx = 0
-	foreach _colname in `_colnames' {
-        local ++_cidx
-        local _ridx = 0
-        foreach _rowname in `_rownames' {
-			local ++_ridx
-			// gather later row names
-			if ("`label'" == "") {
-				local _stackednames = `"`_stackednames' "`_colname':`_rowname'""'
-			}
-			else {
-				local _lbl : variable label `_colname'
-				if ("`_lbl'" == "") local _lbl = "`_colname'"
-				local _stackednames = `"`_stackednames' "`_lbl':`_rowname'""'
-			}
-			// replace values in placeholder matrix
-			local _nidx = `_nrows' * (`_cidx' - 1) + `_ridx'
-			mat _OUT[`_nidx', 1] = _IN[`_ridx', `_cidx']
-		}
-	}
-	mat rownames _OUT = `_stackednames'
-	mat colnames _OUT = `namelist'
-    
-	// return
-	return mat `namelist' = _OUT
-	
 end
