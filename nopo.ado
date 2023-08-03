@@ -588,12 +588,12 @@ program define nopo_decomp, eclass
     di as text _col(42) "(unique combinations of matching set)"
   }
   else if ("`_kmatch_subcmd'" == "ps") {
-    di as text "Propensity-score matching:" _col(42) "`_param'" _col(68) "= " _col(71) %05.3g `_paramval'
+    di as text "Propensity-score matching:" _col(42) "`_param'" _col(68) "= " _col(71) %08.3g `_paramval'
   }
   else if ("`_kmatch_subcmd'" == "md") {
-    di as text "Multivariate-distance matching:" _col(42) "`_param'" _col(68) "= " _col(71) %05.3g `_paramval'
+    di as text "Multivariate-distance matching:" _col(42) "`_param'" _col(68) "= " _col(71) %08.3g `_paramval'
   }
-  if ("`_ridge'" != "") di as text _col(42) "Ridge parameter:" _col(68) "= " _col(71) %05.3g `_ridge'
+  if ("`_ridge'" != "") di as text _col(42) "Ridge parameter:" _col(68) "= " _col(71) %08.3g `_ridge'
   dis ""
   di as text "{hline 29}{c TT}{hline 48}"
   di as text _col(30) "{c |}" /*
