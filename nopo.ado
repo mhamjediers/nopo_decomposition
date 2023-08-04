@@ -1463,9 +1463,11 @@ syntax [varlist (default=none fv)] [if] [in], ///
       if (`_i' == 1) mat _M = _V 
         else mat _M = _M \ _V
 
-      // drop generated variables
-      if (`_factor' == 1) drop _noposum_*
-
+      // drop generated variables; gen general indicator that factors have been used
+      if (`_factor' == 1) {
+        drop _noposum_*
+        local `_factor_present' = 1
+      }
     }
 
     // label (always provide headings via equations)
@@ -1498,7 +1500,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
     }
     // list and return
     noisily matlist _M, lines(columns) showcoleq(combined) twidth(`_twidth') format(`_format')
-    noisily dis "Note: For factors, the shares of factor levels are printed as %."
+    if (`_factor_present' == 1) noisily dis "Note: Shares of factor levels are printed as %."
     return mat table = _M
 
   }
