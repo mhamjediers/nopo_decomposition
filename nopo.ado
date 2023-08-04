@@ -1466,7 +1466,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       // drop generated variables; gen general indicator that factors have been used
       if (`_factor' == 1) {
         drop _noposum_*
-        local `_factor_present' = 1
+        local _factor_present = 1
       }
     }
 
