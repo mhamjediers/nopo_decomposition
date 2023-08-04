@@ -1482,7 +1482,6 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
     }
     mat colnames _M = `_colnames'
-    noisily dis `" `_colnames' "'
 
     // determine column format by no. of columns
     if (colsof(_M) == 3) {
