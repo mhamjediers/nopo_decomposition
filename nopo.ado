@@ -699,7 +699,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
     local _mweight = e(mweight)
     // weights
     if ("`e(wtype)'" != "") {
-      local _weightexp "[`e(wtype)' = `e(wexp)']"
+      local _weightexp "[`e(wtype)'`e(wexp)']"
     }
     else {
       tempvar w1
@@ -1042,7 +1042,7 @@ syntax varname [if] [in], ///
     
     // weights
     if ("`e(wtype)'" != "") {
-      local _weightexp "[`e(wtype)' = `e(wexp)']"
+      local _weightexp "[`e(wtype)'`e(wexp)']"
       if ("`e(wtype)'" == "pweight") local _sum_weightexp = usubinstr("`_weightexp'", "pweight", "aweight", .)
         else local _sum_weightexp = `_weightexp'
     }
@@ -1303,7 +1303,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
     local _mweight = e(mweight)
     // weights
     if ("`e(wtype)'" != "") {
-      local _weightexp "[`e(wtype)' = `e(wexp)']"
+      local _weightexp "[`e(wtype)'`e(wexp)']"
       if ("`e(wtype)'" == "pweight") local _weightexp = usubinstr("`_weightexp'", "pweight", "aweight", .)
     }
     // matching type
@@ -1404,7 +1404,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _colnames = ""
 
       // A_matched
-      tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 `_weightexp' & `touse' ///
+      tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 & `touse' `_weightexp' ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S' * 100
@@ -1429,7 +1429,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       mat _V = _V, _S
 
       // B_matched
-      tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 `_weightexp' & `touse' ///
+      tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 & `touse' `_weightexp' ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S' * 100
@@ -1448,7 +1448,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
 
       // B_unmatched
       if (`e(mshareuwB)' < 100) {
-        tabstat `_tabstatvars' if `treat' == 1 & `_support' == 0 `_weightexp' & `touse' ///
+        tabstat `_tabstatvars' if `treat' == 1 & `_support' == 0 & `touse' `_weightexp' ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
         if (`_factor' == 1) mat _S = _S' * 100
