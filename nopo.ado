@@ -16,7 +16,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
     /// post
-    att atc /// allow for these optiosn to keep terminology consistent
+    att atc /// allow for these options to keep terminology consistent
     * ///
   ]
 
@@ -104,6 +104,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
         if (`_tval' == `_bref') local _te = "att"
           else local _te = "atc"
+      }
+      else if ("`atc'" != "" & "`att'" != "") {
+        dis as error "Specify either 'att' or 'atc' as options, not both (or use bref())"
+        error 198
+        exit
+      }
+      else {
+        local _te `atc' `att' // only one of both possible; set
       }
       local att // unset (in case it was passed)
       local atc // unset (in case it was passed)
