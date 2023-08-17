@@ -7,8 +7,8 @@ program define nopo, eclass properties(svyb)
 syntax [anything] [if] [in] [fweight pweight iweight] , ///
   [ 	/// standalone onlys
     by(varlist max=1) /// matching groups
+    xref(string) /// set coefficient reference group like group == 0
     swap /// swap groups and reference vector
-    bref(string) /// set coefficient reference group like group == 0
     NORMalize /// normalize by dividing by reference group mean
     KMatch(string) /// kmatch subcmd: md ps em
     KMOpts(string asis) /// pass on kmatch options
@@ -87,26 +87,27 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       - treatment indicator 0/1
         - group A = treat == 0
         - group B = treat == 1
-        - ref is B
+        - xref is B
       - option swap:
         - group B = treat == 0
         - group A = treat == 1
-        - ref is A
-      - manually specify reference group for COEFFICIENTS bref(1)
+        - xref is A
+      - manually specify reference group for target CHARACTERISTICS of weighting: xref(treat == 1)
+        
       */
       // treatment value = group order
       if ("`swap'" == "") local _tval : word 2 of `_bylvls'
         else local _tval : word 1 of `_bylvls'
-      // att/atc logic depending on beta reference vector
-      if ("`bref'" != "") {
+      // att/atc logic depending on x reference vector
+      if ("`xref'" != "") {
         // get numeric value
-        local _bref = stritrim("`bref'")
-        local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
-        if (`_tval' == `_bref') local _te = "att"
+        local _xref = stritrim("`xref'")
+        local _xref = ustrregexra("`_xref'", "^\w+[\s]?[=]+\s", "")
+        if (`_tval' == `_xref') local _te = "att"
           else local _te = "atc"
       }
       else if ("`atc'" != "" & "`att'" != "") {
-        dis as error "Specify either 'att' or 'atc' as options, not both (or use bref())"
+        dis as error "Specify either 'att' or 'atc' as options, not both (or use xref())"
         error 198
         exit
       }
@@ -365,13 +366,13 @@ program define nopo_decomp, eclass
       exit
     }
     
-    // determine A, B, and bref
+    // determine A, B, and xref
     levelsof `_tvar', local(_tvarlvls)
     local _cval = strrtrim(strltrim(usubinstr("`_tvarlvls'", "`_tval'", "", .)))
     local _groupA = "`_tvar' == `_cval'"
     local _groupB = "`_tvar' == `_tval'"
-    if ("`atc'" != "") local bref = "`_groupA'"
-      else if ("`att'" != "") local bref = "`_groupB'"
+    if ("`atc'" != "") local xref = "`_groupA'"
+      else if ("`att'" != "") local xref = "`_groupB'"
     
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
@@ -512,7 +513,7 @@ program define nopo_decomp, eclass
     ereturn local cval = "`_cval'"
     ereturn local groupA = "`_groupA'"
     ereturn local groupB = "`_groupB'"
-    ereturn local bref = "`bref'"
+    ereturn local xref = "`xref'"
     ereturn local matchset = strltrim("`_matchset'")
     // nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
     // empty locals are not returned by Stata by default
@@ -569,7 +570,7 @@ program define nopo_decomp, eclass
   }
 
   // display general info
-  if ("`_groupA'" == "`bref'") local _refA "(ref)"
+  if ("`_groupA'" == "`xref'") local _refA "(ref)"
     else local _refB "(ref)"
   if ("`_nn'" != "") {
     local _param "NN requested:"
@@ -698,9 +699,9 @@ syntax [if] [in], /// might produce strange results if if/in are used
     tempvar treat
     gen `treat' = 1 if `e(tvar)' == `e(tval)'
     replace `treat' = 0 if `treat' != 1 & !mi(`e(tvar)')
-    // b reference
-    if ("`e(teffect)'" == "ATC") local _bref = 1
-      else local _bref = 0
+    // x reference
+    if ("`e(teffect)'" == "ATT") local _xref = 1
+      else local _xref = 0
     // support
     local _support = e(matched)
     // matching weights
@@ -729,7 +730,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
     // DX (requires passing of matching weight)
     tempfile dx
     noisily nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
-      , by(`treat') bref(`_bref') comp(dx) mweight(`_mweight') `opts' save(`dx')
+      , by(`treat') xref(`_xref') comp(dx) mweight(`_mweight') `opts' save(`dx')
     // DA
     tempfile da
     noisily nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
@@ -761,7 +762,7 @@ syntax [if] [in], /// might produce strange results if if/in are used
       mat colnames _M = `colnames'
       noisily dis "Component distribution across `nquantiles' quantiles of `_depvar' requested"
       noisily matlist _M, border(all) showcoleq(combined) ///
-        rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g & %18.0g & %21.0g &)
+        rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g | %19.0g & %18.0g &)
       noisily dis "Note:"
       noisily dis "- The component sum across quantiles should correspond to the estimates with"
       noisily dis "  well populated quantiles."
@@ -835,7 +836,7 @@ cap program drop nopo_gapdist
 program define nopo_gapdist
 syntax varname [if] [fweight pweight iweight], ///
   by(varlist max=1) ///
-  [bref(integer 1)] ///
+  [xref(integer 1)] ///
   [mweight(varlist max=1)] ///
   [comp(string)] /// gap components, used as filter
   [NQuantiles(integer 100)] ///
@@ -853,10 +854,10 @@ quietly {
 
     // dx: for by-logic, we just expand the data for `treat' == 0 and assign `treat' == 1
     if ("`comp'" == "dx") {
-      keep if `by' == `bref'
+      keep if `by' != `xref' & !mi(`by')
       cap drop _expanded
       expand 2, gen(_expanded)
-      replace `by' = abs(1 - `bref') if _expanded == 1
+      replace `by' = `xref' if _expanded == 1
       replace `weightvar' = `mweight' if _expanded == 1 // replace weight with matching weight
     }
     
@@ -1017,7 +1018,7 @@ syntax varname [if] [in], ///
     replace `treat' = 0 if `_treatname' == `_cval'
     local _treatlbl : variable label `_treatname'
     if ("`treatlbl'" != "") lab var `treat' `_treatlbl'
-    // label for plot putput; revert to original bylabel when saved
+    // label for plot output; revert to original bylabel when saved
     local _treatvallbl : value label `_treatname'
     if ("`_treatvallbl'" != "") {
       label list `_treatvallbl'
@@ -1302,9 +1303,9 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       lab val `treat' _bylbl
     }
-    // reference group
-    if ("`e(teffect)'" == "ATC") local _bref = 1
-      else local _bref = 0
+    // x reference group
+    if ("`e(teffect)'" == "ATT") local _xref = 1
+      else local _xref = 0
     // support
     local _support = e(matched)
     // matching weights
@@ -1420,14 +1421,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _colnames = `" `_colnames' "A_matched" "'
 
       // A_matched_weighted or B_matched_weighted
-      if (`_bref' == 0) {
-        // A: b ref group for which treat == 0
+      if (`_xref' == 1) {
+        // A -> A^B
         tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
           , stat(`_statistics') save
         local _colnames = `" `_colnames' "A_matched_weighted" "'
       }
-      else if (`_bref' == 1) {
-        // B: b ref group for which treat == 1
+      else if (`_xref' == 0) {
+        // B -> B^A
         tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
           , stat(`_statistics') save
         local _colnames = `" `_colnames' "B_matched_weighted" "'
@@ -1512,5 +1513,28 @@ syntax [varlist (default=none fv)] [if] [in], ///
     return mat table = _M
 
   }
+
+end
+
+
+// examples
+cap program drop nopo_ex
+program define nopo_ex
+args ex
+
+if ("`ex'" == "1") {
+  
+  // use cattaneo data
+  webuse cattaneo2, clear
+
+  // categorize and label
+  foreach v in mage fage {
+    recode `v' (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-") ///
+      , gen(`v'_c)
+  }
+  lab var mage_c "Mother's age"
+  lab var fage_c "Father's age"
+
+}
 
 end

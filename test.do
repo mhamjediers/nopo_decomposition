@@ -62,7 +62,16 @@ lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
 // nopomatch comparison
-//nopomatch age edu, outcome(wage) by(groups) replace abs sd
+nopomatch age edu, outcome(wage) by(groups) replace abs sd
+kmatch em groups age edu (wage), atc att po generate wgenerate replace
+nopo decomp wage i.age i.edu, by(groups) att
+nopo gapoverdist
+nopo decomp wage i.age i.edu, by(groups) atc
+nopo gapoverdist
+stop
+nopo summarize
+ereturn list
+stop
 
 //
 // nopo summarize implementation with factors and labels
