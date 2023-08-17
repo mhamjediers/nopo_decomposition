@@ -22,7 +22,7 @@ In the Potential-Outcome-Framework:
   - For $PO_{t=1}^{T=1} = B_m$ to be untreated, we assume it to have $B$ characteristics but $A$ returns ($\rightarrow A^B$)
 - ATC:
   - $ATC = PO_{t=1}^{T=0} - PO_{t=0}^{T=0} = D_0$
-  - For $PO_{t=0}^{T=0} = A_m$ to be untreated, we assume it to have $A$ characteristics but $B$ returns ($\rightarrow B^A$)
+  - For $PO_{t=0}^{T=0} = A_m$ to be treated, we assume it to have $A$ characteristics but $B$ returns ($\rightarrow B^A$)
 
 
 > $D_0$ is the part of $D$ which would remain if $A$ and $B$ had the characteristics of the group specified in `xref()`, which can either be $A$ or $B$ (only one group has to be reweighted so that it's characteristics correspond to the respective other group).
