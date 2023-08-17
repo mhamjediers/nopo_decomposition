@@ -1,5 +1,3 @@
-Make clear what ATT ATC means in this matching setting (and analogous to kmatch).
-
 Setup:
 
 - Treatment $T = [0;1]$
@@ -27,4 +25,4 @@ In the Potential-Outcome-Framework:
   - For $PO_{t=0}^{T=0} = A_m$ to be untreated, we assume it to have $A$ characteristics but $B$ returns ($\rightarrow B^A$)
 
 
-> $D_0$ is the part of $D$ which would remain if $A$ and $B$ had the characteristics of the group specified in `xref()`, which can either be $A$ or $B$ (to be sure, that means that only one group has to be reweighted to that it's characteristics correspond to the respective other group).
+> $D_0$ is the part of $D$ which would remain if $A$ and $B$ had the characteristics of the group specified in `xref()`, which can either be $A$ or $B$ (only one group has to be reweighted so that it's characteristics correspond to the respective other group).
