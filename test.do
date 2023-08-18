@@ -61,16 +61,26 @@ lab var edu "Education"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
+// IA
+egen grp = group(age edu)
+tab grp, gen(grp_)
+
 // nopomatch comparison
 nopomatch age edu, outcome(wage) by(groups) replace abs sd
-kmatch em groups age edu (wage), atc att po generate wgenerate replace
+eststo nm
+// according to lit, w(1) would be standard given that for oaxaca D = A - B (gaps expressed positively)
+oaxaca wage grp_* if _supp == 2, by(groups) w(1) nodetail relax // weight: groups == 1
+eststo o_d_w0
+oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
+eststo o_d_w1
+oaxaca wage grp_* if _supp == 2, by(groups) swap w(1) nodetail relax // weight: groups == 1
+eststo o_swap_w0
+oaxaca wage grp_* if _supp == 2, by(groups) swap w(0) nodetail relax // weight: groups == 1
+eststo o_swap_w1
+oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
+kmatch em groups age edu (wage), nate ate atc att po generate wgenerate replace
 nopo decomp wage i.age i.edu, by(groups) att
-nopo gapoverdist
 nopo decomp wage i.age i.edu, by(groups) atc
-nopo gapoverdist
-stop
-nopo summarize
-ereturn list
 stop
 
 //
