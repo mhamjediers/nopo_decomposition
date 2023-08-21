@@ -24,7 +24,7 @@ D &=& D_0  &+& D_X &+& D_A + D_B \\
 ```
 
 $D_X$ is the average gap between the matched units of re-weighted group $A^B$ and the matched units of group $A$, which is explained by the fact that groups $A$ and $B$ are differently distributed across matched strata (some sets of characteristics being more likely in one group than the other). 
-By contrast, $D_0$ is the average gap between matched units of group $B$ and the re-weighted group $A^B$. Since $B$ and $A^B$ are equally distributed across matched strata, $D_0$ captures how much of the raw gap remains unexplained by differences in the considered characteristics. $D_0$ and $D_X$ are analogous to the components of a twofold KBO decomposition, but they only pertain to matched units. When compositional differences between groups limit common support, the effect that unmatched individuals in both groups have on the outcome gap is captured by the components $D_A$ and $D_B$:
+By contrast, $D_0$ is the average gap between matched units of group $B$ and the re-weighted group $A^B$. Since $B$ and $A^B$ are equally distributed across matched strata, $D_0$ captures how much of the raw gap remains unexplained by differences in the considered characteristics. $D_0$ and $D_X$ are analogous to the components of a twofold (Kitagawa-)Blinder-Oaxaca decomposition, but they only pertain to matched units. When compositional differences between groups limit common support, the effect that unmatched individuals in both groups have on $D$ is captured by the components $D_A$ and $D_B$:
 
 ```math
 \begin{equation}
