@@ -15,7 +15,7 @@ into an “explained” component that is based on differences between groups in
 The overall gap can then be additively decomposed into four parts:
 
 $$\begin{array}{rcccccc}
-D &=& D_0  &+& \rlap{$\overbrace{\phantom{\qquad D_X + \quad D_A + D_B}}^{\text{compositional difference}}$} D_X &+&  D_A +D_B \\[5pt]
+D &=& D_0  &+& \rlap{$\overbrace{\phantom{\qquad D_X + \quad D_A + D_B}}^{\text{compositional difference}}$} D_X &+&  D_A +D_B \\
 &=& \overbrace{\overline{Y}_{B,m} - \rlap{$\underbrace{\phantom{\overline{Y}_{A^B,m} + \quad \overline{Y}_{A^B,m}}}_{\mathclap{\substack{\text{splitting difference} \\ \text{among matched by} \\ \text{reweighted group A}}}}$} \overline{Y}_{A^B,m}} &+& \overbrace{\overline{Y}_{A^B,m} - \overline{Y}_{A,m}} &+& \underbrace{D_A + D_B}_{\mathclap{\substack{\text{out of} \\ \text{support}}}}
 \end{array}$$
 
@@ -39,7 +39,7 @@ $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $
 
 $ATT$ and $ATC$ are given by
 
-- $ATT = D_0 = \overline{Y}_{B,m} - \overline{Y}_{A^B,m}$
+- $ATT = D_0 = \overline{Y}_{B} - \overline{Y}_{A^B}$
 - $ATC = D_0 = \overline{Y}_{B^A,m} - \overline{Y}_{A,m} \quad .$
 
 In both cases, $D_0$ is due to differences returns, which remain after _matching and weighting:_
