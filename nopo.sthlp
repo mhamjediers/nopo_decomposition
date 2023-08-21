@@ -38,7 +38,7 @@
 {synopt :{cmdab:xref(}{help varname:{it:varname}}{it: == int}{cmdab:)}}Set matching reference group in terms of characteristics among {cmdab:by(}{help varname:{it:varname}}{cmdab:)}{p_end}{...}
 {synopt :{cmdab:swap}}Swap groups {it:and} xreference{p_end}{...}
 {synopt :{cmdab:norm:alize}}Normalize estimates by mean outcome of reference group{p_end}{...}
-{synopt :{cmdab:km:atch(}em|md|ps{cmdab:)}}Choose between exact (em, default), multivariate-distance (md), and propensity score (ps) matching {p_end}{...}
+{synopt :{cmdab:km:atch(}em|md|ps{cmdab:)}}Choose between exact (em, default), multivariate-distance (md), and propensity score (ps) matching{p_end}{...}
 {synopt :{cmdab:kmo:pts(}{it:string}{cmdab:)}}Options for internal {help kmatch:{it:kmatch}} call{p_end}{...}
 {synopt :{cmdab:kmnois:ily}}Show output of internal kmatch call{p_end}{...}
 
@@ -67,12 +67,23 @@
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}    
-For methodological details, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":documentation on github} [...].
+For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":documentation on github} [...].
 
-{pstd}
-{ul:Matching approaches:} {c N~}opo's original proposition used exact matching but extends to other matching approaches, two of which are additionally implemented in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
+{pstd}{ul:Matching approaches:} 
 
-{pstd}{ul:Standard errors:} Currently, the standard errors [...]. Use bootstrapping to obtain empirical standard errors.
+{pstd}{c N~}opo's original proposition used exact matching but extends to other matching approaches, two of which are additionally implemented in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
+
+{pstd}{ul:Standard errors:} 
+
+{pstd}Currently, the standard errors [...]. Use bootstrapping to obtain empirical standard errors.
+
+{pstd}{ul:Generated variables:}
+
+{p2colset 5 20 24 4}{...}
+{p2col:{bf:_nopo_matched}} Matching indicator (dummy){p_end}
+{p2col:{bf:_nopo_mweight}} Matching weight{p_end}
+{p2col:{bf:_nopo_strata}} Matching stratum ({it:em} only){p_end}
+{p2col:{bf:_nopo_ps}} Matching propensity score ({it:ps} only){p_end}
 
 {marker opts}{...}
 {title:Options}
@@ -80,35 +91,51 @@ For methodological details, please consult the {browse "https://github.com/mhamj
 {dlgtab:Standalone}
 
 {phang}
-{cmdab:by(}{help varname:{it:varname}}{cmdab:)} specifies the groups between which we estimate and decompose the gap in {depvar:} (required). Needs to be numeric with two levels. 
-
-        By default, the second {cmd:by} group is group {it:B} and the reference group (see {help nopo##desc:Description}). Use {cmd:xref()} or {cmd:swap} to change. 
-
-{phang}
-{cmdab:xref(}{it:string}{cmdab:)} ...
+{cmdab:by(}{help varname:{it:varname}}{cmdab:)} specifies the groups between which we estimate and 
+decompose the gap in {depvar:} (required). Needs to be numeric with two levels. By default, the 
+second {cmd:by} group is group {it:B} and the reference group (see {help nopo##desc:Description}). 
+Use {cmd:xref()} or {cmd:swap} to change. 
 
 {phang}
-{cmdab:swap} ...
+{cmdab:xref(}{it:string}{cmdab:)} ... [needs decision on how to describe the ref cat.]
 
 {phang}
-{cmdab:norm:alize} ...
+{cmdab:swap} ... [needs decision on how to describe the ref cat.]
 
 {phang}
-{cmdab:km:atch(}em|md|ps{cmdab:)} ...
+{cmdab:norm:alize} ... [needs decision on how to describe the ref cat.]
 
 {phang}
-{cmdab:kmo:pts(}string{cmdab:)} These options are passed on to {help kmatch:{it:kmatch}} when called internally. See {help kmatch##goptions:{it:general_options}}, {help kmatch##matchoptions:{it:matching_options}} and the matching-type specific options {help kmatch##emoptions:{it:em_options}}, {help kmatch##mdoptions:{it:md_options}}, or {help kmatch##psoptions:{it:ps_options}}.
+{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the matching approach. The default is to use 
+{it:exact matching} {cmd:kmatch(em)}, in which case all variables in {varlist} are treated as 
+factors. For multivariate-distance {cmd:kmatch(md)} and propensity score {cmd:kmatch(ps)} 
+matching, make sure to indicate via factor notation which variables are factors and which are
+continuous (everything is passed through to the internal kmatch call as is). To further tweak the
+matching, you can use {cmd:kmopts()} or, for maximum flexibility, call {cmd:nopo decomp} after a
+manual {cmd:kmatch} call with all the necessary options.
 
 {phang}
-{cmdab:kmnois:ily} ...
+{cmdab:kmo:pts(}string{cmdab:)} are options passed on to {help kmatch:{it:kmatch}} when 
+called internally. See {help kmatch##goptions:{it:general_options}}, 
+{help kmatch##matchoptions:{it:matching_options}} and the matching-type specific options
+{help kmatch##emoptions:{it:em_options}}, 
+{help kmatch##mdoptions:{it:md_options}}, or {help kmatch##psoptions:{it:ps_options}}.
+
+{phang}
+{cmdab:kmnois:ily} Show output of internal kmatch call.
 
 {dlgtab:Both standalone and after manual kmatch}
 
 {phang}
-{cmdab:kmpass:thru(}string{cmdab:)} ... {help kmatch##eret:{it:kmatch returns}}
+{cmdab:kmpass:thru(}string{cmdab:)} lets you pass through further 
+{help kmatch##eret:{it:kmatch returns}} to the returns of {cmd:nopo decomp}. For example: 
+{cmd:kmpassthru(df_r metric{cmd:}.
 
 {phang}
-{cmdab:kmkeep:gen} ...
+{cmdab:kmkeep:gen} keeps the matching and weight variables generated by
+{help kmatch##gen:{it:generated by kmatch}}, which are dropped by default. In the standalone call,
+these variables are prefixed by {bf:_KM}). Note that some of the kmatch variables contain 
+the same information as the variables returned by {cmd:nopo decomp} (prefixed by {bf:_nopo}).
 
 
 
@@ -118,33 +145,95 @@ For methodological details, please consult the {browse "https://github.com/mhamj
   
 {dlgtab:nopo summarize}
 
-   {cmd:nopo summarize} [{varlist}] [{cmd:,} label]
-   
-       Reports a descriptive table with means and standard devaitions by group-indicator and matching status.
-   
-       If no variables are specified, {depvar} and {varlist} from previous {cmd: nopo decomp} are summarized as the default.
-	   
-	   Option {it:label} display variable-labels instead of varible names.
+{p 4 4 2}
+{cmd:nopo summarize} [{varlist}] [{cmd:, label} {cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)}]
 
-       [...]
-      
+{p 6 6 2}
+Returns a descriptive table with selected statistics by group and matching/weighting status:
+{it:A unmatched}, {it:A matched}, {it:A/B matched and weighted} (depends on {cmd:xref()} if {it:A} 
+or {it:B}), {it:B matched}, and {it:B unmatched}. If no variables are specified, {depvar} and 
+{varlist} from {cmd: nopo decomp} are summarized. By default, means and standard deviations are
+reported. For factor variables, the shares of factor levels are reported in percent (indicate factors
+by  using factor notation in {varlist} of either {cmd: nopo summarize} or the prior {cmd:nopo decomp}).
+
+{p 6 8 2}
+{cmd:label} displays labels instead of names for variables and value labels instead of values for 
+factor variables.
+
+{p 6 8 2}
+{cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)} are {it:mean sd} by default, but 
+you can choose any other available {help tabstat##statname:{it:statnames}}.
+
+
 {dlgtab:nopo gapoverdist}
-   
-   {cmd:nopo gapoverdist} [{cmd:,} nquantiles(#) ... ]
 
-       Plotting decomposition-components over the distribution of {depvar}.
-	   
-	   {cmdab:nq:uantiles(}#{cmd:)} specifies the number of quantiles to be plotted. 
-	   
-	   [...]
+{p 4 4 2}
+{cmd:nopo gapoverdist} [{cmd:,} nquantiles(#) ... ]
+
+{p 6 6 2}
+Plotting decomposition-components over the distribution of {depvar}.
+
+{p 6 8 2}	   
+{cmdab:nq:uantiles(}#{cmd:)} specifies the number of quantiles to be plotted.
+
+[...]
+
+[...RETURNS]
 
 {dlgtab: nopo dadb}
 
-   {cmd:nopo dadb} {varname}  [{cmd:,} ... ]
-   
-       Plotting contribution of {varname} to components {it:D_A} and {it:D_B}.
-	   
-	   [...]
+{p 4 4 2}
+{cmd:nopo dadb} {varname} [{cmd:,} ... ]
+
+{p 6 6 2} 
+Creates a plot showing how the different levels of {varname} contribute to {it:DA} and {it:DB}
+because these levels are associated with either many unmatched units and/or large differences in 
+{depvar} by matching status within groups {it:A} and {it:B}. This {it:is not} the same as a 
+detailed decomposition in regression-based approaches (which is generally not possible with matching).
+
+{p 6 8 2}
+{cmd:NOSORT} do not sort by depvar
+
+{p 6 8 2}
+{cmdab:DESC:ending} /// sort descending (as opposed to ascending if nosort is not specified)
+
+{p 6 8 2}
+{cmdab:KEEPALL:levels} /// keep all levels of var (if cond. ignored)
+
+{p 6 8 2}
+{cmd:force} /// do not check for no. of levels in var
+
+{p 6 8 2}
+{cmd:nmin(}{it:real{{cmd:)} /// minimum number of unmatched weighted obs per cat. be printed; default is 1
+
+{p 6 8 2}
+{cmd:twopts(}{it:string}{cmd:)}
+
+{p 6 8 2}
+{cmd:twoptsbar(}{it:string}{cmd:)}
+
+{p 6 8 2}
+{cmd:twoptsscatter(}{it:string}{cmd:)}
+
+{p 6 8 2}
+{cmd:twoptsn(}{it:string}{cmd:)}
+
+{p 6 8 2}
+{cmd:twoptsby(}{it:string}{cmd:)}
+
+{p 6 8 2}
+{cmd:xsize(}{it:real{{cmd:)}
+
+{p 6 8 2}
+{cmd:ysize(}{it:real{{cmd:)}
+
+{p 6 8 2}
+{cmd:nodraw}
+
+{p 6 8 2}
+{cmd:save(}{it:string}{cmd:)}
+
+[...RETURNS]
 
 
 {marker examples}{...}

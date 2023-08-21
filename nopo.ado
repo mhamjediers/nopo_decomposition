@@ -525,8 +525,9 @@ program define nopo_decomp, eclass
     gen _nopo_mweight = `mweight'
     lab var _nopo_mweight "Matching weight"
     ereturn local mweight = "_nopo_mweight"
+    cap drop _nopo_strata
+    cap drop _nopo_ps
     if ("`_kmatch_subcmd'" == "em") {
-      cap drop _nopo_strata
       gen _nopo_strata = `_strata'
       lab var _nopo_strata "Matching stratum"
       ereturn local strata = "_nopo_strata"
@@ -534,7 +535,6 @@ program define nopo_decomp, eclass
       ereturn scalar nstrata_matched = _nmstrata
     }
     if ("`_kmatch_subcmd'" == "ps") {
-      cap drop _nopo_ps
       gen _nopo_ps = `_ps'
       lab var _nopo_ps "Matching propensity score"
       ereturn local ps = "_nopo_ps"
