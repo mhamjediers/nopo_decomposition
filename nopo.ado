@@ -659,14 +659,17 @@ produced by nopo. But that also means that:
 
 Does that sound sensible?
 
+{p 6 8 2}
+{cmdab:rawum:diff} plots the raw difference in {depvar} between matched and unmatched units of groups {it:A} and {it:B} per quantile. By default, this difference is scaled by the number of unmatched units relative to all units in each group and quantile (see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":documentation on github}). Thus, the raw differences do not sum to {it:DA} and {it:DB} across quantiles.
+
 */
 
 // gap over distribution plotting wrapper: 5 plots needed (one for each gap component)
 cap program drop nopo_gapoverdist
 program define nopo_gapoverdist, rclass
-syntax [if] [in], /// might produce strange results if if/in are used
+syntax [if] [in], /// if/in might produce misleading results; undocumented
   [NQuantiles(integer 100)] ///
-  [RAWUMdiff] ///
+  [RAWUMdiff] /// undocumented
   [twtype(string)] ///
   [twopts(string asis)] ///
   [twoptsd(string asis)] ///
@@ -960,14 +963,17 @@ end
 //
 /*
  Plot the contribution of each X level to DA/DB (weighted) and absolute difference in the outcome.
+
+ {p 6 8 2}
+ {cmdab:keepall:levels} /// keep all levels of var (if cond. ignored)
 */
 
 cap program drop nopo_dadb
 program define nopo_dadb, rclass
-syntax varname [if] [in], ///
+syntax varname [if] [in], /// if/in might produce misleading results; undocumented
   [NOSORT] /// do not sort by depvar
   [DESCending] /// sort descending (as opposed to ascending if nosort is not specified)
-  [KEEPALLlevels] /// keep all levels of var (if cond. ignored)
+  [KEEPALLlevels] /// keep all levels of var (if cond. ignored); undocumented
   [FORCE] /// do not check for no. of levels in var
   [nmin(real 1)] /// minimum number of unmatched weighted obs per cat. be printed
   [twopts(string asis)] ///
