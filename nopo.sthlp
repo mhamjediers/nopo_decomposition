@@ -39,7 +39,7 @@
 {synopt :{cmdab:xref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:characteristics}{p_end}{...}
 {synopt :{cmdab:bref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:returns}{p_end}{...}
 {synopt :{cmdab:swap}}Swap groups and reference{p_end}{...}
-{synopt :{cmdab:norm:alize}}Normalize estimates by mean outcome of reference group{p_end}{...}
+{synopt :{cmdab:norm:alize}}Normalize estimates by mean outcome of group {it:A}{p_end}{...}
 {synopt :{cmdab:km:atch(}em|md|ps{cmdab:)}}Choose between exact (em, default), multivariate-distance (md), and propensity score (ps) matching{p_end}{...}
 {synopt :{cmdab:kmo:pts(}{it:string}{cmdab:)}}Options for internal {help kmatch:{it:kmatch}} call{p_end}{...}
 {synopt :{cmdab:kmnois:ily}}Show output of internal kmatch call{p_end}{...}
