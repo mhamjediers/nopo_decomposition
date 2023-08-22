@@ -37,11 +37,12 @@ $D_A$ is the gap between the averages of the outcome $\overline{Y}$ for the unma
 
 ## Terminology: The relationship between $D_0$, $ATT$ and $ATC$
 
-$D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Control) from the treatment effects literature. Given the following setup
+$D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Controls) from the treatment effects literature. Given the following setup
 
 - Treatment $T[0;1]$
-- $Group A = T == 0$ (untreated; control)
-- $Group B = T == 1$ (treated) $\quad ,$
+- $Group A = T == 0$ (untreated/control)
+- $Group B = T == 1$ (treated)
+- $D = \overline{Y}_B - \overline{Y}_A \quad ,$
 
 $ATT$ and $ATC$ are given by
 - $`ATT = D_0 = \overline{Y}_{B,m} - \overline{Y}_{A^B,m}`$
@@ -61,6 +62,6 @@ In the Potential-Outcome-Framework:
   - $ATC = PO_{t=1}^{T=0} - PO_{t=0}^{T=0} = D_0$
   - For $PO_{t=0}^{T=0} = A_m$ to be treated, we assume it to have $A$ characteristics but $B$ returns ($\rightarrow B^A$)
 
-Thus, $D_0$ is the part of $D$ which would remain in the counterfactual setting of $A$ and $B$ having the characteristics of the group specified in option `xref()`, which can either be $A$ or $B$. Please note that the reference in terms of _returns to characteristics_ would always be the respective other group (in the (Kitagawa-)Blinder-Oaxaca parlance, this would be the coefficient-vector).
+Thus, $D_0$ is the part of $D$ which would remain in the counterfactual setting of $A$ and $B$ having the characteristics of the group specified in option `xref()`, which can either be $A$ or $B$. Please note that the reference in terms of _returns to characteristics_, `bref()`, would always be the respective other group (in the (Kitagawa-)Blinder-Oaxaca parlance, this would be the coefficient-vector).
 
 Ñopo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics and Statistics, 90(2), 290–299. https://doi.org/10/b6tqwq

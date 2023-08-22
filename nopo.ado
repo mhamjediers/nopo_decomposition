@@ -7,7 +7,8 @@ program define nopo, eclass properties(svyb)
 syntax [anything] [if] [in] [fweight pweight iweight] , ///
   [ 	/// standalone onlys
     by(varlist max=1) /// matching groups
-    xref(string) /// set coefficient reference group like group == 0
+    xref(string) /// set characteristics reference group like xref(group == 1)
+    bref(string) /// set coefficient reference group like bref(group == 0)
     swap /// swap groups and reference vector
     NORMalize /// normalize by dividing by reference group mean
     KMatch(string) /// kmatch subcmd: md ps em
@@ -87,27 +88,50 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       - treatment indicator 0/1
         - group A = treat == 0
         - group B = treat == 1
-        - xref is B
+        - xref is B; bref is A
       - option swap:
         - group B = treat == 0
         - group A = treat == 1
-        - xref is A
+        - xref is A; bref is B
       - manually specify reference group for target CHARACTERISTICS of weighting: xref(treat == 1)
+      - PERHAPS provide both options (xref, bref)?
         
       */
       // treatment value = group order
-      if ("`swap'" == "") local _tval : word 2 of `_bylvls'
-        else local _tval : word 1 of `_bylvls'
-      // att/atc logic depending on x reference vector
+      if ("`swap'" == "") {
+        local _tval : word 2 of `_bylvls'
+        local _cval : word 1 of `_bylvls'
+      }
+      else {
+        local _tval : word 1 of `_bylvls'
+        local _cval : word 2 of `_bylvls'
+      }
+      // check reference vectors
       if ("`xref'" != "") {
         // get numeric value
         local _xref = stritrim("`xref'")
         local _xref = ustrregexra("`_xref'", "^\w+[\s]?[=]+\s", "")
-        if (`_tval' == `_xref') local _te = "att"
-          else local _te = "atc"
+      }
+      if ("`bref'" != "") {
+        // get numeric value
+        local _bref = stritrim("`bref'")
+        local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
+      }
+      if ("`_xref'" != "" & "`_bref'" != "" & "`_xref'" == "`_bref'") {
+        // check if xref and bref make sense
+        dis as error "The x and the b reference cannot be the same."
+        error 198
+        exit
+      }
+      // set att/atc logic depending on reference
+      if ("`_xref'" != "" | "`_bref'" != "") {
+        if ("`_tval'" == "`_xref'" | "`_cval'" == "`_bref'") local _te = "atc"
+          else local _te = "att"
+        if ("`atc'" != "") dis as text "Option '`atc'' ignored due to manually specified reference."
+        if ("`att'" != "") dis as text "Option '`att'' ignored due to manually specified reference."
       }
       else if ("`atc'" != "" & "`att'" != "") {
-        dis as error "Specify either 'att' or 'atc' as options, not both (or use xref())"
+        dis as error "Specify either 'att' or 'atc' as options, not both (or use xref() or bref())"
         error 198
         exit
       }
@@ -116,8 +140,8 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       }
       local att // unset (in case it was passed)
       local atc // unset (in case it was passed)
-      if ("`_te'" == "atc") local atc = "atc"
-        else local att = "att" // no _te defaults to att (correct for swap/non-swap)
+      if ("`_te'" == "att") local att = "att"
+        else local atc = "atc" // no _te defaults to atc (correct for swap/non-swap)
       
       //
       // Run kmatch
@@ -150,13 +174,8 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
             else local _sum_weightexp = "[`weight'`exp']"
         }
         cap drop _`_depvarabbrev'_norm
-        if ("`atc'" != "") {
-          qui sum `_depvar' ///
-            if `by' != `_tval' & !mi(`by') & `touse' `_sum_weightexp', meanonly
-        }
-        else {
-          qui sum `_depvar' if `by' == `_tval' & `touse' `_sum_weightexp', meanonly
-        }
+        // sum: always group B = Control = T == 0
+        qui sum `_depvar' if `by' == `_cval' & `touse' `_sum_weightexp', meanonly
         qui gen _`_depvarabbrev'_norm = `_depvar' / r(mean) if `touse'
         local _depvarlbl : variable label `_depvar'			
         // set normalized var as _depvar!
@@ -570,8 +589,14 @@ program define nopo_decomp, eclass
   }
 
   // display general info
-  if ("`_groupA'" == "`xref'") local _refA "(ref)"
-    else local _refB "(ref)"
+  if ("`_groupA'" == "`xref'") {
+    local _refA "(bref)"
+    local _refB "(xref)"
+  }
+  else {
+    local _refA "(xref)"
+    local _refB "(bref)"
+  }
   if ("`_nn'" != "") {
     local _param "NN requested:"
     local _paramval = `_nn'
@@ -615,7 +640,7 @@ program define nopo_decomp, eclass
     */ _col(60) "Total"  /*
     */ _col(67) %12s abbrev("`_depvar'", 12)
   di as text "{hline 29}{c +}{hline 48}"
-  di as text "A: " abbrev("`_tvar'", 8) " == `_cval' `_refA'"  _col(30) "{c |}" /*
+  di as text "A: " abbrev("`_tvar'", 7) " == `_cval' `_refA'"  _col(30) "{c |}" /*
     */ as result _col(32) %8.0f `=_nA*_mshareuwA/100' /*
     */ _col(45) %8.0f `=_nA*(1-_mshareuwA/100)' /*
     */ _col(57) %8.0f _nA /*
@@ -623,7 +648,7 @@ program define nopo_decomp, eclass
   di as text _col(4) abbrev("`_groupAlbl'", 25) _col(30) "{c |}" /*
     */ as result _col(33) %7.1f _mshareuwA /*
     */ _col(46) %7.1f `=100-_mshareuwA'
-  di as text "B: " abbrev("`_tvar'", 8) " == `_tval' `_refB'" _col(30) "{c |}" /*
+  di as text "B: " abbrev("`_tvar'", 7) " == `_tval' `_refB'" _col(30) "{c |}" /*
     */ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
     */ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
     */ _col(57) %8.0f _nB /*

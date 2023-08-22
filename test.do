@@ -52,7 +52,7 @@ qui foreach v in age edu strata {
 //
 
 // labels are appropriately captured in matching table
-recode t (0 = 0 "Immigrant women") (1 = 1 "Native men"), gen(groups)
+recode t (0 = 0 "Native Men") (1 = 1 "Immigrant Women"), gen(groups)
 lab var groups "Groups"
 lab var age "Current age in years"
 lab def age 1 "18-27" 2 "28-37" 3 "38-47" 4 "48-57" 5 "58-67"
@@ -69,18 +69,22 @@ tab grp, gen(grp_)
 nopomatch age edu, outcome(wage) by(groups) replace abs sd
 eststo nm
 // according to lit, w(1) would be standard given that for oaxaca D = A - B (gaps expressed positively)
-oaxaca wage grp_* if _supp == 2, by(groups) w(1) nodetail relax // weight: groups == 1
-eststo o_d_w0
-oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
-eststo o_d_w1
-oaxaca wage grp_* if _supp == 2, by(groups) swap w(1) nodetail relax // weight: groups == 1
-eststo o_swap_w0
-oaxaca wage grp_* if _supp == 2, by(groups) swap w(0) nodetail relax // weight: groups == 1
-eststo o_swap_w1
-oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
-kmatch em groups age edu (wage), nate ate atc att po generate wgenerate replace
-nopo decomp wage i.age i.edu, by(groups) att
-nopo decomp wage i.age i.edu, by(groups) atc
+// oaxaca wage grp_* if _supp == 2, by(groups) w(1) nodetail relax // weight: groups == 1
+// eststo o_d_w0
+// oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
+// eststo o_d_w1
+// oaxaca wage grp_* if _supp == 2, by(groups) swap w(1) nodetail relax // weight: groups == 1
+// eststo o_swap_w0
+// oaxaca wage grp_* if _supp == 2, by(groups) swap w(0) nodetail relax // weight: groups == 1
+// eststo o_swap_w1
+//oaxaca wage grp_* if _supp == 2, by(groups) w(0) nodetail relax // weight: groups == 1
+//kmatch em groups age edu (wage), nate ate atc att po generate wgenerate replace
+nopo decomp wage i.age i.edu, by(groups)
+nopo decomp wage i.age i.edu, by(groups) swap
+stop
+nopo decomp wage i.age i.edu, by(groups) xref(0) norm
+nopo decomp wage i.age i.edu, by(groups) swap norm
+nopo decomp wage i.age i.edu, by(groups) swap xref(1) norm
 stop
 
 //
@@ -171,3 +175,5 @@ nopo gapoverdist, save(`test')
 nopo summarize, label // columns of unmactched omitted if not present (better than all mi, I think)
 
 *bootstrap: nopo decomp wage age edu, by(groups)
+
+

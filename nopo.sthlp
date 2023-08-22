@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.2   11june2023  Maximilian Sprengholz & Maik Hamjediers}{...}
+{* *! version 0.2   22aug2023  Maximilian Sprengholz & Maik Hamjediers}{...}
 {vieweralsosee "kmatch" "kmatch"}{...}
 {vieweralsosee "nopomatch" "nopomatch"}{...}
 {viewerjumpto "Syntax" "nopo##syntax"}{...}
@@ -14,7 +14,8 @@
 {marker:dep}{...}
 {title:Dependencies}
 
-{phang} Requires {help kmatch:{it:kmatch}} (Jann, 2017) to be installed.
+{phang} Requires {help kmatch:{it:kmatch}} (Jann, 2017) to be installed, which has
+{help moremata:{it:moremata}} as dependency.
 
 {marker:syntax}{...}
 {title:Syntax}
@@ -35,8 +36,9 @@
 {synoptline}
     Standalone
 {synopt :{cmdab:by(}{help varname:{it:varname}}{cmdab:)}}Group variable by which to estimate and decompose gaps in {depvar:} (required) {p_end}{...}
-{synopt :{cmdab:xref(}{help varname:{it:varname}}{it: == int}{cmdab:)}}Set matching reference group in terms of characteristics among {cmdab:by(}{help varname:{it:varname}}{cmdab:)}{p_end}{...}
-{synopt :{cmdab:swap}}Swap groups {it:and} xreference{p_end}{...}
+{synopt :{cmdab:xref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:characteristics}{p_end}{...}
+{synopt :{cmdab:bref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:returns}{p_end}{...}
+{synopt :{cmdab:swap}}Swap groups and reference{p_end}{...}
 {synopt :{cmdab:norm:alize}}Normalize estimates by mean outcome of reference group{p_end}{...}
 {synopt :{cmdab:km:atch(}em|md|ps{cmdab:)}}Choose between exact (em, default), multivariate-distance (md), and propensity score (ps) matching{p_end}{...}
 {synopt :{cmdab:kmo:pts(}{it:string}{cmdab:)}}Options for internal {help kmatch:{it:kmatch}} call{p_end}{...}
@@ -52,9 +54,10 @@
 {title:Description}
 
 {pstd}
-{hi:nopo decomp} provides a {c N~}opo-style (2008) decomposition of the gap {it:D} in the average outcome {it:Y} between two groups {it:A} and {it:B} by matching them on a set of characteristics {it:X} predictive of {it: Y}:
+{hi:nopo decomp} provides a {c N~}opo-style (2008) decomposition of the gap {it:D} in the average outcome {it:Y} between two groups {it:A} and {it:B} by matching them on a set of characteristics {it:X} predictive of {it: Y}.
 
-    {it:D = D0 + DX + DA + DB  , where}
+{p 6 6 2}{it:D = YB - YA}{p_end}
+{p 8 8 2}{it:  = D0 + DX + DA + DB  , where}{p_end}
 
 {p 4 6 2}
 {it:- D0} is the part of the gap not attributable to compositional differences between {it:A} and {it:B} in {it:X} among matched units (classic {it:unexplained} component){p_end}
@@ -66,7 +69,7 @@
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}    
-For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":documentation on github} [...].
+For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} [...].
 
 {pstd}{ul:Matching approaches:} 
 
@@ -83,6 +86,7 @@ For a detailed explanation on methodology, please consult the {browse "https://g
 {p2col:{bf:_nopo_mweight}} Matching weight{p_end}
 {p2col:{bf:_nopo_strata}} Matching stratum ({it:em} only){p_end}
 {p2col:{bf:_nopo_ps}} Matching propensity score ({it:ps} only){p_end}
+{p2col:{bf:_{depvar}_norm}} Normalized {depvar} (if {cmd:normalize} was specified){p_end}
 
 
 {marker opts}{...}
@@ -93,17 +97,27 @@ For a detailed explanation on methodology, please consult the {browse "https://g
 {phang}
 {cmdab:by(}{help varname:{it:varname}}{cmdab:)} specifies the groups between which we estimate and 
 decompose the gap in {depvar:} (required). Needs to be numeric with two levels. By default, the 
-second {cmd:by} group is group {it:B} and the reference group (see {help nopo##desc:Description}). 
-Use {cmd:xref()} or {cmd:swap} to change. 
+first {cmd:by} group is group {it:A}, which is the reference group in terms of {it:returns}
+and the second group is group {it:B}, which is the reference group in terms of {it:characteristics} 
+(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} for details). Use {cmd:xref()}/{cmd:bref()} or {cmd:swap} to change. 
 
 {phang}
-{cmdab:xref(}{it:string}{cmdab:)} ... [needs decision on how to describe the ref cat.]
+{cmdab:xref(}{varname}{it: == #}{cmd:)} allows to manually set the reference in terms of {it:characteristics}. 
+See {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} 
+for a detailed explanation what that means in the matching approach. Naturally, {cmd:xref()} and 
+{cmd:bref()} cannot be the same.
 
 {phang}
-{cmdab:swap} ... [needs decision on how to describe the ref cat.]
+{cmdab:bref(}{varname}{it: == #}{cmd:)} allows to manually set the reference in terms of {it:returns}. 
+See {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} 
+for a detailed explanation what that means in the matching approach. Naturally, {cmd:bref()} and 
+{cmd:xref()} cannot be the same.
 
 {phang}
-{cmdab:norm:alize} ... [needs decision on how to describe the ref cat.]
+{cmdab:swap} groups {it:A} and {it:B}, so that the sign of {it:D} is reversed and and the respective reference for characteristics and returns is switched.
+
+{phang}
+{cmdab:norm:alize} estimates by the {depvar} mean of group {it: A}. Coefficients can then be interpreted in a relative manner, e.g. that group {it:B} earns on average 19 percent lower wages compared to group {it:A}. Generates {bf:_{depvar}_norm}.
 
 {phang}
 {cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the matching approach. The default is to use 
@@ -206,9 +220,8 @@ to build your own plot from the data.
 Creates a plot showing how the different levels of {varname} contribute to {it:DA} and {it:DB}
 because these levels are associated with either many unmatched units and/or large differences in 
 {depvar} by matching status within groups {it:A} and {it:B}
-(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":methodological details}).
-This {it:is not} the same as a detailed decomposition in regression-based approaches (which is 
-generally not possible with matching).
+(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation})
+for details. This {it:is not} the same as a detailed decomposition in regression-based approaches (which is generally not possible with matching).
 
 {p 6 8 2}
 {cmd:nosort} specifies that the plot is not to be sorted by the mean values of {depvar} per level of
@@ -272,6 +285,11 @@ to build your own plot from the data.
 
 
 {title:References}
+
+{phang}
+Jann, B. (2017). kmatch: Stata module for multivariate-distance and propensity-score matching,
+including entropy balancing, inverse probability weighting, (coarsened) exact matching, and
+regression adjustment. Available from {browse https://ideas.repec.org/c/boc/bocode/s458346.html}.
 
 {phang}
 {c N~}opo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics and Statistics, 90(2), 290–299. {browse "https://doi.org/10/b6tqwq"}
