@@ -48,7 +48,7 @@ $ATT$ and $ATC$ are given by
 - $`ATT = D_0 = \overline{Y}_{B,m} - \overline{Y}_{A^B,m}`$
 - $`ATC = D_0 = \overline{Y}_{B^A,m} - \overline{Y}_{A,m} \quad .`$
 
-In both cases, $D_0$ is due to differences returns, which remain after _matching and weighting:_
+In both cases, $D_0$ is due to differences in returns, which remain after _matching and weighting:_
 
 - $ATT$: $D_0$ remains if $A$ had characteristics like $B$ ($\rightarrow A^B$)
 - $ATC$: $D_0$ remains if $B$ had characteristics like $A$ ($\rightarrow B^A$)
