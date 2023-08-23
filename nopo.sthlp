@@ -73,11 +73,17 @@ For a detailed explanation on methodology, please consult the {browse "https://g
 
 {pstd}{ul:Matching approaches:} 
 
-{pstd}{c N~}opo's original proposition used exact matching but extends to other matching approaches, two of which are additionally implemented in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
+{pstd}{c N~}opo's original proposition used exact matching but extends to other matching approaches, 
+two of which are additionally available in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
 
 {pstd}{ul:Standard errors:} 
 
-{pstd}Currently, the standard errors [...]. Use bootstrapping to obtain empirical standard errors.
+{pstd}Currently, SEs come from a {help suest:{it:suest}} call, which accounts for the covariance 
+between components {it:D}, {it:D0}, {it:DA}, and {it:DB}. {it:DX} is estimated via {help nlcom:{it:nlcom}} 
+as {it:DX = D - D0 - DA - DB}. These SEs seem conservative compared to the bootstrapped empirical 
+SEs. For {it:D0}, SEs are smaller compared to {help kmatch:{it:kmatch}}, but larger compared to 
+{help nopomatch:{it:nopomatch}} (which uses the SE estimation described in {c N~}opo (2008)). 
+We recommend to bootstrap SEs via {cmd: bootstrap: nopo decomp}.
 
 {pstd}{ul:Generated variables:}
 

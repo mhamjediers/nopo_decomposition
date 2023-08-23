@@ -16,6 +16,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMPASSthru(string) /// pass on additional ereturns from kmatch to nopo decomp
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
+    dxse(real 1) /// dx estimation type
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
@@ -267,7 +268,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
-    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `options'
+    , `_mweight' `atc' `att' dxse(`dxse') `kmpassthru' `kmkeepgen' `options'
 
 end
 
@@ -283,7 +284,8 @@ program define nopo_decomp, eclass
     mweight(namelist max=1) ///
     [att atc] ///
     [kmpassthru(string)] ///
-    [kmkeepgen]
+    [kmkeepgen] ///
+    [dxse(real 1)]
 
   quietly {
     
@@ -323,12 +325,13 @@ program define nopo_decomp, eclass
     if ("`e(wtype)'" != "") {
       local _wtype = e(wtype)
       local _wexp = e(wexp)
-      local _weightexp = "[`_wtype'`_wexp']"
-      if ("`_wtype'" == "pweight") local _sum_weightexp = "[aw`_wexp']"
-        else local _sum_weightexp = `_weightexp'
-      }
-    if ("`e(vce)'" == "analytic") local vce // unset for default
-      else local vce = e(vce)
+    }
+    else {
+      local _wtype = "aweight"
+      local _wexp = "= 1"
+    }
+    if ("`e(vce)'" == "analytic") local vce = "robust"
+      else local vce = "`e(vce)'"
     
     // generated matching vars processing
     /*
@@ -446,80 +449,127 @@ program define nopo_decomp, eclass
     // gather/estimate components
     //
     
-    // placeholder matrices: D, D0, DA, DB
-    mat b4 = J(1, 4, .)
-    matname b4 D D0 DA DB, columns(1..4) explicit
-    mat V4 = J(1, 4, .)
-    matname V4 D D0 DA DB, columns(1..4) explicit
+    /*
+     suest is used to calculate SEs accounting for the covariance between components. 
+     However, there are different ways to go about this, the performance of which we have to
+     check in simulations:
+     
+     - DX = D - D0 - DA -DB
+     - DX as delta by treat via expanded dataset for treat == 0/1 (ATT/ATC) with mweights
+     - DX = mean(POmean - Yi)
+     - DX = mean(PO - Yi)
+     - Nopo?
+
+     suest requires some hacking around weighting restrictions:
+
+     - D0 always needs aweights (pweights not allowed in suest)
+     - if user provides fweights, we need to tell Stata that the weight used in D0 estimates is
+       fweight instead of the actual aweight
+     - use vce only in suest estimation
+    */
     
-    // D0 (directly from kmatch)
-    if ("`att'" != "") local _TE "ATT"
-      else local _TE "ATC"
-    mat b = e(b)[1, "`_TE'"]
-    mat b4[1,2] = b[1,1]
-    mat V = e(V)["`_TE'", "`_TE'"]
-    mat V4[1,2] = V[1,1]
-    
+
+    // trick suest into thinking weights are consistent
+    tempvar weight_cons
+    gen `weight_cons' = `mweight'
+    local _wexp_cons = "=`weight_cons'"
+    if ("`_wtype'" == "pweight") local _wtype_cons = "aweight"
+        else local _wtype_cons = "`_wtype'"
+
+    // D0 (always uses iweights and the matching weight returned by kmatch)
+    reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+    estimates store d0
+
+    // DX
+    if (!inlist(`dxse', 2, 3, 4)) local dxse = 1 // default
+    if (inlist(`dxse', 2, 3)) {
+        // dx estimated as mean diff between individual outcome and potential (weighted)
+        if ("`atc'" != "") local _texp = 1
+          else local _texp = 0
+        tempvar _dy
+        noisily sum `_depvar' [`_wtype_cons' `_wexp'] ///
+          if `treat' == `_texp'
+        local _mean = r(mean)
+        noisily sum `_depvar' [`_wtype_cons' `_wexp_cons'] ///
+          if `treat' == `_texp'
+        if (`dxse' == 2) {
+          gen `_dy' = (`_depvar' * `mweight' * r(N) / r(sum_w)) - `_mean' ///
+            if `treat' == `_texp'
+        }
+        else {
+          gen `_dy' = (`_depvar' * `mweight' * r(N) / r(sum_w)) - `_depvar' ///
+            if `treat' == `_texp'
+        }
+        noisily reg `_dy' [aw = 1]
+        estimates store dx
+    }
+
+    // change to standard weight
+    replace `weight_cons' `_wexp'
+
     // D
-    mean `_depvar' if `sample' `_sum_weightexp', over(`treat')
+    mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
     local _meanA = e(b)[1,1]
     local _meanB = e(b)[1,2]
-    reg `_depvar' i.`treat' `_weightexp' if `sample', vce(`vce')
-    mat b = e(b)
-    mat b4[1,1] = b[1,2]
-    mat V = e(V)
-    mat V4[1,1] = V[2,2]
+    reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
+    estimates store d
     
     // DA
-    sum `_depvar' if `treat' == 0 & `matched' == 0 & `sample' `_sum_weightexp'
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
     scalar _numA = r(N)
     scalar _numwA = r(sum_w)
-    sum `_depvar' if `treat' == 0 & `sample' `_sum_weightexp'
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     scalar _nA = r(N)
     scalar _nwA = r(sum_w)
-    reg `_depvar' i.`matched' if `treat' == 0 & `sample' `_weightexp', vce(`vce')
+    reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
+    estimates store da
     scalar _mgapA = _b[1.`matched']
-    nlcom _b[1.`matched'] * ( _numwA / _nwA ), post
     scalar _mshareuwA = (1 - _numA / _nA ) * 100
     scalar _msharewA = (1 - _numwA / _nwA ) * 100
-    mat b = e(b)
-    mat b4[1,3] = b[1,1]
-    mat V = e(V)
-    mat V4[1,3] = V[1,1]
 
     // DB
-    sum `_depvar' if `treat' == 1 & `matched' == 0 & `sample' `_sum_weightexp'
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
     scalar _numB = r(N)
     scalar _numwB = r(sum_w)
     sum `_depvar' if `treat' == 1 & `sample' `_sum_weightexp'
     scalar _nB = r(N)
     scalar _nwB = r(sum_w)
-    reg `_depvar' i.`matched' if `treat' == 1 & `sample' `_weightexp', vce(`vce')
+    reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
+    estimates store db
     scalar _mgapB = _b[1.`matched']
-    nlcom _b[1.`matched'] * -1 * ( _numwB / _nwB ), post
     scalar _mshareuwB = (1 - _numB / _nB ) * 100
     scalar _msharewB = (1 - _numwB / _nwB ) * 100
-    mat b = e(b)
-    mat b4[1,4] = b[1,1]
-    mat V = e(V)
-    mat V4[1,4] = V[1,1]
-    
-    // estimate DX from other components in the same model
-    mat b5 = b4[1,1], b4[1,2], ., b4[1,3], b4[1,4]
-    matname b5 D D0 DX DA DB, columns(1..5) explicit
-    mat V5 = V4[1,1], V4[1,2], ., V4[1,3], V4[1,4]
-    matname V5 D D0 DX DA DB, columns(1..5) explicit
-    mat V4 = diag(V4)
-    ereturn post b4 V4
-    nlcom (_b[D] - _b[D0] - _b[DA] - _b[DB]), post
-    mat b = e(b)
-    mat b5[1,3] = b[1,1]
-    mat V = e(V)
-    mat V5[1,3] = V[1,1]
-    mat V5 = diag(V5)
+
+    // suest & nlcom
+    if (`dxse' == 1) {
+      suest d d0 da db, vce(`vce') // analytic and cluster only!
+      nlcom ///
+        (D: [d_mean]1.`treat') ///
+        (D0: [d0_mean]1.`treat') ///
+        (DX: [d_mean]1.`treat' ///
+            - [d0_mean]1.`treat' ///
+            - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
+            - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+        (DB: [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
+        , post
+    }
+    else if (inlist(`dxse', 2, 3)) {
+      suest d d0 dx da db, vce(`vce') // analytic and cluster only!
+      nlcom ///
+        (D:   [d_mean]1.`treat') ///
+        (D0:  [d0_mean]1.`treat') ///
+        (DX: -[dx_mean]_cons) ///
+        (DA:  [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+        (DB:  [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
+        , post
+    }
 
     // return
-    ereturn post b5 V5, obs(`_Nsample') esample(`sample') depname(`_depvar')
+    mat b = e(b)
+    mat V = e(V)
+    ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"
     if ("`_wtype'" != "") {

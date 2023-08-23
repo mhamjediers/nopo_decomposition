@@ -350,7 +350,6 @@ version 10.1
 
 
 	local _total2 = 2*(`_total2')/((`_nm')*((`_alpha')^2))
-
 	local _dev = sqrt(`_total0'+`_total1'-`_total2')
 	display in yellow "Std.error DO = " `_dev'
 	return scalar _dev = `_dev'
