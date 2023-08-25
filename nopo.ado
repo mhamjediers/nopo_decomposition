@@ -16,7 +16,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMPASSthru(string) /// pass on additional ereturns from kmatch to nopo decomp
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
-    dxse(real 1) /// dx estimation type
+    dtable /// do not show estimates table (makes sense for bootstrap)
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
@@ -268,7 +268,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
-    , `_mweight' `atc' `att' dxse(`dxse') `kmpassthru' `kmkeepgen' `options'
+    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `options'
 
 end
 
@@ -282,11 +282,14 @@ program define nopo_decomp, eclass
 
     syntax , ///
     mweight(namelist max=1) ///
-    [att atc] ///
-    [kmpassthru(string)] ///
-    [kmkeepgen] ///
-    [dxse(real 1)]
-
+    [ ///
+      att ///
+      atc ///
+      kmpassthru(string) ///
+      kmkeepgen ///
+      dtable ///
+    ]
+  
   quietly {
     
     //
@@ -451,62 +454,23 @@ program define nopo_decomp, eclass
     
     /*
      suest is used to calculate SEs accounting for the covariance between components. 
-     However, there are different ways to go about this, the performance of which we have to
-     check in simulations:
-     
-     - DX = D - D0 - DA -DB
-     - DX as delta by treat via expanded dataset for treat == 0/1 (ATT/ATC) with mweights
-     - DX = mean(POmean - Yi)
-     - DX = mean(PO - Yi)
-     - Nopo?
-
-     suest requires some hacking around weighting restrictions:
+     DX is estimated as delta: = D - D0 - DA -DB. suest requires some hacking around weighting restrictions:
 
      - D0 always needs aweights (pweights not allowed in suest)
      - if user provides fweights, we need to tell Stata that the weight used in D0 estimates is
        fweight instead of the actual aweight
      - use vce only in suest estimation
+
+     SEs are not correct and are not returned; users have to use bootstrap
     */
     
 
-    // trick suest into thinking weights are consistent
+    // weighting helpers
     tempvar weight_cons
-    gen `weight_cons' = `mweight'
+    gen `weight_cons' `_wexp'
     local _wexp_cons = "=`weight_cons'"
     if ("`_wtype'" == "pweight") local _wtype_cons = "aweight"
         else local _wtype_cons = "`_wtype'"
-
-    // D0 (always uses iweights and the matching weight returned by kmatch)
-    reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-    estimates store d0
-
-    // DX
-    if (!inlist(`dxse', 2, 3, 4)) local dxse = 1 // default
-    if (inlist(`dxse', 2, 3)) {
-        // dx estimated as mean diff between individual outcome and potential (weighted)
-        if ("`atc'" != "") local _texp = 1
-          else local _texp = 0
-        tempvar _dy
-        noisily sum `_depvar' [`_wtype_cons' `_wexp'] ///
-          if `treat' == `_texp'
-        local _mean = r(mean)
-        noisily sum `_depvar' [`_wtype_cons' `_wexp_cons'] ///
-          if `treat' == `_texp'
-        if (`dxse' == 2) {
-          gen `_dy' = (`_depvar' * `mweight' * r(N) / r(sum_w)) - `_mean' ///
-            if `treat' == `_texp'
-        }
-        else {
-          gen `_dy' = (`_depvar' * `mweight' * r(N) / r(sum_w)) - `_depvar' ///
-            if `treat' == `_texp'
-        }
-        noisily reg `_dy' [aw = 1]
-        estimates store dx
-    }
-
-    // change to standard weight
-    replace `weight_cons' `_wexp'
 
     // D
     mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
@@ -514,6 +478,7 @@ program define nopo_decomp, eclass
     local _meanB = e(b)[1,2]
     reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
     estimates store d
+    mat d = e(b)[1,1]
     
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
@@ -522,54 +487,107 @@ program define nopo_decomp, eclass
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     scalar _nA = r(N)
     scalar _nwA = r(sum_w)
+    scalar _nmA = _nA - _numA
+    scalar _nmwA = _nwA - _numwA
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     estimates store da
+    mat da = e(b)[1,1]
     scalar _mgapA = _b[1.`matched']
-    scalar _mshareuwA = (1 - _numA / _nA ) * 100
-    scalar _msharewA = (1 - _numwA / _nwA ) * 100
+    scalar _mshareuwA = (_nmA / _nA ) * 100
+    scalar _msharewA = (_nmwA / _nwA ) * 100
 
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
     scalar _numB = r(N)
     scalar _numwB = r(sum_w)
-    sum `_depvar' if `treat' == 1 & `sample' `_sum_weightexp'
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     scalar _nB = r(N)
     scalar _nwB = r(sum_w)
+    scalar _nmB = _nB - _numB
+    scalar _nmwB = _nwB - _numwB
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     estimates store db
+    mat db = e(b)[1,1]
     scalar _mgapB = _b[1.`matched']
-    scalar _mshareuwB = (1 - _numB / _nB ) * 100
-    scalar _msharewB = (1 - _numwB / _nwB ) * 100
+    scalar _mshareuwB = (_nmB / _nB ) * 100
+    scalar _msharewB = (_nmwB / _nwB ) * 100
+    
+    // change to matching weight
+    replace `weight_cons' = `mweight'
+
+    // D0 (always uses aweights and the matching weight returned by kmatch)
+    reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+    estimates store d0
+    mat d0 = e(b)[1,1]
+
+    // change to standard weight
+    replace `weight_cons' `_wexp'
+
+    // D0 SE: Nopo (2008) style
+    if ("`_kmatch_subcmd'" == "em") {
+
+      // alpha = NA/NB
+      local _alpha = _nmwA / _nmwB
+
+      // variance of the second term of equation 9
+      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1
+      local _total0 = r(Var) / _nmA
+      
+      // wf
+      preserve
+        keep if `_groupA' & `matched' == 1
+        collapse (sum) _wf = `weight_cons', by(strata)
+        replace _wf = _wf / _nmwA
+        tempfile wf
+        save `wf'
+      restore
+
+      // cf mean var
+      preserve
+
+        keep if `_groupB' & `matched' == 1
+        collapse (mean) _ym = `_depvar' (sd) _varym = `_depvar', by(strata)
+        replace _varym = _varym^2
+        merge 1:1 strata using `wf'
+
+        gen _part1 = (_wf*(1-_wf)*(_ym^2)) / (`_alpha'^2) + _varym*(_wf^2)
+        sum _part1
+        local _total1 = r(sum) / _nmB
+
+        gen _wfym = _wf * _ym
+        egen _sumwfym1 = sum(_wfym)
+        gen _sumwfym2 = _sumwfym1 - _wfym
+        gen _sumwfym3 = _sumwfym2 * _wfym
+        sum _sumwfym3
+        local _total2 = r(sum) / 2
+        quietly drop _wfym _sumwfym1 _sumwfym2 _sumwfym3
+
+        local _total2 = 2 * (`_total2') / (_nmB * (`_alpha'^2))
+        local _se = sqrt(`_total0' + `_total1' - `_total2')
+        noisily dis "NOPO SE D0: `_se'"
+
+      restore
+
+    }
 
     // suest & nlcom
-    if (`dxse' == 1) {
-      suest d d0 da db, vce(`vce') // analytic and cluster only!
-      nlcom ///
-        (D: [d_mean]1.`treat') ///
-        (D0: [d0_mean]1.`treat') ///
-        (DX: [d_mean]1.`treat' ///
-            - [d0_mean]1.`treat' ///
-            - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
-            - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-        (DB: [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
-        , post
-    }
-    else if (inlist(`dxse', 2, 3)) {
-      suest d d0 dx da db, vce(`vce') // analytic and cluster only!
-      nlcom ///
-        (D:   [d_mean]1.`treat') ///
-        (D0:  [d0_mean]1.`treat') ///
-        (DX: -[dx_mean]_cons) ///
-        (DA:  [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-        (DB:  [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
-        , post
-    }
+    suest d d0 da db, vce(`vce') // analytic and cluster only!
+    nlcom ///
+      (D: [d_mean]1.`treat') ///
+      (D0: [d0_mean]1.`treat') ///
+      (DX: [d_mean]1.`treat' ///
+          - [d0_mean]1.`treat' ///
+          - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
+          - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+      (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+      (DB: [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
+      , post
 
     // return
     mat b = e(b)
-    mat V = e(V)
-    ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+    mat V = e(V) // could be returned for naive estimates
+    ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"
     if ("`_wtype'" != "") {
@@ -691,16 +709,16 @@ program define nopo_decomp, eclass
     */ _col(67) %12s abbrev("`_depvar'", 12)
   di as text "{hline 29}{c +}{hline 48}"
   di as text "A: " abbrev("`_tvar'", 7) " == `_cval' `_refA'"  _col(30) "{c |}" /*
-    */ as result _col(32) %8.0f `=_nA*_mshareuwA/100' /*
-    */ _col(45) %8.0f `=_nA*(1-_mshareuwA/100)' /*
+    */ as result _col(32) %8.0f _nmA /*
+    */ _col(45) %8.0f _numA /*
     */ _col(57) %8.0f _nA /*
     */ _col(71) %08.3g `_meanA'
   di as text _col(4) abbrev("`_groupAlbl'", 25) _col(30) "{c |}" /*
     */ as result _col(33) %7.1f _mshareuwA /*
     */ _col(46) %7.1f `=100-_mshareuwA'
   di as text "B: " abbrev("`_tvar'", 7) " == `_tval' `_refB'" _col(30) "{c |}" /*
-    */ as result _col(32) %8.0f `=_nB*_mshareuwB/100' /*
-    */ _col(45) %8.0f `=_nB*(1-_mshareuwB/100)' /*
+    */ as result _col(32) %8.0f _nmB /*
+    */ _col(45) %8.0f _numB /*
     */ _col(57) %8.0f _nB /*
     */ _col(71) %08.3g `_meanB'
   di as text _col(4) abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
@@ -711,7 +729,7 @@ program define nopo_decomp, eclass
   dis ""
 
   // display estimates
-  ereturn display
+  if ("`dtable'" == "") ereturn display
   
 end
 

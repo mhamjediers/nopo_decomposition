@@ -69,21 +69,18 @@
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}    
-For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} [...].
+For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}.
 
 {pstd}{ul:Matching approaches:} 
 
 {pstd}{c N~}opo's original proposition used exact matching but extends to other matching approaches, 
 two of which are additionally available in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
 
-{pstd}{ul:Standard errors:} 
+{pstd}{ul:Standard errors:}
 
-{pstd}Currently, SEs come from a {help suest:{it:suest}} call, which accounts for the covariance 
-between components {it:D}, {it:D0}, {it:DA}, and {it:DB}. {it:DX} is estimated via {help nlcom:{it:nlcom}} 
-as {it:DX = D - D0 - DA - DB}. These SEs seem conservative compared to the bootstrapped empirical 
-SEs. For {it:D0}, SEs are smaller compared to {help kmatch:{it:kmatch}}, but larger compared to 
-{help nopomatch:{it:nopomatch}} (which uses the SE estimation described in {c N~}opo (2008)). 
-We recommend to bootstrap SEs via {cmd: bootstrap: nopo decomp}.
+{pstd}Please use bootstrapping to obtain standard errors via {cmd: bootstrap: nopo decomp}. Implementing the SEs for {it:D0} as detailed by {c N~}opo (2008) is still a work in progress. Please reach out
+to us, if you know how to obtain analytical SEs for {it:DX}, {it:DA}, and {it:DB} via 
+{browse "https://github.com/mhamjediers/nopo_decomposition/issues/14":GitHub}.
 
 {pstd}{ul:Generated variables:}
 

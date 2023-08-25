@@ -95,7 +95,6 @@ version 10.1
 	quietly replace `_fexp' = `fact'
 	}
 
-
 	*******************
 	*Compute Deltas
 	********************
@@ -272,8 +271,7 @@ version 10.1
 	quietly summ `_fexp' if `by'==0
 	local _Nf = r(sum)
 	local _alpha = `_Nf'/`_Nm'
-
-
+	noisily dis "`_alpha'"
 	/*tamanios sin factores de expansion*/
 	quietly count if `by'==1
 	local _nm = _result(1)
@@ -283,6 +281,7 @@ version 10.1
 	/*Variance of the second term of the right hand side of equation 9*/
 	quietly summ _rwage if `by'==0 [iw=`_fexp']
 	local _total0 = _result(4)/`_nf'
+	noisily dis "TOTAL0:`_total0'"
 
 	/*Now I construct the first term*/
 	/*1. The sample proportion of females that exhibit the set of caracteristics*/
@@ -291,6 +290,7 @@ version 10.1
 	quietly keep if `by'==0
 	collapse (sum) `_fexp', by(`varlist')
 	rename `_fexp' _nfcelda
+	noisily dis `_Nf'
 	quietly gen _wf = _nfcelda/`_Nf'
 	sort `varlist'
 	tempfile tempo
@@ -330,17 +330,22 @@ version 10.1
 	tempfile collapsed
 	quietly save `collapsed', replace
 
+	noisily sum _wf
+	noisily sum _ym
+	noisily sum _varym
+
 	quietly gen _part1=(_wf*(1-_wf)*(_ym^2))/((`_alpha')^2)+_varym*(_wf^2)
 	quietly summ _part1
 	local _total1=(r(sum))/`_nm'
+	noisily dis "TOTAL1: `_total1'"
 
 	quietly count
-	local _K=_result(1) /*numero de celdas*/
-	local _total2=0
-	local _j=1
+	//local _K=_result(1) /*numero de celdas*/
+	//local _total2=0
+	//local _j=1
 	quietly gen _wfym=_wf*_ym
 	quietly egen _sumwfym1 = sum(_wfym)
-	quietly gen _sumwfym2 = _sumwfym1 - _wfym
+	quietly gen _sumwfym2 = _sumwfym1 - _wfym // i - 1; the cf wage of the person is subtracted
 	quietly gen _sumwfym3 = _sumwfym2*_wfym
 
 	quietly sum _sumwfym3
