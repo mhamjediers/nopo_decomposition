@@ -331,7 +331,7 @@ program define nopo_decomp, eclass
     }
     else {
       local _wtype = "aweight"
-      local _wexp = "= 1"
+      local _wexp = "=1"
     }
     if ("`e(vce)'" == "analytic") local vce = "robust"
       else local vce = "`e(vce)'"
@@ -477,8 +477,6 @@ program define nopo_decomp, eclass
     scalar _meanB = e(b)[1,2]
     reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
     estimates store d
-    mat d = e(b)[1,1]
-    mat d = e(V)[1,1]
     
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
@@ -491,7 +489,6 @@ program define nopo_decomp, eclass
     scalar _nmwA = _nwA - _numwA
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     estimates store da
-    mat da = e(b)[1,1]
     scalar _mgapA = _b[1.`matched']
     scalar _mshareuwA = (_nmA / _nA) * 100
     scalar _msharewA = (_nmwA / _nwA) * 100
@@ -507,7 +504,6 @@ program define nopo_decomp, eclass
     scalar _nmwB = _nwB - _numwB
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     estimates store db
-    mat db = e(b)[1,1]
     scalar _mgapB = _b[1.`matched']
     scalar _mshareuwB = (_nmB / _nB) * 100
     scalar _msharewB = (_nmwB / _nwB) * 100
@@ -519,57 +515,9 @@ program define nopo_decomp, eclass
     reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
     ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
     estimates store d0
-    mat d0 = e(b)[1,1]
 
     // change to standard weight
     replace `weight_cons' `_wexp'
-
-    // D0 SE: Nopo (2008) style
-    /* if ("`_kmatch_subcmd'" == "em") {
-
-      // alpha = NA/NB: group sizes scale asymptotically
-      local _alpha = _nmwA / _nmwB
-
-      // variance of the mean of group A wages; central limit theorem
-      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1
-      local _total0 = r(Var) / _nmA
-      
-      // wf
-      preserve
-        keep if `_groupA' & `matched' == 1
-        collapse (sum) _wf = `weight_cons', by(strata)
-        replace _wf = _wf / _nmwA
-        tempfile wf
-        save `wf'
-      restore
-
-      // cf mean var
-      preserve
-
-        keep if `_groupB' & `matched' == 1
-        collapse (mean) _ym = `_depvar' (sd) _varym = `_depvar', by(strata)
-        replace _varym = _varym^2
-        merge 1:1 strata using `wf'
-
-        gen _part1 = (_wf*(1-_wf)*(_ym^2)) / (`_alpha'^2) + _varym*(_wf^2)
-        sum _part1
-        local _total1 = r(sum) / _nmB
-        
-        gen _wfym = _wf * _ym
-        egen _sumwfym1 = sum(_wfym)
-        gen _sumwfym2 = _sumwfym1 - _wfym
-        gen _sumwfym3 = _sumwfym2 * _wfym
-        sum _sumwfym3
-        local _total2 = r(sum) / 2
-        quietly drop _wfym _sumwfym1 _sumwfym2 _sumwfym3
-
-        local _total2 = 2 * (`_total2') / (_nmB * (`_alpha'^2))
-        local _se = sqrt(`_total0' + `_total1' - `_total2')
-        noisily dis "NOPO SE D0: `_se'"
-
-      restore
-
-    } */
 
     // suest & nlcom
     suest d d0 da db, vce(`vce') // analytic and cluster only!
@@ -590,7 +538,7 @@ program define nopo_decomp, eclass
     ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"
-    if ("`_wtype'" != "") {
+    if ("`_wtype'" != "" & "`_wexp'" != "=1") {
       ereturn local wtype = "`_wtype'"
       ereturn local wexp = "`_wexp'"
     }
