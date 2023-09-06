@@ -271,17 +271,62 @@ version 10.1
 	quietly summ `_fexp' if `by'==0
 	local _Nf = r(sum)
 	local _alpha = `_Nf'/`_Nm'
-	noisily dis "`_alpha'"
 	/*tamanios sin factores de expansion*/
 	quietly count if `by'==1
 	local _nm = _result(1)
 	quietly count if `by'==0
 	local _nf = _result(1)
 
+	/*
+	 Intution behind computation is:
+
+	 SE = sqrt(   Var(PO_f)/N_m   + Var(Y_f)/N_f )
+	    = sqrt( (total1 - total2) + total0 )
+
+	 Computation via delta method of first part (if I understood correctly) based on the product
+	 of m wage x f weighting factor:
+
+	 https://stats.stackexchange.com/questions/62916/confidence-interval-for-the-product-of-two-parameters
+
+	 Var =   (P1^2) * VarP2
+	       + (P2^2) * VarP1
+		   + 2 * P1 * P2 * CoV 
+		   (last term: covariance is OK, but P1*P2 is not: 
+		    looks like variance estimation for weighted sum of variables, but that does not fit
+			with the delta method for a product...what to do?!)
+
+
+	 And by Nopos definitions:
+	 ------------------------
+	 MATCHED ONLY; PER STRATUM
+
+	 P1 = _ym (male mean wage)
+	 P2 = _wf (weighting factor; share of women in stratum)
+
+	 VarP1 = _varym (variance of male wages in stratum)
+	 CovP1 across strata = 0
+	 
+	 VarP2 = _wf(1 - _wf) / alpha^2
+	 CovP2 across strata (i,j) = -(_wf_i x _wf_j) / alpha^2
+	 
+	 => across strata K:
+
+	 Var(P0_f) =   SUM(i=1 -> K) [ (_wf(1 - _wf) / alpha^2) * _ym^2 ]
+	             + SUM(i=1 -> K) [ _varym * _wf^2 ]
+				 + 2 * SUM(i=1 -> K) [ 
+					SUM (j=1 -> K; j != i) [ (-(_wf_i x _wf_j) / alpha^2) * _ym_i * _ym_j ] 
+					]
+	 
+
+	*/
+
 	/*Variance of the second term of the right hand side of equation 9*/
 	quietly summ _rwage if `by'==0 [iw=`_fexp']
 	local _total0 = _result(4)/`_nf'
-	noisily dis "TOTAL0:`_total0'"
+
+	// DX should be analogous, just the equation reversed and total0 calculated for males
+	quietly summ _rwage if `by'==1 [iw=`_fexp']
+	local _total0_m = _result(4)/`_nf'
 
 	/*Now I construct the first term*/
 	/*1. The sample proportion of females that exhibit the set of caracteristics*/
@@ -290,7 +335,6 @@ version 10.1
 	quietly keep if `by'==0
 	collapse (sum) `_fexp', by(`varlist')
 	rename `_fexp' _nfcelda
-	noisily dis `_Nf'
 	quietly gen _wf = _nfcelda/`_Nf'
 	sort `varlist'
 	tempfile tempo
@@ -298,28 +342,12 @@ version 10.1
 	restore
 
 	/*2. The sample average of earnings for males that exhibit the set of characteristics*/
-
-	preserve
-	quietly keep if `by'==1
-	collapse (mean) _rwage [iw=`_fexp'], by (`varlist')
-	rename _rwage _ym
-	sort `varlist'
-	quietly merge `varlist' using `tempo'
-	quietly tab _merge
-	quietly keep if _merge==3
-	drop _merge
-	sort `varlist'
-	quietly count
-	quietly save `tempo', replace
-	restore
-
 	/*the population variance of male wages that exhibit the set of characteristics*/
 
 	preserve
 	quietly keep if `by'==1
-	collapse (sd) _rwage [iw=`_fexp'], by (`varlist')
-	quietly gen _varym = (_rwage)^2
-	drop _rwage
+	collapse (mean) _ym = _rwage (sd) _varym = _rwage [iw=`_fexp'], by (`varlist')
+	quietly replace _varym = (_varym)^2
 	sort `varlist'
 	quietly merge `varlist' using `tempo'
 	quietly tab _merge
@@ -331,21 +359,30 @@ version 10.1
 	quietly save `collapsed', replace
 
 	noisily sum _wf
-	noisily sum _ym
-	noisily sum _varym
+    noisily sum _ym
+    noisily sum _varym
 
-	quietly gen _part1=(_wf*(1-_wf)*(_ym^2))/((`_alpha')^2)+_varym*(_wf^2)
+	quietly gen _part1 = (_wf*(1-_wf)*(_ym^2))/((`_alpha')^2) + _varym*(_wf^2)
 	quietly summ _part1
 	local _total1=(r(sum))/`_nm'
-	noisily dis "TOTAL1: `_total1'"
 
-	quietly count
-	//local _K=_result(1) /*numero de celdas*/
-	//local _total2=0
-	//local _j=1
+	// try to compute total2 by yourself: sum up covariances
+	qui count
+	local k = r(N)
+	scalar _t2 = 0
+	forvalues i = 1/`k' {
+		local d = `i' + 1
+		forvalues j = `d' / `k' {
+			scalar _t2 = _t2 + (_wf[`i'] * _wf[`j'] * _ym[`i'] * _ym[`j']) / (`_alpha'^2)
+		}
+	}
+	scalar _t2 = 2 * _t2 / `_nm'
+	noisily dis "total2 by hand:" _t2 // WHY DIVISION BY 2 BELOW? that is the difference...
+
+	// original computation
 	quietly gen _wfym=_wf*_ym
 	quietly egen _sumwfym1 = sum(_wfym)
-	quietly gen _sumwfym2 = _sumwfym1 - _wfym // i - 1; the cf wage of the person is subtracted
+	quietly gen _sumwfym2 = _sumwfym1 - _wfym
 	quietly gen _sumwfym3 = _sumwfym2*_wfym
 
 	quietly sum _sumwfym3
@@ -353,10 +390,16 @@ version 10.1
 
 	quietly drop _wfym _sumwfym1 _sumwfym2 _sumwfym3
 
-
 	local _total2 = 2*(`_total2')/((`_nm')*((`_alpha')^2))
+
+	forvalues i = 0/2 {
+		noisily dis "total `i': `_total`i''"
+	}
+	dis "total 0 dx: `_total0_m'"
+
 	local _dev = sqrt(`_total0'+`_total1'-`_total2')
 	display in yellow "Std.error DO = " `_dev'
+	display in yellow "Std.error DX = " sqrt(`_total0_m'+`_total1'-`_total2')
 	return scalar _dev = `_dev'
 
 	restore

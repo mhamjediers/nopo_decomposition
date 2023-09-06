@@ -86,9 +86,6 @@ program define getcf
             keep if _merge == 3
             drop _merge
             
-            noisily sum `varlist'_cf
-            noisily dis r(Var)
-            
             // get outcome mean and var per id
             // further collapse by stratum if present
             collapse ///
@@ -129,12 +126,17 @@ end
 
 // kmatch
 nopomatch age edu, outcome(wage) by(t) abs replace sd
-qui nopo decomp wage i.age i.edu, by(t) atc kmkeepgen kmatch(md)
+// qui nopo decomp wage i.age i.edu, by(t) atc kmkeepgen
 gen id = _n
 //qui kmatch em t age edu (wage), atc replace idgen(mid_) wgenerate generate
-qui kmatch md t age edu (wage), ate atc att po replace idgen(mid_) dxgenerate wgenerate generate bwidth(0.5) // = EM result
-browse id t _KM_* mid_* _DX_*
-stop
+kmatch em t age edu (wage), ate atc att po replace dygenerate wgenerate generate
+
+bys t _supp: sum _DY_wage
+
+table strata t, stat(mean _KM_nc _KM_nm)
+
+
+
 mat list e(b)
 mat list e(V)
 quietly count if t==1 & _nopo_matched == 1
@@ -197,3 +199,18 @@ preserve
     display in yellow "Std.error DO = " `_dev'
 
 restore
+
+
+//     Variable |        Obs        Mean    Std. dev.       Min        Max
+// -------------+---------------------------------------------------------
+//          _wf |         17    .0588235    .0287622   .0021277   .0957447
+//
+//     Variable |        Obs        Mean    Std. dev.       Min        Max
+// -------------+---------------------------------------------------------
+//          _ym |         17    13.93009    4.083944   7.824759   22.98011
+//
+//     Variable |        Obs        Mean    Std. dev.       Min        Max
+// -------------+---------------------------------------------------------
+//       _varym |         17    .0843229    .0301279   .0586971   .1890679
+//
+// Std.error DO = .25941368

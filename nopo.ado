@@ -464,7 +464,6 @@ program define nopo_decomp, eclass
      SEs are not correct and are not returned; users have to use bootstrap
     */
     
-
     // weighting helpers
     tempvar weight_cons
     gen `weight_cons' `_wexp'
@@ -474,11 +473,12 @@ program define nopo_decomp, eclass
 
     // D
     mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
-    local _meanA = e(b)[1,1]
-    local _meanB = e(b)[1,2]
+    scalar _meanA = e(b)[1,1]
+    scalar _meanB = e(b)[1,2]
     reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
     estimates store d
     mat d = e(b)[1,1]
+    mat d = e(V)[1,1]
     
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
@@ -493,8 +493,8 @@ program define nopo_decomp, eclass
     estimates store da
     mat da = e(b)[1,1]
     scalar _mgapA = _b[1.`matched']
-    scalar _mshareuwA = (_nmA / _nA ) * 100
-    scalar _msharewA = (_nmwA / _nwA ) * 100
+    scalar _mshareuwA = (_nmA / _nA) * 100
+    scalar _msharewA = (_nmwA / _nwA) * 100
 
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
@@ -509,8 +509,8 @@ program define nopo_decomp, eclass
     estimates store db
     mat db = e(b)[1,1]
     scalar _mgapB = _b[1.`matched']
-    scalar _mshareuwB = (_nmB / _nB ) * 100
-    scalar _msharewB = (_nmwB / _nwB ) * 100
+    scalar _mshareuwB = (_nmB / _nB) * 100
+    scalar _msharewB = (_nmwB / _nwB) * 100
     
     // change to matching weight
     replace `weight_cons' = `mweight'
@@ -525,12 +525,12 @@ program define nopo_decomp, eclass
     replace `weight_cons' `_wexp'
 
     // D0 SE: Nopo (2008) style
-    if ("`_kmatch_subcmd'" == "em") {
+    /* if ("`_kmatch_subcmd'" == "em") {
 
-      // alpha = NA/NB
+      // alpha = NA/NB: group sizes scale asymptotically
       local _alpha = _nmwA / _nmwB
 
-      // variance of the second term of equation 9
+      // variance of the mean of group A wages; central limit theorem
       sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1
       local _total0 = r(Var) / _nmA
       
@@ -554,7 +554,7 @@ program define nopo_decomp, eclass
         gen _part1 = (_wf*(1-_wf)*(_ym^2)) / (`_alpha'^2) + _varym*(_wf^2)
         sum _part1
         local _total1 = r(sum) / _nmB
-
+        
         gen _wfym = _wf * _ym
         egen _sumwfym1 = sum(_wfym)
         gen _sumwfym2 = _sumwfym1 - _wfym
@@ -569,7 +569,7 @@ program define nopo_decomp, eclass
 
       restore
 
-    }
+    } */
 
     // suest & nlcom
     suest d d0 da db, vce(`vce') // analytic and cluster only!
@@ -712,7 +712,7 @@ program define nopo_decomp, eclass
     */ as result _col(32) %8.0f _nmA /*
     */ _col(45) %8.0f _numA /*
     */ _col(57) %8.0f _nA /*
-    */ _col(71) %08.3g `_meanA'
+    */ _col(71) %08.3g _meanA
   di as text _col(4) abbrev("`_groupAlbl'", 25) _col(30) "{c |}" /*
     */ as result _col(33) %7.1f _mshareuwA /*
     */ _col(46) %7.1f `=100-_mshareuwA'
@@ -720,7 +720,7 @@ program define nopo_decomp, eclass
     */ as result _col(32) %8.0f _nmB /*
     */ _col(45) %8.0f _numB /*
     */ _col(57) %8.0f _nB /*
-    */ _col(71) %08.3g `_meanB'
+    */ _col(71) %08.3g _meanB
   di as text _col(4) abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
     */ as result _col(33) %7.1f _mshareuwB /*
     */ _col(46) %7.1f `=100-_mshareuwB'
@@ -729,7 +729,10 @@ program define nopo_decomp, eclass
   dis ""
 
   // display estimates
-  if ("`dtable'" == "") ereturn display
+  if ("`dtable'" == "") {
+    ereturn display
+    dis "Please use {cmd:bootstrap: nopo decomp ...} to obtain standard errors."
+  }
   
 end
 

@@ -35,7 +35,7 @@ qui forvalues i = 1/`sim' {
     // reg on d
     reg y d, robust
     estimates store rob
-    nlcom (b: _b[d] * m * sqrt((`n'-1) / `n')), post // account for scaling issue; see p. 10
+    nlcom (b: _b[d] * m * sqrt((`n'-1) / `n')), post // n vs. n-1 scaling issue?
     mat EST = EST, sqrt(e(V)[1,1])
     
     // suest diff
