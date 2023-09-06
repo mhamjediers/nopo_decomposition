@@ -1,13 +1,14 @@
 clear
 
-set seed 1234
+set seed 37
 local sim = 1000
-local n = 1000
+local n = 100
 matrix est = J(1,8,.) // Empty matrix for simulation runs
 qui forvalues i = 1/`sim' {
 	
 	set obs `n'
-	gen d = runiform() > 0.8 // dummy indicator
+	*gen d = runiform() > 0.8 // dummy indicator
+	gen d = _n > 0.8*`n' // dummy indicator
     gen notd = 1 - d
 	gen y = d + rnormal() // outcome
 
@@ -25,9 +26,10 @@ qui forvalues i = 1/`sim' {
 	mata: diff = (y0 - y1) * sum(D) / N // mean difference multiplied by share of D == 1
 	mata: IF_diff = (IF_d0 - IF_d1) * sum(D) / N
 	
-	mata: EST = y0, y1, diff, sqrt(diagonal(variance((IF_d0, IF_d1, IF_diff)) / N))' // storing results
+	mata: EST = y0, y1, diff, diagonal(variance((IF_d0, IF_d1, IF_diff)) / N)' // storing results
 	mata: st_matrix("EST", EST)
-    
+  
+	
     // robust estimations
     sum d, meanonly
     scalar m = r(mean)
@@ -36,7 +38,7 @@ qui forvalues i = 1/`sim' {
     reg y d, robust
     estimates store rob
     nlcom (b: _b[d] * m * sqrt((`n'-1) / `n')), post // n vs. n-1 scaling issue?
-    mat EST = EST, sqrt(e(V)[1,1])
+    mat EST = EST, e(V)[1,1]
     
     // suest diff
     reg y if d == 0
@@ -45,13 +47,17 @@ qui forvalues i = 1/`sim' {
     estimates store d1
     suest d0 d1
     nlcom ([d0_mean]_cons - [d1_mean]_cons) * m, post
-    mat EST = EST, sqrt(e(V)[1,1])
-
+    mat EST = EST, e(V)[1,1]
+	
 	matrix est = est \ EST
 	drop *
 }
 
-matrix colnames est = y0 y1 diff y0se y1se diffse robse suestse
+matrix colnames est = y0 y1 diff y0se y1se diffse  robse suestse
+
 svmat est, names(col)
+sum diff 
+
 collapse (sd) y0 y1 emp = diff (mean) y0se y1se mod_if = diffse mod_rob = robse mod_suest = suestse
+for any if rob suest: replace mod_X = sqrt(mod_X)
 list emp mod_if mod_rob mod_suest
