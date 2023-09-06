@@ -126,8 +126,8 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       }
       // set att/atc logic depending on reference
       if ("`_xref'" != "" | "`_bref'" != "") {
-        if ("`_tval'" == "`_xref'" | "`_cval'" == "`_bref'") local _te = "atc"
-          else local _te = "att"
+        if ("`_tval'" == "`_xref'" | "`_cval'" == "`_bref'") local _te = "att"
+          else local _te = "atc"
         if ("`atc'" != "") dis as text "Option '`atc'' ignored due to manually specified reference."
         if ("`att'" != "") dis as text "Option '`att'' ignored due to manually specified reference."
       }
@@ -309,6 +309,7 @@ program define nopo_decomp, eclass
     tempvar treat
     gen `treat' = 0 if !mi(`_tvar')
     replace `treat' = 1 if `_tvar' == `_tval'
+    local _te = strupper("`att'`atc'")
     
     // determine matching set from kmatch for return passthru; drop doublettes
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
@@ -396,8 +397,14 @@ program define nopo_decomp, eclass
     local _cval = strrtrim(strltrim(usubinstr("`_tvarlvls'", "`_tval'", "", .)))
     local _groupA = "`_tvar' == `_cval'"
     local _groupB = "`_tvar' == `_tval'"
-    if ("`atc'" != "") local xref = "`_groupA'"
-      else if ("`att'" != "") local xref = "`_groupB'"
+    if ("`atc'" != "") {
+      local xref = "`_groupA'"
+      local bref = "`_groupB'"
+    }
+    else if ("`att'" != "") {
+      local xref = "`_groupB'"
+      local bref = "`_groupA'"
+    }
     
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
@@ -542,13 +549,14 @@ program define nopo_decomp, eclass
       ereturn local wtype = "`_wtype'"
       ereturn local wexp = "`_wexp'"
     }
-    ereturn local teffect = "`_TE'"
+    ereturn local teffect = "`_te'"
     ereturn local tvar = "`_tvar'"
     ereturn local tval = "`_tval'"
     ereturn local cval = "`_cval'"
     ereturn local groupA = "`_groupA'"
     ereturn local groupB = "`_groupB'"
     ereturn local xref = "`xref'"
+    ereturn local bref = "`bref'"
     ereturn local matchset = strltrim("`_matchset'")
     // nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
     // empty locals are not returned by Stata by default
@@ -606,12 +614,12 @@ program define nopo_decomp, eclass
 
   // display general info
   if ("`_groupA'" == "`xref'") {
-    local _refA "(bref)"
-    local _refB "(xref)"
-  }
-  else {
     local _refA "(xref)"
     local _refB "(bref)"
+  }
+  else {
+    local _refA "(bref)"
+    local _refB "(xref)"
   }
   if ("`_nn'" != "") {
     local _param "NN requested:"

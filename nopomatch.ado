@@ -358,9 +358,9 @@ version 10.1
 	tempfile collapsed
 	quietly save `collapsed', replace
 
-	noisily sum _wf
+	/* noisily sum _wf
     noisily sum _ym
-    noisily sum _varym
+    noisily sum _varym */
 
 	quietly gen _part1 = (_wf*(1-_wf)*(_ym^2))/((`_alpha')^2) + _varym*(_wf^2)
 	quietly summ _part1
@@ -392,10 +392,10 @@ version 10.1
 
 	local _total2 = 2*(`_total2')/((`_nm')*((`_alpha')^2))
 
-	forvalues i = 0/2 {
+	/* forvalues i = 0/2 {
 		noisily dis "total `i': `_total`i''"
 	}
-	dis "total 0 dx: `_total0_m'"
+	dis "total 0 dx: `_total0_m'" */
 
 	local _dev = sqrt(`_total0'+`_total1'-`_total2')
 	display in yellow "Std.error DO = " `_dev'
