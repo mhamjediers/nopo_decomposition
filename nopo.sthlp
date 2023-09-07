@@ -69,7 +69,7 @@
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}    
-For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}.
+For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
 
 {pstd}{ul:Matching approaches:} 
 
@@ -79,7 +79,7 @@ two of which are additionally available in {cmd:nopo decomp}: multivariate-dista
 {pstd}{ul:Standard errors:}
 
 {pstd}Please use bootstrapping to obtain standard errors via {cmd: bootstrap: nopo decomp} (see {help nopo##examples:{it:Examples}}). 
-We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {it:D0} extend to the full set of components in the presence of covariance. If you can help, please reach out to us via 
+We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {it:D0} (and implemented in {help nopomatch:{it:nopomatch}) extend to the full set of components in the presence of covariance. If you can help, please reach out to us via 
 {browse "https://github.com/mhamjediers/nopo_decomposition/issues/14":GitHub}.
 
 {pstd}{ul:Generated variables:}
@@ -102,7 +102,11 @@ We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {i
 decompose the gap in {depvar:} (required). Needs to be numeric with two levels. By default, the 
 first {cmd:by} group is group {it:A}, which is the reference group in terms of {it:returns}
 and the second group is group {it:B}, which is the reference group in terms of {it:characteristics} 
-(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} for details). Use {cmd:xref()}/{cmd:bref()} or {cmd:swap} to change. 
+(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} for details). 
+Use {cmd:xref()}/{cmd:bref()} or {cmd:swap} to change.
+
+{p 8 8 2} Please note that the reference group is different when using {help nopomatch:{it:nopomatch}}. 
+You can obtain the same results by switching {cmd:xref()}/{cmd:bref()} (see {help nopo##examples:{it:Examples}}).
 
 {phang}
 {cmdab:xref(}{varname}{it: == #}{cmd:)} allows to manually set the reference in terms of {it:characteristics}. 
@@ -117,10 +121,13 @@ for a detailed explanation what that means in the matching approach. Naturally, 
 {cmd:xref()} cannot be the same.
 
 {phang}
-{cmdab:swap} groups {it:A} and {it:B}, so that the sign of {it:D} is reversed and and the respective reference for characteristics and returns is switched.
+{cmdab:swap} groups {it:A} and {it:B}, so that the sign of {it:D} is reversed and and the respective reference 
+for characteristics and returns is switched.
 
 {phang}
-{cmdab:norm:alize} estimates by the {depvar} mean of group {it: A}. Coefficients can then be interpreted in a relative manner, e.g. that group {it:B} earns on average 19 percent lower wages compared to group {it:A}. Generates {bf:_{depvar}_norm}.
+{cmdab:norm:alize} estimates by the {depvar} mean of group {it: A}. Coefficients can then be interpreted in a 
+relative manner, e.g. that group {it:B} earns on average {it:x percent} lower wages compared to group {it:A}. 
+Generates {bf:_{depvar}_norm}.
 
 {phang}
 {cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the matching approach. The default is to use 
@@ -224,7 +231,8 @@ Creates a plot showing how the different levels of {varname} contribute to {it:D
 because these levels are associated with either many unmatched units and/or large differences in 
 {depvar} by matching status within groups {it:A} and {it:B}
 (see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation})
-for details. This {it:is not} the same as a detailed decomposition in regression-based approaches (which is generally not possible with matching).
+for details. This {it:is not} the same as a detailed decomposition in regression-based approaches 
+(which is generally not possible with matching).
 
 {p 6 8 2}
 {cmd:nosort} specifies that the plot is not to be sorted by the mean values of {depvar} per level of
@@ -289,6 +297,9 @@ to build your own plot from the data.
 {phang}. {stata nopo gapoverdist}{p_end}
 {phang}. {stata nopo dadb mage_c}{p_end}
 
+{pstd}Obtain the same results as via {help nopomatch:{it:nopomatch}}{p_end}
+{phang}. {stata nopomatch mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, outcome(bweight) by(mbsmoke)}{p_end}
+{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) xref(0) normalize}{p_end}
 
 {title:References}
 
