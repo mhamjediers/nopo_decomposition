@@ -141,8 +141,9 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       }
       local att // unset (in case it was passed)
       local atc // unset (in case it was passed)
-      if ("`_te'" == "att") local att = "att"
-        else local atc = "atc" // no _te defaults to atc (correct for swap/non-swap)
+      // ATT IS DEFAULT (to correspond to our expositions)
+      if ("`_te'" == "atc") local atc = "atc"
+        else local att = "att"
       
       //
       // Run kmatch
