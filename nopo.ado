@@ -93,9 +93,8 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       - option swap:
         - group B = treat == 0
         - group A = treat == 1
-        - xref is A; bref is B
-      - manually specify reference group for target CHARACTERISTICS of weighting: xref(treat == 1)
-      - PERHAPS provide both options (xref, bref)?
+        - xref is B; bref is A
+      - manually specify reference groups (xref, bref)
         
       */
       // treatment value = group order
@@ -176,7 +175,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
             else local _sum_weightexp = "[`weight'`exp']"
         }
         cap drop _`_depvarabbrev'_norm
-        // sum: always group B = Control = T == 0
+        // sum: always group A = Control = T == 0
         qui sum `_depvar' if `by' == `_cval' & `touse' `_sum_weightexp', meanonly
         qui gen _`_depvarabbrev'_norm = `_depvar' / r(mean) if `touse'
         local _depvarlbl : variable label `_depvar'			
