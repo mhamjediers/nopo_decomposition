@@ -17,6 +17,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
+    naive /// report naive SE from weighted reg and SUEST
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
@@ -541,8 +542,14 @@ program define nopo_decomp, eclass
 
     // return
     mat b = e(b)
-    mat V = e(V) // could be returned for naive estimates
-    ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
+    mat V = e(V)
+    if (`"`naivese'"' == "") {
+      // default
+      ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
+    }
+    else {
+      ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+    }
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"
     if ("`_wtype'" != "" & "`_wexp'" != "=1") {
