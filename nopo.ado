@@ -269,7 +269,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
-    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `options'
+    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `naivese' `options'
 
 end
 
@@ -289,6 +289,7 @@ program define nopo_decomp, eclass
       kmpassthru(string) ///
       kmkeepgen ///
       dtable ///
+      naivese ///
     ]
   
   quietly {
@@ -336,7 +337,7 @@ program define nopo_decomp, eclass
       local _wexp = "=1"
     }
     if ("`e(vce)'" == "analytic") local vce = "robust"
-      else local vce = "`e(vce)'"
+      else local vce = "`e(vce)' `e(clustvar)'" // cluster only alternative
     
     // generated matching vars processing
     /*
@@ -528,6 +529,7 @@ program define nopo_decomp, eclass
     replace `weight_cons' `_wexp'
 
     // suest & nlcom
+    noisily dis "xxx `vce'"
     suest d d0 da db, vce(`vce') // analytic and cluster only!
     nlcom ///
       (D: [d_mean]1.`treat') ///

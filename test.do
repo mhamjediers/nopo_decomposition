@@ -40,9 +40,11 @@ lab var edu "Education"
 lab def edu 1 "Edu 1" 2 "Edu 2" 3 "Edu 3" 4 "Edu 4"
 lab val edu edu
 
+gen cluster = floor(_n/100) + t * 1000
 
+nopo decomp wage i.age i.edu, by(groups) xref(0) kmopts(vce(cluster cluster)) naivese
+stop
 
-nopo decomp wage i.age i.edu, by(groups) xref(0)
 ereturn list
 nopo decomp wage i.age i.edu, by(groups) xref(1)
 ereturn list
