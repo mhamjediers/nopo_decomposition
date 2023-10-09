@@ -529,7 +529,6 @@ program define nopo_decomp, eclass
     replace `weight_cons' `_wexp'
 
     // suest & nlcom
-    noisily dis "xxx `vce'"
     suest d d0 da db, vce(`vce') // analytic and cluster only!
     nlcom ///
       (D: [d_mean]1.`treat') ///
