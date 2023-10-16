@@ -64,4 +64,6 @@ In the Potential-Outcome-Framework:
 
 Thus, $D_0$ is the part of $D$ which would remain in the counterfactual setting of $A$ and $B$ having the characteristics of the group specified in option `xref()`, which can either be $A$ or $B$. Please note that the reference in terms of _returns to characteristics_, `bref()`, would always be the respective other group (in the (Kitagawa-)Blinder-Oaxaca parlance, this would be the coefficient-vector).
 
+
+###References:
 Ñopo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics and Statistics, 90(2), 290–299. https://doi.org/10/b6tqwq
