@@ -463,14 +463,16 @@ program define nopo_decomp, eclass
     
     /*
      suest is used to calculate SEs accounting for the covariance between components. 
-     DX is estimated as delta: = D - D0 - DA -DB. suest requires some hacking around weighting restrictions:
+     DX is estimated as delta: = D - D0 - DA -DB. suest requires some hacking around weighting 
+     restrictions:
 
      - D0 always needs aweights (pweights not allowed in suest)
      - if user provides fweights, we need to tell Stata that the weight used in D0 estimates is
        fweight instead of the actual aweight
      - use vce only in suest estimation
 
-     SEs are not correct and are not returned; users have to use bootstrap
+     SEs are not correct and are not returned if not specifically requested via 'naivese';
+     users have to use bootstrap
     */
     
     // weighting helpers
@@ -499,7 +501,7 @@ program define nopo_decomp, eclass
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     estimates store da
     scalar _mgapA = _b[1.`matched']
-    scalar _mshareuwA = (_nmA / _nA) * 100
+    scalar _mshareA = (_nmA / _nA) * 100
     scalar _msharewA = (_nmwA / _nwA) * 100
 
     // DB
@@ -514,9 +516,13 @@ program define nopo_decomp, eclass
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     estimates store db
     scalar _mgapB = _b[1.`matched']
-    scalar _mshareuwB = (_nmB / _nB) * 100
+    scalar _mshareB = (_nmB / _nB) * 100
     scalar _msharewB = (_nmwB / _nwB) * 100
-    
+
+    // se estimation problem if no variation in Y in matched or unmatched, more likely with dummies
+    /* mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample', over(`matched')
+    mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample', over(`matched') */
+
     // change to matching weight
     replace `weight_cons' = `mweight'
 
@@ -538,7 +544,7 @@ program define nopo_decomp, eclass
           - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
           - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
       (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-      (DB: [db_mean]1.`matched'* -1 * ( _numwB / _nwB )) ///
+      (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
       , post
 
     // return
@@ -598,11 +604,11 @@ program define nopo_decomp, eclass
 
     ereturn scalar N = `_Nsample'
     ereturn scalar nA = _nA
-    ereturn scalar mshareuwA = _mshareuwA // unweighted
+    ereturn scalar mshareA = _mshareA // unweighted
     ereturn scalar msharewA = _msharewA // weighted
     ereturn scalar mgapA = _mgapA // raw diff by matching status
     ereturn scalar nB = _nB
-    ereturn scalar mshareuwB = _mshareuwB // unweighted
+    ereturn scalar mshareB = _mshareB // unweighted
     ereturn scalar msharewB = _msharewB // weighted
     ereturn scalar mgapB = _mgapB // raw diff by matching status
 
@@ -678,16 +684,16 @@ program define nopo_decomp, eclass
     */ _col(57) %8.0f _nA /*
     */ _col(71) %08.3g _meanA
   di as text _col(4) abbrev("`_groupAlbl'", 25) _col(30) "{c |}" /*
-    */ as result _col(33) %7.1f _mshareuwA /*
-    */ _col(46) %7.1f `=100-_mshareuwA'
+    */ as result _col(33) %7.1f _mshareA /*
+    */ _col(46) %7.1f `=100-_mshareA'
   di as text "B: " abbrev("`_tvar'", 7) " == `_tval' `_refB'" _col(30) "{c |}" /*
     */ as result _col(32) %8.0f _nmB /*
     */ _col(45) %8.0f _numB /*
     */ _col(57) %8.0f _nB /*
     */ _col(71) %08.3g _meanB
   di as text _col(4) abbrev("`_groupBlbl'", 25) _col(30) "{c |}" /*
-    */ as result _col(33) %7.1f _mshareuwB /*
-    */ _col(46) %7.1f `=100-_mshareuwB'
+    */ as result _col(33) %7.1f _mshareB /*
+    */ _col(46) %7.1f `=100-_mshareB'
   di as text "{hline 29}{c BT}{hline 48}"
   if ("`_wtype'" != "") di as text "Note: N and % are unweighted." 
   dis ""
