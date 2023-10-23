@@ -1518,7 +1518,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _colnames = `" `_colnames' "B_matched" "'
 
       // A_unmatched
-      if (`e(mshareuwA)' < 100) {
+      if (`e(mshareA)' < 100) {
         tabstat `_tabstatvars' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
@@ -1528,7 +1528,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
 
       // B_unmatched
-      if (`e(mshareuwB)' < 100) {
+      if (`e(mshareB)' < 100) {
         tabstat `_tabstatvars' if `treat' == 1 & `_support' == 0 & `touse' `_weightexp' ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
