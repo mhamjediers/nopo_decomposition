@@ -1403,10 +1403,15 @@ syntax [varlist (default=none fv)] [if] [in], ///
      to accomodate that factors always need a mean estimation and need to be split into levels,
      which just have a single output per level: the share.
 
+     We also save every statistic in its own table to ease manual postprocessing.
+
+     [ToDo: let a separate program do the matrix processing, lots of repetetions below]
+
     */
 
     // statistics
     if ("`statistics'" == "") local statistics = "mean sd"
+    local _nstats : word count `statistics' 
 
     // vars to tab; defaults to matching set
     if ("`varlist'" == "") local varlist "`_depvar' `e(matchset)'"
@@ -1420,7 +1425,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _tabstatvars = ""
 
       // rownames
-      local _rownames = ""
+      local _rownames = "" // gather for full table
+      local _rownames_sep = "" // gather for separate table for each statistic
       
       // factor variable processing
       if ("`_var'" != "`_depvar'" & (ustrregexm("`_var'", "^i.*\.") == 1 | "`_kmatch'" == "em")) {
@@ -1454,6 +1460,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
         }
       }
       else {
+        // no factors
         local _factor = 0
         local _statistics = "`statistics'"
         local _tabstatvars = "`_var'"
@@ -1469,13 +1476,24 @@ syntax [varlist (default=none fv)] [if] [in], ///
       if ("`label'" != "") local _varlbl : variable label `_var'
       if ("`_varlbl'" == "") local _varlbl = "`_var'"
 
-      // build rownames as equations -> varname:star or varname:lvl
+      // build rownames as equations -> varname:stat or varname:lvl
       local _rownameseq = ""
+      local _rownameseq_sep = ""
+      local _j = 1 // label once per eq for separate stat tables
       foreach _rowname in `_rownames' {
         local _rownameseq = `" `_rownameseq' "`_varlbl':`_rowname'" "'
+        if (`_factor' == 1) {
+          local _rownameseq_sep = `"`_rownameseq'"'
+        }
+        else if (`_j' == 1) {
+          // if not used as equation name, char length limited to 32; no dots allowed
+          local _varlblabbrev = abbrev(usubinstr("`_varlbl'", ".", "",.), 32)
+          local _rownameseq_sep = `" `_rownameseq_sep' "`_varlblabbrev'" "'
+        } 
+        local ++_j
       }
       local _rownames = `"`_rownameseq'"'
-
+      local _rownames_sep = `"`_rownameseq_sep'"'
 
       //
       // estimate mean for each sample and concatenate
@@ -1489,7 +1507,19 @@ syntax [varlist (default=none fv)] [if] [in], ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S' * 100
-      mat _V = _S
+      mat _V = _S // full table element
+      // stat-specific table element 
+      forvalues _s = 1/`_nstats' {
+        if (`_factor' == 0) {
+          mat _stat`_s' = _S[`_s', 1]
+        }
+        else if (`_factor' == 1 & `_s' == 1) {
+          mat _stat`_s' = _S[`_s'..., 1]
+        } 
+        else {
+          mat _stat`_s' = J(rowsof(_S), 1, .)
+        }
+      }
       local _colnames = `" `_colnames' "A_matched" "'
 
       // A_matched_weighted or B_matched_weighted
@@ -1507,7 +1537,19 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S' * 100
-      mat _V = _V, _S
+      mat _V = _V, _S // full table element
+      // stat-specific table element 
+      forvalues _s = 1/`_nstats' {
+        if (`_factor' == 0) {
+          mat _stat`_s' = _stat`_s', _S[`_s', 1]
+        }
+        else if (`_factor' == 1 & `_s' == 1) {
+          mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
+        } 
+        else {
+          mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
+        }
+      }
 
       // B_matched
       tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 & `touse' `_weightexp' ///
@@ -1515,6 +1557,18 @@ syntax [varlist (default=none fv)] [if] [in], ///
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S' * 100
       mat _V = _V, _S
+      // stat-specific table element 
+      forvalues _s = 1/`_nstats' {
+        if (`_factor' == 0) {
+          mat _stat`_s' = _stat`_s', _S[`_s', 1]
+        }
+        else if (`_factor' == 1 & `_s' == 1) {
+          mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
+        } 
+        else {
+          mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
+        }
+      }
       local _colnames = `" `_colnames' "B_matched" "'
 
       // A_unmatched
@@ -1524,6 +1578,18 @@ syntax [varlist (default=none fv)] [if] [in], ///
         mat _S = r(StatTotal)
         if (`_factor' == 1) mat _S = _S' * 100
         mat _V = _S, _V
+        // stat-specific table element 
+        forvalues _s = 1/`_nstats' {
+          if (`_factor' == 0) {
+            mat _stat`_s' = _S[`_s', 1], _stat`_s'
+          }
+          else if (`_factor' == 1 & `_s' == 1) {
+            mat _stat`_s' = _S[`_s'..., 1], _stat`_s'
+          } 
+          else {
+            mat _stat`_s' = J(rowsof(_S), 1, .), _stat`_s'
+          }
+        }
         local _colnames = `" "A_unmatched" `_colnames' "'
       }
 
@@ -1534,15 +1600,42 @@ syntax [varlist (default=none fv)] [if] [in], ///
         mat _S = r(StatTotal)
         if (`_factor' == 1) mat _S = _S' * 100
         mat _V = _V, _S
+        // stat-specific table element 
+        forvalues _s = 1/`_nstats' {
+          if (`_factor' == 0) {
+            mat _stat`_s' = _stat`_s', _S[`_s', 1]
+          }
+          else if (`_factor' == 1 & `_s' == 1) {
+            mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
+          } 
+          else {
+            mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
+          }
+        }
         local _colnames = `" `_colnames' "B_unmatched" "'
       }
 
       // assign row names
       mat rownames _V = `_rownames'
+      forvalues _s = 1/`_nstats' {
+        mat rownames _stat`_s' = `_rownames_sep'
+      }
 
       // concatenate
-      if (`_i' == 1) mat _M = _V 
-        else mat _M = _M \ _V
+      if (`_i' == 1) {
+        mat _M = _V
+        forvalues _s = 1/`_nstats' {
+          local _stat : word `_s' of `statistics'
+          mat _`_stat' = _stat`_s'
+        }
+      }
+      else {
+        mat _M = _M \ _V
+        forvalues _s = 1/`_nstats' {
+          local _stat : word `_s' of `statistics'
+          mat _`_stat' = _`_stat' \ _stat`_s'
+        }
+      }
 
       // drop generated variables; gen general indicator that factors have been used
       if ("`_factor'" == "1") {
@@ -1583,6 +1676,9 @@ syntax [varlist (default=none fv)] [if] [in], ///
     noisily matlist _M, lines(columns) showcoleq(combined) twidth(`_twidth') format(`_format')
     if ("`_factor_present'" == "1") noisily dis "Note: Shares of factor levels are printed as %."
     return mat table = _M
+    foreach _stat in `statistics' {
+      return mat `_stat' = _`_stat'
+    }
 
   }
 
