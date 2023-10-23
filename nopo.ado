@@ -1446,10 +1446,10 @@ syntax [varlist (default=none fv)] [if] [in], ///
             local _vallbl : value label `_var'
             if ("`_vallbl'" != "") local _lbl : label `_var' `_lvl'
             if ("`_lbl'" != "") local _rownames = `" `_rownames' "`_lbl'" "' 
-              else local _rownames = `" `_rownames' "`_j'" "' // numval as fallback  
+              else local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback  
           }
           else {
-            local _rownames = `" `_rownames' "`_j'" "' // numval as fallback  
+            local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback  
           }
         }
       }
