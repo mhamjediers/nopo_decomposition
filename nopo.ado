@@ -1340,7 +1340,8 @@ cap program drop nopo_summarize
 program define nopo_summarize, rclass
 syntax [varlist (default=none fv)] [if] [in], ///
   [STATistics(string)] /// mean mean/sd?
-  [label]
+  [label] ///
+  [fvdummies]
 
   quietly {
     
@@ -1440,9 +1441,12 @@ syntax [varlist (default=none fv)] [if] [in], ///
         // expand factors
         local _var = ustrregexra("`_var'", "^i.*\.", "")
         levelsof `_var', local(_varlvls)
+        if ("`_varlvls'" == "0 1") local _dummy = 1 // used to omit base level from table
+          else local _dummy = 0
         local _j = 0
         foreach _lvl in `_varlvls' {
-           local ++_j
+          local ++_j
+          if (`_j' == 1 & `_dummy' == 1 & "`fvdummies'" == "") continue // skip dummy abse level
           // gen one variable by factor lvl; gather in local
           gen _noposum_`_j' = `_var' == `_lvl' if !mi(`_var')
           local _tabstatvars = "`_tabstatvars' _noposum_`_j'"
@@ -1462,6 +1466,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       else {
         // no factors
         local _factor = 0
+        local _dummy = 0
         local _statistics = "`statistics'"
         local _tabstatvars = "`_var'"
         foreach _stat in `_statistics' {
@@ -1475,25 +1480,27 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _varlbl = ""
       if ("`label'" != "") local _varlbl : variable label `_var'
       if ("`_varlbl'" == "") local _varlbl = "`_var'"
+      local _varlblabbrev = abbrev(usubinstr("`_varlbl'", ".", "", .), 32)
 
       // build rownames as equations -> varname:stat or varname:lvl
+      // if dummy or for single stat tables, do not use equation labeling
       local _rownameseq = ""
       local _rownameseq_sep = ""
       local _j = 1 // label once per eq for separate stat tables
       foreach _rowname in `_rownames' {
-        local _rownameseq = `" `_rownameseq' "`_varlbl':`_rowname'" "'
+        if (`_dummy' == 1 & "`fvdummies'" == "") local _rownameseq = `" `_rownameseq' "`_varlblabbrev'" "'
+          else local _rownameseq = `" `_rownameseq' "`_varlbl':`_rowname'" "'
         if (`_factor' == 1) {
           local _rownameseq_sep = `"`_rownameseq'"'
         }
         else if (`_j' == 1) {
-          // if not used as equation name, char length limited to 32; no dots allowed
-          local _varlblabbrev = abbrev(usubinstr("`_varlbl'", ".", "",.), 32)
           local _rownameseq_sep = `" `_rownameseq_sep' "`_varlblabbrev'" "'
         } 
         local ++_j
       }
       local _rownames = `"`_rownameseq'"'
       local _rownames_sep = `"`_rownameseq_sep'"'
+      nois dis `"`_rownames'"'
 
       //
       // estimate mean for each sample and concatenate
@@ -1657,7 +1664,9 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
     }
-    mat colnames _M = `_colnames'
+    foreach _m in M `statistics' {
+      mat colnames _`_m' = `_colnames'
+    }
 
     // determine column format by no. of columns
     if (colsof(_M) == 3) {
