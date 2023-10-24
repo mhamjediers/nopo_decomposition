@@ -179,7 +179,7 @@ Returns a descriptive table with selected statistics by group and matching/weigh
 {it:A unmatched}, {it:A matched}, {it:A/B matched and weighted} (depends on {cmd:xref()} if {it:A} 
 or {it:B}), {it:B matched}, and {it:B unmatched}. If no variables are specified, {depvar} and 
 {varlist} from {cmd: nopo decomp} are summarized. By default, means and standard deviations are
-reported. For factor variables, the shares of factor levels are reported in percent (indicate factors
+reported. For factor variables, the shares of factor levels are reported (indicate factors
 by  using factor notation in {varlist} of either {cmd: nopo summarize} or the prior {cmd:nopo decomp}).
 
 {p 6 8 2}

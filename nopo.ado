@@ -1341,7 +1341,8 @@ program define nopo_summarize, rclass
 syntax [varlist (default=none fv)] [if] [in], ///
   [STATistics(string)] /// mean mean/sd?
   [label] ///
-  [fvdummies]
+  [fvdummies] ///
+  [fvpercent]
 
   quietly {
     
@@ -1513,7 +1514,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
       tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 & `touse' `_weightexp' ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
-      if (`_factor' == 1) mat _S = _S' * 100
+      if (`_factor' == 1) mat _S = _S'
+      if ("`fvpercent'" != "") mat _S = _S * 100
       mat _V = _S // full table element
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1543,7 +1545,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
         local _colnames = `" `_colnames' "B_matched_weighted" "'
       }
       mat _S = r(StatTotal)
-      if (`_factor' == 1) mat _S = _S' * 100
+      if (`_factor' == 1) mat _S = _S'
+      if ("`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S // full table element
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1562,7 +1565,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
       tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 & `touse' `_weightexp' ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
-      if (`_factor' == 1) mat _S = _S' * 100
+      if (`_factor' == 1) mat _S = _S'
+      if ("`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1583,7 +1587,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
         tabstat `_tabstatvars' if `treat' == 0 & `_support' == 0 & `touse' `_weightexp' ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
-        if (`_factor' == 1) mat _S = _S' * 100
+        if (`_factor' == 1) mat _S = _S'
+        if ("`fvpercent'" != "") mat _S = _S * 100
         mat _V = _S, _V
         // stat-specific table element 
         forvalues _s = 1/`_nstats' {
@@ -1605,7 +1610,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
         tabstat `_tabstatvars' if `treat' == 1 & `_support' == 0 & `touse' `_weightexp' ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
-        if (`_factor' == 1) mat _S = _S' * 100
+        if (`_factor' == 1) mat _S = _S'
+        if ("`fvpercent'" != "") mat _S = _S * 100
         mat _V = _V, _S
         // stat-specific table element 
         forvalues _s = 1/`_nstats' {
@@ -1681,10 +1687,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _twidth = 12
       local _format = "%10.3g"
     }
-    // list and return
+    // list and return main table
     noisily matlist _M, lines(columns) showcoleq(combined) twidth(`_twidth') format(`_format')
-    if ("`_factor_present'" == "1") noisily dis "Note: Shares of factor levels are printed as %."
+    if ("`_factor_present'" == "1") {
+      if ("`fvpercent'" != "") noisily dis "Note: Factor levels are printed as shares in %."
+        else noisily dis "Note: Factor levels are printed as shares."
+    }
     return mat table = _M
+    // return separate tables for all statistics
     foreach _stat in `statistics' {
       return mat `_stat' = _`_stat'
     }
