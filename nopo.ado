@@ -498,8 +498,26 @@ program define nopo_decomp, eclass
     scalar _nwA = r(sum_w)
     scalar _nmA = _nA - _numA
     scalar _nmwA = _nwA - _numwA
+    // check if no variation in Y among unmatched: SE estimation problem with suest
+    // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
+    // do not check for other groups: among matched (also D0 DX) always serious estimation problem
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     estimates store da
+    suest da
+    if (mi(r(table)["se", "mean:_cons"]) | r(table)["se", "mean:_cons"] < 1e-10) {
+      noisily dis "No variation in `_depvar' among unmatched in group A."
+      if (r(table)["b", "mean:_cons"] < 1e-6) {
+        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
+          if `treat' == 0 & `sample', nocons
+      }
+      else {
+        tempvar _cons
+        gen double `_cons' = r(table)["b", "mean:_cons"]
+        reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
+          if `treat' == 0 & `sample', hascons
+      }
+      estimates store da
+    }
     scalar _mgapA = _b[1.`matched']
     scalar _mshareA = (_nmA / _nA) * 100
     scalar _msharewA = (_nmwA / _nwA) * 100
@@ -513,15 +531,29 @@ program define nopo_decomp, eclass
     scalar _nwB = r(sum_w)
     scalar _nmB = _nB - _numB
     scalar _nmwB = _nwB - _numwB
+    // check if no variation in Y among unmatched: SE estimation problem with suest
+    // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
+    // do not check for other groups: among matched (also D0 DX) always serious estimation problem
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     estimates store db
+    suest db
+    if (mi(r(table)["se", "mean:_cons"]) | r(table)["se", "mean:_cons"] < 1e-10) {
+      noisily dis "No variation in `_depvar' among unmatched in group B."
+      if (r(table)["b", "mean:_cons"] < 1e-6) {
+        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
+          if `treat' == 1 & `sample', nocons
+      }
+      else {
+        tempvar _cons
+        gen double `_cons' = r(table)["b", "mean:_cons"]
+        reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
+          if `treat' == 1 & `sample', hascons
+      }
+      estimates store db
+    }
     scalar _mgapB = _b[1.`matched']
     scalar _mshareB = (_nmB / _nB) * 100
     scalar _msharewB = (_nmwB / _nwB) * 100
-
-    // se estimation problem if no variation in Y in matched or unmatched, more likely with dummies
-    /* mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample', over(`matched')
-    mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample', over(`matched') */
 
     // change to matching weight
     replace `weight_cons' = `mweight'
@@ -1515,7 +1547,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S'
-      if ("`fvpercent'" != "") mat _S = _S * 100
+      if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _S // full table element
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1546,7 +1578,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S'
-      if ("`fvpercent'" != "") mat _S = _S * 100
+      if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S // full table element
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1566,7 +1598,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S'
-      if ("`fvpercent'" != "") mat _S = _S * 100
+      if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S
       // stat-specific table element 
       forvalues _s = 1/`_nstats' {
@@ -1588,7 +1620,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
         if (`_factor' == 1) mat _S = _S'
-        if ("`fvpercent'" != "") mat _S = _S * 100
+        if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
         mat _V = _S, _V
         // stat-specific table element 
         forvalues _s = 1/`_nstats' {
@@ -1611,7 +1643,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
           , stat(`_statistics') save
         mat _S = r(StatTotal)
         if (`_factor' == 1) mat _S = _S'
-        if ("`fvpercent'" != "") mat _S = _S * 100
+        if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
         mat _V = _V, _S
         // stat-specific table element 
         forvalues _s = 1/`_nstats' {
