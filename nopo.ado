@@ -1479,7 +1479,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
         local _j = 0
         foreach _lvl in `_varlvls' {
           local ++_j
-          if (`_j' == 1 & `_dummy' == 1 & "`fvdummies'" == "") continue // skip dummy abse level
+          if (`_j' == 1 & `_dummy' == 1 & "`fvdummies'" == "") continue // skip dummy base level
           // gen one variable by factor lvl; gather in local
           gen _noposum_`_j' = `_var' == `_lvl' if !mi(`_var')
           local _tabstatvars = "`_tabstatvars' _noposum_`_j'"
@@ -1594,6 +1594,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
 
       // B_matched
+      /* table `_support' if `treat' == 1 & `touse' `_weightexp', stat(mean `_tabstatvars') stat(sumw)
+      table `_support' if `treat' == 1 & `touse' [pw`e(wexp)'], stat(mean `_tabstatvars') stat(sumw) */
       tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1 & `touse' `_weightexp' ///
         , stat(`_statistics') save
       mat _S = r(StatTotal)
