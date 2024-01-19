@@ -40,7 +40,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   // tokenize; determine decomp operation
   if ("`anything'" != "") gettoken subcmd varlist : anything
     else local subcmd "decomp"
-  if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize")) {
+  if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize", "ex")) {
     dis as error "nopo subcommand must be one of:"
     dis as error "'decomp', 'gapoverdist', 'dadb', 'summarize'"
     error 198
