@@ -41,16 +41,9 @@ lab val edu edu
 
 gen cluster = floor(_n/100) + t * 1000
 
-bys groups: gen n = _n
-replace age = 6 if n == 1 & groups == 1
-nopo decomp wage i.age i.edu, by(groups) xref(0)
-nopo summarize age edu t, label fvdummies
-stop
+gen w = runiform() * (groups + 1)
 
-bootstrap, noisily reps(2): nopo decomp wage i.age i.edu, by(groups) xref(0)
-
-ereturn list
-nopo decomp wage i.age i.edu, by(groups) xref(1)
+nopo decomp wage i.age i.edu [pw=w], by(groups) xref(1)
 ereturn list
 nopo decomp wage i.age i.edu, by(groups) bref(0)
 ereturn list
