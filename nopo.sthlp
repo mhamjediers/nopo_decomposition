@@ -292,7 +292,7 @@ to build your own plot from the data.
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Example data ({stata "nopo_ex 1":{it:click to run})}{p_end}
+{pstd}Example data ({stata "nopo ex 1":{it:click to run}}){p_end}
 {phang}. {stata webuse cattaneo2, clear}{p_end}
 {phang}. {stata recode mage (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-"), gen(mage_c)}{p_end}
 {phang}. {stata lab var mage_c "Mother's age"}{p_end}
