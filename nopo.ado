@@ -17,7 +17,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
-    naive /// report naive SE from weighted reg and SUEST
+    naivese /// report naive SE from weighted reg and SUEST
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
@@ -185,11 +185,16 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         if ("`_depvarlbl'" != "") lab var `_depvar' "`_depvarlbl' (normalized)"
         dis as text "Normalized outcome generated: `_depvar'"
       }
+
+      // SEs supposed to be bootstrapped, so default is to not to compute standard errors
+      // if not specifically requested via naivese (probably wrong)
+      if ("`naivese'" == "") local nose = "nose"
+        else local nose
       
       // run
       quietly {	
         `kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-          , tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' 
+          , tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' `nose'
           // perhaps strip opts of gen commands
       }
       
@@ -336,9 +341,10 @@ program define nopo_decomp, eclass
       local _wtype = "aweight"
       local _wexp = "=1"
     }
-    if ("`e(vce)'" == "analytic") local vce = "robust"
-      else local vce = "`e(vce)' `e(clustvar)'" // cluster only alternative
-    
+    if ("`naivese'" != "") {
+      if ("`e(vce)'" == "analytic") local vce = "robust"
+        else local vce = "`e(vce)' `e(clustvar)'" // cluster only alternative
+    }
     // generated matching vars processing
     /*
      catch all for missing gen / wgen vars: 
@@ -407,6 +413,9 @@ program define nopo_decomp, eclass
       local xref = "`_groupB'"
       local bref = "`_groupA'"
     }
+
+    // save treatment effect (as D0)
+    scalar _d0 = e(b)[1,1]
     
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
@@ -473,6 +482,9 @@ program define nopo_decomp, eclass
 
      SEs are not correct and are not returned if not specifically requested via 'naivese';
      users have to use bootstrap
+
+     SPEED UP: since bootstrapping is necessary for anybody not requesting naivese, you can estimate
+     everything without standard errors.
     */
     
     // weighting helpers
@@ -486,11 +498,18 @@ program define nopo_decomp, eclass
     mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
     scalar _meanA = e(b)[1,1]
     scalar _meanB = e(b)[1,2]
-    reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
-    estimates store d
+    if ("`naivese'" == "") {
+      mat b = J(1, 5, .)
+      mat b[1,1] = _meanB - _meanA
+    }
+    else {
+      reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
+      estimates store d
+    }
     
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
+    if ("`naivese'" == "") scalar _meanumA = r(mean)
     scalar _numA = r(N)
     scalar _numwA = r(sum_w)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
@@ -498,32 +517,42 @@ program define nopo_decomp, eclass
     scalar _nwA = r(sum_w)
     scalar _nmA = _nA - _numA
     scalar _nmwA = _nwA - _numwA
-    // check if no variation in Y among unmatched: SE estimation problem with suest
-    // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-    // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-    reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
-    estimates store da
-    suest da
-    if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-      noisily dis "No variation in `_depvar' among unmatched in group A."
-      if (e(b)[1, "mean:_cons"] < 1e-6) {
-        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-          if `treat' == 0 & `sample', nocons
-      }
-      else {
-        tempvar _cons
-        gen double `_cons' = e(b)[1, "mean:_cons"]
-        reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-          if `treat' == 0 & `sample', hascons
-      }
-      estimates store da
-    }
-    scalar _mgapA = _b[1.`matched']
     scalar _mshareA = (_nmA / _nA) * 100
     scalar _msharewA = (_nmwA / _nwA) * 100
+    if ("`naivese'" == "") {
+      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample', meanonly
+      scalar _meanA = r(mean)
+      scalar _mgapA = _meanA - _meanumA
+      mat b[1,4] = _mgapA * (_numwA / _nwA)
+      if (b[1,4] == .) mat b[1,4] = 0
+    }
+    else {
+      // check if no variation in Y among unmatched: SE estimation problem with suest
+      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
+      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
+      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
+      estimates store da
+      suest da
+      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
+        noisily dis "No variation in `_depvar' among unmatched in group A."
+        if (e(b)[1, "mean:_cons"] < 1e-6) {
+          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
+            if `treat' == 0 & `sample', nocons
+        }
+        else {
+          tempvar _cons
+          gen double `_cons' = e(b)[1, "mean:_cons"]
+          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
+            if `treat' == 0 & `sample', hascons
+        }
+        estimates store da
+      }
+      if (_numA > 0) scalar _mgapA = _b[1.`matched']
+    }
 
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
+    if ("`naivese'" == "") scalar _meanumB = r(mean)
     scalar _numB = r(N)
     scalar _numwB = r(sum_w)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
@@ -531,85 +560,105 @@ program define nopo_decomp, eclass
     scalar _nwB = r(sum_w)
     scalar _nmB = _nB - _numB
     scalar _nmwB = _nwB - _numwB
-    // check if no variation in Y among unmatched: SE estimation problem with suest
-    // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-    // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-    reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
-    estimates store db
-    suest db
-    if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-      noisily dis "No variation in `_depvar' among unmatched in group B."
-      if (e(b)[1, "mean:_cons"] < 1e-6) {
-        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-          if `treat' == 1 & `sample', nocons
-      }
-      else {
-        tempvar _cons
-        gen double `_cons' = e(b)[1, "mean:_cons"]
-        reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-          if `treat' == 1 & `sample', hascons
-      }
-      estimates store db
-    }
-    scalar _mgapB = _b[1.`matched']
     scalar _mshareB = (_nmB / _nB) * 100
     scalar _msharewB = (_nmwB / _nwB) * 100
+    if ("`naivese'" == "") {
+      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample', meanonly
+      scalar _meanB = r(mean)
+      scalar _mgapB = _meanB - _meanumB
+      mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
+      if (b[1,5] == .) mat b[1,5] = 0
+    }
+    else {
+      // check if no variation in Y among unmatched: SE estimation problem with suest
+      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
+      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
+      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
+      estimates store db
+      suest db
+      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
+        noisily dis "No variation in `_depvar' among unmatched in group B."
+        if (e(b)[1, "mean:_cons"] < 1e-6) {
+          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
+            if `treat' == 1 & `sample', nocons
+        }
+        else {
+          tempvar _cons
+          gen double `_cons' = e(b)[1, "mean:_cons"]
+          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
+            if `treat' == 1 & `sample', hascons
+        }
+        estimates store db
+      }
+      if (_numB > 0) scalar _mgapB = _b[1.`matched']
+    }
 
     // change to matching weight
     replace `weight_cons' = `mweight'
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
-    reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-    estimates store d0
+    if ("`naivese'" == "") {
+      mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
+    }
+    else {
+      reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+      ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+      estimates store d0
+    }
 
     // DX (always uses aweights and the matching weight returned by kmatch)
-    /* if ("`att'" != "") local _xref = 1
-      else local _xref = 0
-    tempvar sub expanded
-    expand 2 if `treat' != `_xref', gen(`expanded')
-    gen `sub' = `_xref' if `treat' != `_xref'
-    replace `sub' = abs(1 - `_xref') if `expanded' == 1
-    replace `weight_cons' `_wexp' if `expanded' == 1
-    noi reg `_depvar' i.`sub' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-    estimates store dx
-    drop if `expanded' == 1 */
+    if ("`naivese'" == "") {
+      mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
+    }
+    else {
+      /* if ("`att'" != "") local _xref = 1
+        else local _xref = 0
+      tempvar sub expanded
+      expand 2 if `treat' != `_xref', gen(`expanded')
+      gen `sub' = `_xref' if `treat' != `_xref'
+      replace `sub' = abs(1 - `_xref') if `expanded' == 1
+      replace `weight_cons' `_wexp' if `expanded' == 1
+      noi reg `_depvar' i.`sub' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+      ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+      estimates store dx
+      drop if `expanded' == 1 */
 
-    // change to standard weight
-    replace `weight_cons' `_wexp'
+      // change to standard weight
+      replace `weight_cons' `_wexp'
 
-    // suest & nlcom
-    suest d d0 da db, vce(`vce') // analytic and cluster only!
-    nlcom ///
-      (D: [d_mean]1.`treat') ///
-      (D0: [d0_mean]1.`treat') ///
-      (DX: [d_mean]1.`treat' ///
-          - [d0_mean]1.`treat' ///
-          - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
-          - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-      (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-      (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-      , post
+      // suest & nlcom
+      suest d d0 da db, vce(`vce') // analytic and cluster only!
+      nlcom ///
+        (D: [d_mean]1.`treat') ///
+        (D0: [d0_mean]1.`treat') ///
+        (DX: [d_mean]1.`treat' ///
+            - [d0_mean]1.`treat' ///
+            - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
+            - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+        , post
 
-    // suest & nlcom
-    /* noi suest d d0 dx da db, vce(`vce') // analytic and cluster only!
-    nlcom ///
-      (D: [d_mean]1.`treat') ///
-      (D0: [d0_mean]1.`treat') ///
-      (DX: [dx_mean]1.`sub') ///
-      (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-      (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-      , post */
+      // suest & nlcom
+      /* noi suest d d0 dx da db, vce(`vce') // analytic and cluster only!
+      nlcom ///
+        (D: [d_mean]1.`treat') ///
+        (D0: [d0_mean]1.`treat') ///
+        (DX: [dx_mean]1.`sub') ///
+        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+        , post */
+    }
 
     // return
-    mat b = e(b)
-    mat V = e(V)
     if (`"`naivese'"' == "") {
       // default
+      mat colnames b = D D0 DX DA DB
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     else {
+      mat b = e(b)
+      mat V = e(V)
       ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     ereturn local cmd = "nopo"

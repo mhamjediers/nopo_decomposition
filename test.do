@@ -1,8 +1,7 @@
 cap cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
 run "nopomatch.ado"
-ado uninstall nopo
-net install nopo, from(/home/max/Seafile/Projects/nopo_decomposition)
+run "nopo.ado"
 
 clear
 set seed 1234
