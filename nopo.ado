@@ -504,15 +504,15 @@ program define nopo_decomp, eclass
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     estimates store da
     suest da
-    if (mi(r(table)["se", "mean:_cons"]) | r(table)["se", "mean:_cons"] < 1e-10) {
+    if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
       noisily dis "No variation in `_depvar' among unmatched in group A."
-      if (r(table)["b", "mean:_cons"] < 1e-6) {
+      if (e(b)[1, "mean:_cons"] < 1e-6) {
         reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
           if `treat' == 0 & `sample', nocons
       }
       else {
         tempvar _cons
-        gen double `_cons' = r(table)["b", "mean:_cons"]
+        gen double `_cons' = e(b)[1, "mean:_cons"]
         reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
           if `treat' == 0 & `sample', hascons
       }
@@ -537,15 +537,15 @@ program define nopo_decomp, eclass
     reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     estimates store db
     suest db
-    if (mi(r(table)["se", "mean:_cons"]) | r(table)["se", "mean:_cons"] < 1e-10) {
+    if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
       noisily dis "No variation in `_depvar' among unmatched in group B."
-      if (r(table)["b", "mean:_cons"] < 1e-6) {
+      if (e(b)[1, "mean:_cons"] < 1e-6) {
         reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
           if `treat' == 1 & `sample', nocons
       }
       else {
         tempvar _cons
-        gen double `_cons' = r(table)["b", "mean:_cons"]
+        gen double `_cons' = e(b)[1, "mean:_cons"]
         reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
           if `treat' == 1 & `sample', hascons
       }

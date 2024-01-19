@@ -25,7 +25,7 @@
    
     As postestimation to a matching via {help kmatch:{it:kmatch}}:
    
-        {cmd:nopo decomp} [{cmd:,} {cmdab:kmpass:thru(}{it:string}{cmdab:)}} {cmdab:kmkeep:gen}}]
+        {cmd:nopo decomp} [{cmd:,} {cmdab:kmpass:thru(}{it:string}{cmdab:)} {cmdab:kmkeep:gen}]
 
 
 {synoptset 24 tabbed}{...}
@@ -172,7 +172,7 @@ Note that some of the kmatch variables contain the same information as the varia
 {dlgtab:nopo summarize}
 
 {p 4 4 2}
-{cmd:nopo summarize} [{varlist}] [{cmd:, label} {cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)}]
+{cmd:nopo summarize} [{varlist}] [{cmd:,} {cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)} {it: displayoptions}]
 
 {p 6 6 2}
 Returns a descriptive table with selected statistics by group and matching/weighting status:
@@ -183,17 +183,31 @@ reported. For factor variables, the shares of factor levels are reported (indica
 by  using factor notation in {varlist} of either {cmd: nopo summarize} or the prior {cmd:nopo decomp}).
 
 {p 6 8 2}
+{cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)} are {it:mean sd} by default, but 
+you can choose any other available {help tabstat##statname:{it:statnames}}.
+
+{p 6 8 2}
+{it: displayoptions} comprise:
+
+{p 8 10 2}
 {cmd:label} displays labels instead of names for variables and value labels instead of values for 
 factor variables.
 
-{p 6 8 2}
-{cmdab:stat:istics(}{help tabstat##statname:{it:statnames}}{cmd:)} are {it:mean sd} by default, but 
-you can choose any other available {help tabstat##statname:{it:statnames}}.
+{p 8 10 2}
+{cmd:fvpercent} displays factor variable shares as percent.
+
+{p 8 10 2}
+{cmd:fvdummies} displays both dummy categories.
+
+{p 8 10 2}
+{cmd:keepempty} keeps empty columns for the unmatched. This is useful to keep the number of table
+columns fixed irrespective of common support, which allows appending {it:r(table)} after matching 
+on various specifications.
 
 {dlgtab:nopo gapoverdist}
 
 {p 4 4 2}
-{cmd:nopo gapoverdist} [{cmd:,} {help nopo##comopt:{it:options}}]
+{cmd:nopo gapoverdist} [{cmd:,} {it:options}]
 
 {p 6 6 2}
 Plots decomposition-components over the distribution of {depvar} by comparing {depvar} {it:means} 
@@ -228,7 +242,7 @@ to build your own plot from the data.
 {dlgtab:nopo dadb}
 
 {p 4 4 2}
-{cmd:nopo dadb} {varname} [{cmd:,} {help nopo##comopt:{it:options}}]
+{cmd:nopo dadb} {varname} [{cmd:,} {it:options}]
 
 {p 6 6 2} 
 Creates a plot showing how the different levels of {varname} contribute to {it:DA} and {it:DB}

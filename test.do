@@ -1,8 +1,8 @@
 cap cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 
-run "nopo.ado"
 run "nopomatch.ado"
-run "nopodecomp.ado"
+ado uninstall nopo
+net install nopo, from(/home/max/Seafile/Projects/nopo_decomposition)
 
 clear
 set seed 1234
@@ -42,8 +42,13 @@ lab val edu edu
 
 gen cluster = floor(_n/100) + t * 1000
 
-nopo decomp wage i.age i.edu, by(groups) xref(0) kmopts(vce(cluster cluster)) naivese
+bys groups: gen n = _n
+replace age = 6 if n == 1 & groups == 1
+nopo decomp wage i.age i.edu, by(groups) xref(0)
+nopo summarize age edu t, label fvdummies
 stop
+
+bootstrap, noisily reps(2): nopo decomp wage i.age i.edu, by(groups) xref(0)
 
 ereturn list
 nopo decomp wage i.age i.edu, by(groups) xref(1)
