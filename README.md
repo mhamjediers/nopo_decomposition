@@ -1,6 +1,6 @@
-![version](https://img.shields.io/badge/version-0.1-white)![StataMin](https://img.shields.io/badge/stata-15-blue) ![issues](https://img.shields.io/github/issues/mhamjediers/nopo_decomposition) ![license](https://img.shields.io/github/license/mhamjediers/nopo_decomposition) ![Stars](https://img.shields.io/github/stars/mhamjediers/nopo_decomposition) ![version](https://img.shields.io/github/v/release/mhamjediers/nopo_decomposition) 
+![version](https://img.shields.io/badge/version-0.1-white) ![StataMin](https://img.shields.io/badge/stata-15-blue) ![issues](https://img.shields.io/github/issues/mhamjediers/nopo_decomposition) ![license](https://img.shields.io/github/license/mhamjediers/nopo_decomposition) ![Stars](https://img.shields.io/github/stars/mhamjediers/nopo_decomposition) ![version](https://img.shields.io/github/v/release/mhamjediers/nopo_decomposition) 
 
-# Stata-Module for Nopo Decompositions, version 0.1'
+# Stata-Module for Nopo Decompositions'
 
 This Stata `.ado` implements a matching-based decomposition analysis of differences in outcomes between two groups following Ñopo (2008) and some convenient postestimation features. Allowed matching types are (coarsened) exact matching, mutlivariate-distance matching, and propensity-score matching, all of which are internally using [`kmatch`](https://github.com/benjann/kmatch) (Jann, 2020).
 
