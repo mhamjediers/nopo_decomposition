@@ -36,7 +36,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
      - show summary table by group:
        A_unmatched, A_matched, A_matched_weighted/B_matched_weighted, B_matched, B_unmatched
   */
-
+  
   // tokenize; determine decomp operation
   if ("`anything'" != "") gettoken subcmd varlist : anything
     else local subcmd "decomp"
@@ -266,7 +266,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   }
   // set passthru
   if ("`kmpassthru'" != "") local kmpassthru "kmpassthru(`kmpassthru')"
-
+  
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
     , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `naivese' `options'
@@ -563,6 +563,19 @@ program define nopo_decomp, eclass
     ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
     estimates store d0
 
+    // DX (always uses aweights and the matching weight returned by kmatch)
+    /* if ("`att'" != "") local _xref = 1
+      else local _xref = 0
+    tempvar sub expanded
+    expand 2 if `treat' != `_xref', gen(`expanded')
+    gen `sub' = `_xref' if `treat' != `_xref'
+    replace `sub' = abs(1 - `_xref') if `expanded' == 1
+    replace `weight_cons' `_wexp' if `expanded' == 1
+    noi reg `_depvar' i.`sub' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+    ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+    estimates store dx
+    drop if `expanded' == 1 */
+
     // change to standard weight
     replace `weight_cons' `_wexp'
 
@@ -578,6 +591,16 @@ program define nopo_decomp, eclass
       (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
       (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
       , post
+
+    // suest & nlcom
+    /* noi suest d d0 dx da db, vce(`vce') // analytic and cluster only!
+    nlcom ///
+      (D: [d_mean]1.`treat') ///
+      (D0: [d0_mean]1.`treat') ///
+      (DX: [dx_mean]1.`sub') ///
+      (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+      (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+      , post */
 
     // return
     mat b = e(b)
@@ -1373,8 +1396,10 @@ program define nopo_summarize, rclass
 syntax [varlist (default=none fv)] [if] [in], ///
   [STATistics(string)] /// mean mean/sd?
   [label] ///
+  [labelwidth(real 1)] ///
   [fvdummies] ///
-  [fvpercent]
+  [fvpercent] ///
+  [keepempty]
 
   quietly {
     
@@ -1487,7 +1512,10 @@ syntax [varlist (default=none fv)] [if] [in], ///
           if ("`label'" != "") {
             local _lbl = ""
             local _vallbl : value label `_var'
-            if ("`_vallbl'" != "") local _lbl : label `_var' `_lvl'
+            if ("`_vallbl'" != "") {
+              local _lbl : label `_var' `_lvl'
+              local _lbl = abbrev(ustrregexra("`_lbl'", "\.|:", ""), 32)
+              }
             if ("`_lbl'" != "") local _rownames = `" `_rownames' "`_lbl'" "' 
               else local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback  
           }
@@ -1513,7 +1541,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _varlbl = ""
       if ("`label'" != "") local _varlbl : variable label `_var'
       if ("`_varlbl'" == "") local _varlbl = "`_var'"
-      local _varlblabbrev = abbrev(usubinstr("`_varlbl'", ".", "", .), 32)
+      local _varlblabbrev = abbrev(ustrregexra("`_varlbl'", "\.|:", ""), 32)
 
       // build rownames as equations -> varname:stat or varname:lvl
       // if dummy or for single stat tables, do not use equation labeling
@@ -1522,7 +1550,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       local _j = 1 // label once per eq for separate stat tables
       foreach _rowname in `_rownames' {
         if (`_dummy' == 1 & "`fvdummies'" == "") local _rownameseq = `" `_rownameseq' "`_varlblabbrev'" "'
-          else local _rownameseq = `" `_rownameseq' "`_varlbl':`_rowname'" "'
+          else local _rownameseq = `" `_rownameseq' "`_varlblabbrev':`_rowname'" "'
         if (`_factor' == 1) {
           local _rownameseq_sep = `"`_rownameseq'"'
         }
@@ -1533,7 +1561,6 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       local _rownames = `"`_rownameseq'"'
       local _rownames_sep = `"`_rownameseq_sep'"'
-      nois dis `"`_rownames'"'
 
       //
       // estimate mean for each sample and concatenate
@@ -1638,6 +1665,9 @@ syntax [varlist (default=none fv)] [if] [in], ///
         }
         local _colnames = `" "A_unmatched" `_colnames' "'
       }
+      else if ("`keepempty'" != "") {
+        local _colnames = `" "A_unmatched" `_colnames' "' // keep in table despite no unmatched obs
+      } 
 
       // B_unmatched
       if (`e(mshareB)' < 100) {
@@ -1661,6 +1691,9 @@ syntax [varlist (default=none fv)] [if] [in], ///
         }
         local _colnames = `" `_colnames' "B_unmatched" "'
       }
+      else if ("`keepempty'" != "") {
+        local _colnames = `" `_colnames' "B_unmatched" "' // keep in table despite no unmatched obs
+      } 
 
       // assign row names
       mat rownames _V = `_rownames'
@@ -1691,8 +1724,21 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
     }
 
+    // expand with empty columns if requested and no unmatched
+    if (`e(mshareA)' == 100 & "`keepempty'" != "") {
+      foreach _m in M `statistics' {
+        local _rownames : rownames _`_m', quoted
+        mat _`_m' = J(rowsof(_`_m'), 1, .), _`_m'
+        mat rownames _`_m' = `_rownames'
+      }
+    }
+    if (`e(mshareB)' == 100 & "`keepempty'" != "") {
+      foreach _m in M `statistics' {
+        mat _`_m' = _`_m', J(rowsof(_`_m'), 1, .)
+      }
+    }
+
     // label (always provide headings via equations)
-    //local _colnames : colnames _M, quoted
     local _colnames = usubinstr(`"`_colnames'"', "A_", "A:", .)
     local _colnames = usubinstr(`"`_colnames'"', "B_", "B:", .)
     if ("`label'" != "") {
@@ -1707,18 +1753,22 @@ syntax [varlist (default=none fv)] [if] [in], ///
     foreach _m in M `statistics' {
       mat colnames _`_m' = `_colnames'
     }
-
+    
     // determine column format by no. of columns
+    if ("`labelwidth'" == "") local labelwidth = 0
     if (colsof(_M) == 3) {
-      local _twidth = 14
+      if (`labelwidth' < 14) local _twidth = 14
+        else local _twidth = `labelwidth'
       local _format = "%18.3g"	
     }
     else if (colsof(_M) == 4) {
-      local _twidth = 13
+      if (`labelwidth' < 13) local _twidth = 13
+        else local _twidth = `labelwidth'
       local _format = "%13.3g"
     }
     else {
-      local _twidth = 12
+      if (`labelwidth' < 12) local _twidth = 12
+        else local _twidth = `labelwidth'
       local _format = "%10.3g"
     }
     // list and return main table
