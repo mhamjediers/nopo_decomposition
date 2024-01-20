@@ -96,12 +96,12 @@ each component sum to the decomposition component values produced by {cmd:nopo d
 {cmdab:nq:uantiles(}#{cmd:)} specifies the number of quantiles to be plotted. Default is 100.
 
 {phang}
-{cmd:twtype(}{it:string}{cmd:)} sets the {help twoway:{it:twoway plottype}}. Default is {it: line}.
+{cmd:recast(}{it:string}{cmd:)} sets the {help twoway:{it:twoway plottype}}. Default is {it: line}.
 
 {phang}
 {cmd:twoptsd(}{it:string}{cmd:)}, {cmd:twoptsd0(}{it:string}{cmd:)},
 {cmd:twoptsdx(}{it:string}{cmd:)}, {cmd:twoptsda(}{it:string}{cmd:)}, and {cmd:twoptsdb(}{it:string}{cmd:)}
-set subplot-specific {help twoway_options:{it:twoway_options}} (should be according to specified {cmd:twtype()-option}). 
+set subplot-specific {help twoway_options:{it:twoway_options}} (should be according to specified {cmd:recast()-option}). 
 
 {phang}
 {cmd:twopts(}{it:string}{cmd:)} sets the general {help twoway_options:{it:twoway_options}}. 
@@ -135,7 +135,7 @@ to build your own plot from the data.
 {synopt:{cmd:r(twoptsdx)}}invoked options for the plot denoting component {it:DX}{p_end}
 {synopt:{cmd:r(twoptsd0)}}invoked options for the plot denoting component {it:D0}{p_end}
 {synopt:{cmd:r(twoptsd)}}invoked options for the plot denoting overall gap {it:D}{p_end}
-{synopt:{cmd:r(twtype)}}invoked option for {cmd:twtype()}{p_end}
+{synopt:{cmd:r(recast)}}invoked option for {cmd:recast()}{p_end}
 {synopt:{cmd:r(twopts)}}invoked options for {cmd:twopts()}{p_end}
 
 

@@ -56,7 +56,8 @@
 {title:Description}
 
 {pstd}
-{hi:nopo decomp} provides a {c N~}opo-style (2008) decomposition of the gap {it:D} in the average outcome {it:Y} between two groups {it:A} and {it:B} by matching them on a set of characteristics {it:X} predictive of {it: Y}.
+{hi:nopo decomp} provides a {c N~}opo-style (2008) decomposition of the gap {it:D} in the average outcome {it:Y} 
+between two groups {it:A} and {it:B} by matching them on a set of characteristics {it:X} predictive of {it:Y}.
 
 {p 6 6 2}{it:D = YB - YA}{p_end}
 {p 8 8 2}{it:  = D0 + DX + DA + DB  , where}{p_end}
@@ -70,18 +71,45 @@
 {p 4 6 2}
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
+{pstd}
+As the unexplained component {it:D0} is not attributable to compositional differences, it has two interpretations among matched units: 
+1) It is the gap that remains if one group would have the same characteristics as the other, reference group. 
+2) It is the gap that remains if one group would have the same returns as the other, reference group.
+The output of {cmd:nopo decomp} therefore indicates which group serves as the reference group for the 
+characteristics-based interpretation ({cmd:xref()}) and for the return-based interpretation ({cmd:bref()}; 
+in a regression-based decomposition, this indicates the group of which the coefficient-vector is applied).
+
 {pstd}    
-For a detailed explanation on methodology, please consult the {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
+A detailed explanation of the methodology is also provided in an {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
+For a comparison of regression-based and matching-based decomposition see Hamjediers & Sprengholz (2023). 
 
 {pstd}{ul:Matching approaches:} 
 
-{pstd}{c N~}opo's original proposition used exact matching but extends to other matching approaches, 
-two of which are additionally available in {cmd:nopo decomp}: multivariate-distance and propensity-score matching.
+{pstd}
+{c N~}opo's original proposition used exact matching but extends to other matching approaches, 
+two of which are additionally available in {cmd:nopo decomp}: multivariate-distance and propensity-score matching. 
+
+{pstd}
+An exact matching ensures that the interpretation of the unexplained {it:D0} and explained {it:DX} components directly 
+refer to the characteristics {it:X} (e.g., the gap that persists if both groups would have the same characteristics as group {it:B}). 
+This changes slightly in the case of multivariate-distance and propensity-score matching, as the interpetation then refers to
+both groups having an equal likelihood to be the group specified in {cmd:xref()}} based on the characteristics {it:X}.
+Note that the results of the decomposition may hinge on the specificities of either matching procedure 
+(e.g., the extent of coarsening of continuous variable before any exact matching or the bandwidth selection 
+for searching matches in terms of the propensity-score or multivariate-distance).
+
+{pstd}
+To implement each matching procedure, {cmd:nopo decomp} either internally calls {cmd:kmatch} or it can be used 
+as a postestimation to a previous matching via {cmd:kmatch}. While {cmd:kmatch} provides average treatment
+effects on the treated (ATT) or controls (ATC) that are equal to the unexplained component {it:D0}, {cmd:nopo decomp}
+additionally estimates the other three decomposition-components {it:DX}, {it:DA}, and {it:DB}. 
 
 {pstd}{ul:Standard errors:}
 
-{pstd}Please use bootstrapping to obtain standard errors via {cmd: bootstrap: nopo decomp} (see {help nopo##examples:{it:Examples}}). 
-We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {it:D0} (and implemented in {help nopomatch:{it:nopomatch}) extend to the full set of components in the presence of covariance. If you can help, please reach out to us via 
+{pstd}Please use the {cmd:bootstrap}- or {cmd:jackknife}-prefix to obtain standard errors (see {help nopo##examples:{it:Examples}}). 
+We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {it:D0} 
+(and implemented in {help nopomatch:{it:nopomatch}) extend to the full set of components in the 
+presence of covariance. If you can help, please reach out to us via 
 {browse "https://github.com/mhamjediers/nopo_decomposition/issues/14":GitHub}.
 
 {marker opts}{...}
@@ -172,6 +200,10 @@ Note that some of the kmatch variables contain the same information as the varia
 {phang}. {stata kmatch em mbsmoke mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids (bweight), att}{p_end}
 {phang}. {stata nopo decomp}{p_end}
 
+{pstd}Decomposition - Using propensity-score or multivariate-distance matching}{p_end}
+{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) kmatch(ps)}{p_end}
+{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) kmatch(md)}{p_end}
+
 {pstd}Standard errors{p_end}
 {phang}. {stata "bootstrap, reps(100): nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke)"}{p_end}
 
@@ -260,7 +292,14 @@ including entropy balancing, inverse probability weighting, (coarsened) exact ma
 regression adjustment. Available from {browse https://ideas.repec.org/c/boc/bocode/s458346.html}.
 
 {phang}
-{c N~}opo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics and Statistics, 90(2), 290–299. {browse "https://doi.org/10/b6tqwq"}
+{c N~}opo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics 
+and Statistics, 90(2), 290–299. {browse "https://doi.org/10/b6tqwq"}
+
+{phang}
+Hamjediers M. & Sprengholz M. (2023). Comparing the Incomparable? Issues of Lacking 
+Common Support, Functional Form Mis-Specification, and Insufficient Sample Size in 
+Decompositions. Sociological Methodology, 53(2), 344-365. {browse "https://doi.org/10.1177/00811750231169729"}
+
 
 {title:Acknowledgements}
 

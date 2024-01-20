@@ -805,7 +805,6 @@ program define nopo_decomp, eclass
   // display estimates
   if ("`dtable'" == "") {
     ereturn display
-    dis "Please use {cmd:bootstrap: nopo decomp ...} to obtain standard errors."
   }
   
 end
@@ -840,7 +839,7 @@ program define nopo_gapoverdist, rclass
 syntax [if] [in], /// if/in might produce misleading results; undocumented
   [NQuantiles(integer 100)] ///
   [RAWUMdiff] /// undocumented
-  [twtype(string)] ///
+  [recast(string)] ///
   [twopts(string asis)] ///
   [twoptsd(string asis)] ///
   [twoptsd0(string asis)] ///
@@ -963,11 +962,11 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
           }
           local ++_i
         }
-        if ("`twtype'" == "") local twtype "line"
+        if ("`recast'" == "") local recast "line"
         if (`"`twopts'"' == "") local twopts `"legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
         if (`xsize' > 0) local twopts `"`twopts' xsize(`xsize')"'
         if (`ysize' > 0) local twopts `"`twopts' ysize(`ysize')"'
-        if ("`twtype'" == "line") {
+        if ("`recast'" == "line") {
           if (`"`twoptsd'"' == "") local twoptsd "lp(solid) lw(0.5)"
           if (`"`twoptsd0'"' == "") local twoptsd0 "lp(shortdash)"
           if (`"`twoptsdx'"' == "") local twoptsdx "lp(dash)"
@@ -976,11 +975,11 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
         }
 
         twoway ///
-          (`twtype' d q, `twoptsd') ///
-          (`twtype' d0 q, `twoptsd0') ///
-          (`twtype' dx q, `twoptsdx') ///
-          (`twtype' da q, `twoptsda') ///
-          (`twtype' db q, `twoptsdb') ///
+          (`recast' d q, `twoptsd') ///
+          (`recast' d0 q, `twoptsd0') ///
+          (`recast' dx q, `twoptsdx') ///
+          (`recast' da q, `twoptsda') ///
+          (`recast' db q, `twoptsdb') ///
           , `twopts'
 
       }
@@ -989,7 +988,7 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
       if (`"`save'"' != "") noisily save `save', replace
 
       // return plotoptions
-      return local twtype = `"`twtype'"'
+      return local recast = `"`recast'"'
       return local twopts = `"`twopts'"'
       return local twoptsd = `"`twoptsd'"'
       return local twoptsd0 = `"`twoptsd0'"'
