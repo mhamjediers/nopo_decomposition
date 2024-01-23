@@ -548,6 +548,7 @@ program define nopo_decomp, eclass
         estimates store da
       }
       if (_numA > 0) scalar _mgapA = _b[1.`matched']
+        else scalar _mgapA = .
     }
 
     // DB
@@ -591,6 +592,7 @@ program define nopo_decomp, eclass
         estimates store db
       }
       if (_numB > 0) scalar _mgapB = _b[1.`matched']
+        else scalar _mgapB = .
     }
 
     // change to matching weight
