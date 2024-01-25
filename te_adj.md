@@ -65,7 +65,7 @@ Generally, very similar to a two-fold regression-based composition as proposed b
     &=& \qquad D_0  &+& \mkern-18mu D_X
 \end{array}
 \end{equation}
-```math
+```
 
 Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching based decompositions detailled above.
 
