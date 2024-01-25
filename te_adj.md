@@ -54,6 +54,36 @@ Accordingly, the results of the decomposition may hinge on the specifics of eith
 Note that only exact matching ensures that the interpretation of the unexplained $D_0$ and explained $D_X$ components directly refer to the characteristics $X$ (e.g., $D_0$ being the remaining gap if both groups had the same characteristics as group $B$). This interpretation changes slightly in the case of multivariate-distance and propensity-score matching, as $D_0$ then refers to both groups having an equal likelihood to be the group specified in `xref()` based on the characteristics $X$.
 
 
+### Relationship to Regression-Based Decompositions
+
+Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). These build on (1) group-specific vectors of the mean values $\overline{X}_A$ and $\overline{X}_B$ for the specified predictors; and (2) group-specific vectors of coefficients $\hat{\beta}_A$ and $\hat{\beta}_B$ obtained from a regression of the outcome on a set of predictors for each group. The mean-differences in predictors represent compositional differences that make up the explained component $D_X$ (e.g., wage differences due to differences in labor market experience), whereas differences in the associated regression coefficients represent differences in returns that make up the unexplained component $D_0$ (e.g., the same educational attainment might have different wage returns for each group):
+
+```math
+\begin{equation}
+\begin{array}{rcccc}
+    D &=&  \overline{X}'_B \underbrace{\big(\hat{\beta}_B - \hat{\beta}_A\big)}_{\mathclap{\substack{\text{difference} \\ \text{in returns}}}} &+& \underbrace{\big(\overline{X}_B - \overline{X}_A\big)'}_{\mathclap{\substack{\text{compositional} \\ \text{difference}}}}\hat{\beta}_A\\
+    &=& \qquad D_0  &+& \mkern-18mu D_X
+\end{array}
+\end{equation}
+```math
+
+Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching based decompositions detailled above.
+
+
+In Hamjediers & Sprengholz (2023), we use simulations to highlight the advantages and disadvantages across both approaches, which we summarize here:
+
+Advantages of matching-based decompositions:
++ Non-parametric estimation $\rightarrow$ no assumptions about functional form
++ $D_0$ \& $D_X$ apply only to matched units $\rightarrow$ no model-based extrapolation
+
+
+Disdvantages of matching-based decompositions:
+- Suffers from curse of dimensionality $\rightarrow$ risk of attributing too much to $D_A$ \& $D_B$
+- Does not allow to disentangle explained component across predictors
+
+Overall, these arguments are very similar to the literature on regression- vs. matching-based adjustment for confounders in estimating (local) treatment effects. We would recomend to assess severity of lacking common support and functional form-assumptions by first using a matching based decomposition (and potentially restricting the analytic sample to observations with common support).
+
+
 ### Relationship to Estimation of Treatment Effects via Matching 
 
 Depending on the direction of the matching underlying the decomposition, $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Controls) from the treatment effects literature. 
@@ -90,34 +120,6 @@ Thus, the $ATC$ equals again the unexplained decomposition-component $D_0$, howe
 
 Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via mtaching hinges on the assumption of no unobservable confounding (a.k.a. exogeneity and independence assumption). This is also the reason why matching based treatment effect estimation only provides estimates of $ATT$ or $ATC$ (or $ATEs$) and omits
 other components ($D_X$, $D_A$, or $D_B$), which are not of direct interest. While the decomposition framework also operates the same counterfactual as the treatment effect estimation (e.g., what would group's $A$ outcome if it had the characteristics of group $B$), it does not necessarily aim at a causal interpretation (see XXX for a discussion). If the decomposition components are of descriptive interest, the machting-based decomposition does not hinge on the assumption of no unobservable confounding (a.k.a. exogeneity and independence assumption). 
-
-
-### Relationship to Regression-Based Decompositions
-
-Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). These build on (1) group-specific vectors of the mean values $\overline{X}_A$ and $\overline{X}_B$ for the specified predictors; and (2) group-specific vectors of coefficients $\hat{\beta}_A$ and $\hat{\beta}_B$ obtained from a regression of the outcome on a set of predictors for each group. The mean-differences in predictors represent compositional differences that make up the explained component $D_X$ (e.g., wage differences due to differences in labor market experience), whereas differences in the associated regression coefficients represent differences in returns that make up the unexplained component $D_0$ (e.g., the same educational attainment might have different wage returns for each group):
-
-\begin{equation}
-\begin{array}{rcccc}
-    D &=&  \overline{X}'_B \underbrace{\big(\hat{\beta}_B - \hat{\beta}_A\big)}_{\mathclap{\substack{\text{difference} \\ \text{in returns}}}} &+& \underbrace{\big(\overline{X}_B - \overline{X}_A\big)'}_{\mathclap{\substack{\text{compositional} \\ \text{difference}}}}\hat{\beta}_A\\
-    &=& \qquad D_0  &+& \mkern-18mu D_X
-\end{array}
-\end{equation}
-
-Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching based decompositions detailled above.
-
-
-In Hamjediers & Sprengholz (2023), we use simulations to highlight the advantages and disadvantages across both approaches, which we summarize here:
-
-Advantages of matching-based decompositions:
-+ Non-parametric estimation $\rightarrow$ no assumptions about functional form
-+ $D_0$ \& $D_X$ apply only to matched units $\rightarrow$ no model-based extrapolation
-
-
-Disdvantages of matching-based decompositions:
-- Suffers from curse of dimensionality $\rightarrow$ risk of attributing too much to $D_A$ \& $D_B$
-- Does not allow to disentangle explained component across predictors
-
-Overall, these arguments are very similar to the literature on regression- vs. matching-based adjustment for confounders in estimating (local) treatment effects. We would recomend to assess severity of lacking common support and functional form-assumptions by first using a matching based decomposition (and potentially restricting the analytic sample to observations with common support).
 
 
 
