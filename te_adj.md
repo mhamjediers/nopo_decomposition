@@ -26,7 +26,7 @@ D &=& D_0  &+& D_X &+& D_A + D_B \\
 ```
 
 $D_X$ is the average gap between the matched units of re-weighted group $A^B$ and the matched units of group $A$, which is explained by the fact that groups $A$ and $B$ are differently distributed across matched strata (some sets of characteristics being more likely in one group than the other). 
-By contrast, $D_0$ is the average gap between matched units of group $B$ and the re-weighted group $A^B$. Since $B$ and $A^B$ are equally distributed across matched strata, $D_0$ captures how much of the raw gap remains unexplained by differences in the considered characteristics. $D_0$ and $D_X$ are analogous to the components of a twofold (Kitagawa-)Blinder-Oaxaca decomposition, but they only pertain to matched units. When compositional differences between groups limit common support, the effect that unmatched individuals in both groups have on $D$ is captured by the components $D_A$ and $D_B$:
+By contrast, $D_0$ is the average gap between matched units of group $B$ and the re-weighted group $A^B$. Since $B$ and $A^B$ are equally distributed across matched strata, $D_0$ captures how much of the raw gap remains unexplained by differences in the considered characteristics. When compositional differences between groups limit common support, the effect that unmatched individuals in both groups have on $D$ is captured by the components $D_A$ and $D_B$:
 
 ```math
 \begin{equation}
@@ -56,7 +56,7 @@ Note that only exact matching ensures that the interpretation of the unexplained
 
 ### Relationship to Regression-Based Decompositions
 
-Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). These build on (1) group-specific vectors of the mean values $\overline{X}_A$ and $\overline{X}_B$ for the specified predictors; and (2) group-specific vectors of coefficients $\hat{\beta}_A$ and $\hat{\beta}_B$ obtained from a regression of the outcome on a set of predictors for each group. The mean-differences in predictors represent compositional differences that make up the explained component $D_X$ (e.g., wage differences due to differences in labor market experience), whereas differences in the associated regression coefficients represent differences in returns that make up the unexplained component $D_0$ (e.g., the same educational attainment might have different wage returns for each group):
+$D_0$ and $D_X$ from the matching-based decomposition are analogous to the components of a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX), but they only pertain to matched units. These build on (1) group-specific vectors of the mean values $\overline{X}_A$ and $\overline{X}_B$ for the specified predictors; and (2) group-specific vectors of coefficients $\hat{\beta}_A$ and $\hat{\beta}_B$ obtained from a regression of the outcome on a set of predictors for each group. The mean-differences in predictors represent compositional differences that make up the explained component $D_X$ (e.g., wage differences due to differences in labor market experience), whereas differences in the associated regression coefficients represent differences in returns that make up the unexplained component $D_0$ (e.g., the same educational attainment might have different wage returns for each group):
 
 ```math
 \begin{equation}
@@ -67,17 +67,17 @@ Generally, very similar to a two-fold regression-based composition as proposed b
 \end{equation}
 ```
 
-Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching based decompositions detailled above.
+Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching-based decompositions detailed above.
 
 
-In Hamjediers & Sprengholz (2023), we use simulations to highlight the advantages and disadvantages across both approaches, which we summarize here:
+In Hamjediers & Sprengholz (2023), we use simulations to highlight the advantages and disadvantages of both approaches. 
 
 Advantages of matching-based decompositions:
 + Non-parametric estimation $\rightarrow$ no assumptions about functional form
 + $D_0$ \& $D_X$ apply only to matched units $\rightarrow$ no model-based extrapolation
 
 
-Disdvantages of matching-based decompositions:
+Disadvantages of matching-based decompositions:
 - Suffers from curse of dimensionality $\rightarrow$ risk of attributing too much to $D_A$ \& $D_B$
 - Does not allow to disentangle explained component across predictors
 
