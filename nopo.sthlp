@@ -93,9 +93,8 @@ two of which are additionally available in {cmd:nopo decomp}: multivariate-dista
 An exact matching ensures that the interpretation of the unexplained {it:D0} and explained {it:DX} components 
 directly refer to the characteristics {it:X} (e.g., {it:D0} being the remaining gap if both groups had the same
 characteristics as group {it:B}). 
-This interpretation changes slightly in the case of multivariate-distance and propensity-score matching, as the 
-it then refers to both groups having an equal likelihood to be the group specified in {cmd:xref()} based on the 
-characteristics {it:X}.
+This interpretation changes slightly in the case of multivariate-distance and propensity-score matching, as {it:D0} 
+then refers to both groups having an equal likelihood to be the group specified in {cmd:xref()} based on the characteristics {it:X}.
 Note that the results of the decomposition may hinge on the specifics of either matching procedure 
 (e.g., the extent of coarsening of continuous variables before exact matching, or the bandwidth selection 
 for determining matches in terms of the propensity-score or multivariate-distance).
