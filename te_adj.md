@@ -45,7 +45,7 @@ Note that the unexplained component $D_0$ has two possible interpretations. As i
 Throughout our description and in the output, we denote the reference group for characteristics-based interpretation as the `xref()`-group and for the return-based interpretation as the `bref()`-group.
 
 
-# On the Choice of the Matching Procedure
+### On the Choice of the Matching Procedure
 
 Trade-off between reaching balance on predictors between $A^B,m$ and $A^,m$ vs. curse of dimensionality inducing lack of common support (Iacus et al. 2012). 
 
@@ -54,7 +54,7 @@ Accordingly, the results of the decomposition may hinge on the specifics of eith
 Note that only exact matching ensures that the interpretation of the unexplained $D_0$ and explained $D_X$ components directly refer to the characteristics $X$ (e.g., $D_0$ being the remaining gap if both groups had the same characteristics as group $B$). This interpretation changes slightly in the case of multivariate-distance and propensity-score matching, as $D_0$ then refers to both groups having an equal likelihood to be the group specified in `xref()` based on the characteristics $X$.
 
 
-# Relationship to Estimation of Treatment Effects via Matching 
+### Relationship to Estimation of Treatment Effects via Matching 
 
 Depending on the direction of the matching underlying the decomposition, $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Controls) from the treatment effects literature. 
 
@@ -64,9 +64,9 @@ PO_{t=1}^{T=1} is easily estimated as it is the observed outcome for all treated
 
 ```math
 \begin{equation}
-\begin{array}{r c c }
-	ATT &=& PO_{t=1}^{T=1} - PO_{t=0}^{T=1} \\
-		&=& \overline{Y}_{t=1,m} - \overline{Y}_{t=0^{t=1},m} \\
+\begin{array}{r c c c c }
+	ATT &=& PO_{t=1}^{T=1} &-& PO_{t=0}^{T=1} \\
+		&=& \overline{Y}_{t=1,m} &-& \overline{Y}_{t=0^{t=1},m} \\
 \end{array}
 \end{equation}
 ```
@@ -77,10 +77,10 @@ Alternatively, we could also switch the matching direction to estimate the avera
 
 ```math
 \begin{equation}
-\begin{array}{r c c c c }
-	ATC &=& PO_{t=1}^{T=0} - PO_{t=0}^{T=0} && \\
-		&=& \overline{Y}_{t=0,m} - \overline{Y}_{t=1^{t=0},m} && \\
-		&=& \overline{Y}_{B^A,m} - \overline{Y}_{A,m} &=&  D_0 \\
+\begin{array}{r c c c c c c }
+	ATC &=& PO_{t=1}^{T=0} &-& PO_{t=0}^{T=0} && \\
+		&=& \overline{Y}_{t=0,m} &-& \overline{Y}_{t=1^{t=0},m} && \\
+		&=& \overline{Y}_{B^A,m} &-& \overline{Y}_{A,m} &=&  D_0 \\
 \end{array}
 \end{equation}
 ```
@@ -92,7 +92,7 @@ Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via m
 other components ($D_X$, $D_A$, or $D_B$), which are not of direct interest. While the decomposition framework also operates the same counterfactual as the treatment effect estimation (e.g., what would group's $A$ outcome if it had the characteristics of group $B$), it does not necessarily aim at a causal interpretation (see XXX for a discussion). If the decomposition components are of descriptive interest, the machting-based decomposition does not hinge on the assumption of no unobservable confounding (a.k.a. exogeneity and independence assumption). 
 
 
-# Relationship to Regression-Based Decompositions
+### Relationship to Regression-Based Decompositions
 
 Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). 
 The reference in terms of _returns to characteristics_, `bref()` corresponds to the coefficient-vector in the regrssion-based decompositions .
@@ -116,16 +116,16 @@ Overall, these arguments are very similar to the literature on regression- vs. m
 
 ## Post-Estimation Statistics
 
-# Descriptive statistics by machting status (`summarize`)
+### Descriptive statistics by machting status (`summarize`)
 
-# Decomposition-components across the distribution of $Y$$ (`gapoverdist`)
+### Decomposition-components across the distribution of $Y$$ (`gapoverdist`)
 
-# Contribution of characteristics to the components $D_A$ and $D_B$ (`dada`)
-
-
+### Contribution of characteristics to the components $D_A$ and $D_B$ (`dada`)
 
 
-### References:
+
+
+## References:
 Ñopo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics and Statistics, 90(2), 290–299. https://doi.org/10/b6tqwq
 
 Hamjediers, M. & Sprengholz, M. (2023). Comparing the Incomparable? Issues of Lacking  Common Support, Functional Form Mis-Specification, and Insufficient Sample Size in  Decompositions. Sociological Methodology, 53(2), 344-365. https://doi.org/10.1177/00811750231169729
