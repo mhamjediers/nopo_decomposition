@@ -58,9 +58,9 @@ Note that only exact matching ensures that the interpretation of the unexplained
 
 Depending on the direction of the matching underlying the decomposition, $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Controls) from the treatment effects literature. 
 
-Using the potential outcome framework (Rubin, 2008), the ATT is definied as $ATT = PO_{t=1}^{T=1} - PO_{t=0}^{T=1}$ (with $PO$ denoting the (potential) outcome $Y$, $T$ denoting the observed treatment status of 1 being treated and 0 being untreated, and $t$ being a potential treatment status, which may or may not be observed). Therein, the ATT is the average difference between the observed outcome for the treated as if they were treated ($PO_{t=1}^{T=1}$) and the unobservable, counterfactural outcome for the treated as if they were untreated ($PO_{t=0}^{T=1}$). 
+Let $PO$ denote the (potential) outcome $Y$, $T$ denotes the observed treatment status of $T=1$ being treated and $T=0$ being untreated, and $t$ denotes a potential treatment status that may or may not be observed. Using the potential outcome framework (Rubin, 2008), the $ATT$ is then definied as $ATT = PO_{t=1}^{T=1} - PO_{t=0}^{T=1}$, thus, as the average difference between the observed outcome for the treated as if they were treated ($PO_{t=1}^{T=1}$) and the unobservable, counterfactural outcome for the treated as if they were untreated ($PO_{t=0}^{T=1}$). 
 
-PO_{t=1}^{T=1} is easily estimated as it is the observed outcome for all treated units. Invoking the assumption of no unobservable counfounding (a.k.a. exogeneity and independence assumption), $PO_{t=0}^{T=1}$ can be estimated as the outcome of the untreated, controll group $T=0$ as if it would have the characteristics of the treated group. This counterfactual potential outcome is thereby given by matching the treated and untreated group and producing weights that allow to weight the outcome of the untreated group accordingly. This gives us:
+To estimate the $ATT$, we can use observed outcome for all treated units to estimate PO_{t=1}^{T=1}, as the treatment status is observed coherently. By contrast, $PO_{t=0}^{T=1}$ can be estimated as outcome of the untreated, controll group $T=0$ as if it would have the characteristics of the treated group under the assumption of no unobservable counfounding (a.k.a. exogeneity and independence assumption). This counterfactual potential outcome is given by matching the treated and untreated group and producing weights that allow to weight the outcome of the untreated group accordingly:
 
 ```math
 \begin{equation}
@@ -71,7 +71,7 @@ PO_{t=1}^{T=1} is easily estimated as it is the observed outcome for all treated
 \end{equation}
 ```
 
-If group $B$ from our decomposition notation is assinged as the treated group $t=1$, we see that $ATT$ equals the unexplained component of $D_0 = \overline{Y}_{B,m} - \overline{Y}_{A^B,m}$.
+If group $B$ from our decomposition notation is assinged as the treated group $t=1$ (and group $A$ is untreated $t=0$), we see that $ATT$ equals the unexplained component of $ D_0.
 
 Alternatively, we could also switch the matching direction to estimate the average treatement effect on the controls $ATC$, which gives us:
 
@@ -79,7 +79,7 @@ Alternatively, we could also switch the matching direction to estimate the avera
 \begin{equation}
 \begin{array}{r c c c c c c }
 	ATC &=& PO_{t=1}^{T=0} &-& PO_{t=0}^{T=0} && \\
-		&=& \overline{Y}_{t=0,m} &-& \overline{Y}_{t=1^{t=0},m} && \\
+		&=& \overline{Y}_{t=1^{t=0},m} &-& \overline{Y}_{t=0,m} && \\
 		&=& \overline{Y}_{B^A,m} &-& \overline{Y}_{A,m} &=&  D_0 \\
 \end{array}
 \end{equation}
@@ -94,8 +94,16 @@ other components ($D_X$, $D_A$, or $D_B$), which are not of direct interest. Whi
 
 ### Relationship to Regression-Based Decompositions
 
-Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). 
-The reference in terms of _returns to characteristics_, `bref()` corresponds to the coefficient-vector in the regrssion-based decompositions .
+Generally, very similar to a two-fold regression-based composition as proposed by Oaxaca (1973), Blinder (1973), and Kitagawa (19XX). These build on (1) group-specific vectors of the mean values $\overline{X}_A$ and $\overline{X}_B$ for the specified predictors; and (2) group-specific vectors of coefficients $\hat{\beta}_A$ and $\hat{\beta}_B$ obtained from a regression of the outcome on a set of predictors for each group. The mean-differences in predictors represent compositional differences that make up the explained component $D_X$ (e.g., wage differences due to differences in labor market experience), whereas differences in the associated regression coefficients represent differences in returns that make up the unexplained component $D_0$ (e.g., the same educational attainment might have different wage returns for each group):
+
+\begin{equation}
+\begin{array}{rcccc}
+    D &=&  \overline{X}'_B \underbrace{\big(\hat{\beta}_B - \hat{\beta}_A\big)}_{\mathclap{\substack{\text{difference} \\ \text{in returns}}}} &+& \underbrace{\big(\overline{X}_B - \overline{X}_A\big)'}_{\mathclap{\substack{\text{compositional} \\ \text{difference}}}}\hat{\beta}_A\\
+    &=& \qquad D_0  &+& \mkern-18mu D_X
+\end{array}
+\end{equation}
+
+Therein, $\hat{\beta}_A$ serves as the coefficient-vector, which is denoted as `bref()` and allows for the return-based interpretation of the unexplained $D_0$ component in matching based decompositions detailled above.
 
 
 In Hamjediers & Sprengholz (2023), we use simulations to highlight the advantages and disadvantages across both approaches, which we summarize here:
