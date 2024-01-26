@@ -255,6 +255,8 @@ Note that some of the kmatch variables contain the same information as the varia
 {synopt:{cmd:e(tval)}}list of variables on which groups are matched{p_end}
 {synopt:{cmd:e(tvar)}}name of group variable{p_end}
 {synopt:{cmd:e(teffect)}}matching direction ({bf:ATT} or {bf:ATC}){p_end}
+{synopt:{cmd:e(wexp)}}{weight expression (if weights are applied)}{p_end}
+{synopt:{cmd:e(wtype)}}{{it:fweights}, {it:pweights}, and {it:iweights} (if weights are applied)}{p_end}
 {synopt:{cmd:e(cmd)}}{cmd:nopo}{p_end}
 {synopt:{cmd:e(properties)}}{cmd:b}{p_end}
 
