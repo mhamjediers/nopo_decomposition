@@ -24,7 +24,9 @@ $$
 
 into an "explained" component that is based on differences between groups in characteristics that predict $Y$ and a remaining "unexplained" component. However, we do not want to compare apples and oranges, so that the decomposition also needs to calculate which part of $D$ is due to units in both groups which have combinations of predictive characteristics out of common support (characteristics that do not occur in both groups).
 
-Ñopo's matching achieves these goals as follows. In a one-to-many exact matching, each individual from group $B$ is matched to all individuals from group $A$ with the same combination of characteristics (each unique combination of characteristics represents one stratum). The matching flags for all observations of groups $A$ and $B$ if their characteristics are in common support (matched $m$) or out of common support (unmatched $u$). Over common support, the ratio of $B$ to $A$ units in each stratum can be used to create a reweighted group $A^B$ which has the exact same distribution across all strata as group $B$. The outcome of this counterfactual group $A^B$ can be interpreted in two ways: (1) as the average outcome of group $A$ if it had the same characteristics as group $B$ and (2) as the average outcome of group $B$ if it had the same returns to characteristics as group $A$.
+Ñopo's matching achieves these goals as follows. In a one-to-many exact matching, each individual from group $B$ is matched to all individuals from group $A$ with the same combination of characteristics (each unique combination of characteristics represents one stratum). The matching flags for all observations of groups $A$ and $B$ if their characteristics are in common support (matched $m$) or out of common support (unmatched $u$). Over common support, the ratio of $B$ to $A$ units in each stratum can be used to create a reweighted group $A^B$ which has the exact same distribution across all strata as group $B$. The outcome of this counterfactual group $A^B$ can be interpreted in two ways: 
+1. as the average outcome of group $A$ if it had the same characteristics as group $B$ (rendering group $B$ as the reference group in terms of characteristics, which we denote throughout the documentation and output as `xref');
+2. as the average outcome of group $B$ if it had the same returns to characteristics as group $A$ (rendering group $A$ as the reference group in terms of returns, which we denote throughout the documentation and output as `bref').
 
 The overall gap can then be additively decomposed into four parts:
 
@@ -49,12 +51,7 @@ By contrast, $D_0$ is the average gap between matched units of group $B$ and the
 
 $D_A$ is the gap between the averages of the outcome $\overline{Y}$ for the unmatched $u$ and matched $m$ units within group $A$, weighted by the frequency of unmatched $A$ units ($N_{A,u}$) in relation to the overall size of group $A$ ($N_{A}$), so that $D_A$ approaches zero with fewer observations out of common support. $D_A$ denotes how much of the raw gap is due to unmatched $A$ units having higher or lower values in the outcome than matched $A$ units, where $D_A < 0$ if the outcome is lower among the matched and $D_A > 0$ if the outcome is lower among the unmatched (reversed for $D_B$).
 
-According to the twofold interpretation of the counterfactual group $A^B$, the unexplained component $D_0$ that is not attributable to compositional differences has also two interpretations:
-
-1. the gap that remains if group $A$ had the same characteristics as group $B$; or 
-2. the gap that is attributable to group $B$ having different returns than group $A$.
-
-As one can also change the direction of the matching and create a counterfactual group of $B^A$, we denote throughout the documentation and in the output the reference group for the first, characteristics-based interpretation as the `xref`-group (e.g., for a counterfactual group $A^B$, we denote group $B$ as `xref`) and for the second, return-based interpretation as the `bref`-group (e.g., for a counterfactual group $A^B$, we denote group $A$ as `bref`).
+Naturally, one could also change the direction of the matching and create a counterfactual group of $B^A$.
 
 ### On the Choice of the Matching Procedure
 
@@ -89,7 +86,7 @@ Depending on the direction of the matching underlying the decomposition, $D_0$ c
 
 Let $PO$ denote the (potential) outcome $Y$, the observed treatment status is denoted by $T$, with $T=1$ being treated and $T=0$ being untreated, and a potential treatment status that may or may not be observed is denoted by $t$. Using the potential outcome framework (Rubin, 2008), the $ATT$ is then defined as $ATT = PO_{t=1}^{T=1} - PO_{t=0}^{T=1}$, thus, as the average difference between the observed outcome for the treated as if they were treated ($PO_{t=1}^{T=1}$) and the unobservable, counterfactual outcome for the treated as if they were untreated ($PO_{t=0}^{T=1}$). 
 
-To estimate the $ATT$, we can use the observed outcome for all treated units to estimate PO_{t=1}^{T=1}, as the treatment status is observed coherently. By contrast, $PO_{t=0}^{T=1}$ can be estimated as the outcome of the untreated, control group $T=0$ as if it would have the characteristics of the treated group under the assumption of conditional independence. This counterfactual potential outcome is given by matching the treated and untreated groups and producing weights that allow to weigh the outcome of the untreated group accordingly:
+To estimate the $ATT$, we can use the observed outcome for all treated units to estimate $PO_{t=1}^{T=1}$, as the treatment status is observed coherently. By contrast, $PO_{t=0}^{T=1}$ can be estimated as the outcome of the untreated, control group $T=0$ as if it would have the characteristics of the treated group under the assumption of conditional independence. This counterfactual potential outcome is given by matching the treated and untreated groups and producing weights that allow to weigh untreated group to match the strata of the treated group (producing a counterfactual group of $t=0^{t=1}$:
 
 ```math
 \begin{equation}
@@ -100,7 +97,7 @@ To estimate the $ATT$, we can use the observed outcome for all treated units to 
 \end{equation}
 ```
 
-If group $B$ from our decomposition notation is assigned as the treated group $t=1$ (and group $A$ is untreated $t=0$), we see that $ATT$ equals the unexplained component of $ D_0.
+If group $B$ from our decomposition notation is assigned as the treated group $t=1$ (and group $A$ is untreated $t=0$), we see that $ATT$ equals the unexplained component of $D_0$.
 
 Alternatively, we could also switch the matching direction to estimate the average treatment effect on the controls $ATC$, which gives us:
 
@@ -114,7 +111,7 @@ Alternatively, we could also switch the matching direction to estimate the avera
 \end{equation}
 ```
 
-Thus, the $ATC$ equals again the unexplained decomposition-component $D_0$, however, with the reversed matching direction. To indicate which group's characteristics are used to estimate the counterfactual potential outcome, refer to which group is assigned the `xref`-label; to switch the matching direction, you can use this option to adjust it accordingly. 
+Thus, the $ATC$ equals again the unexplained decomposition-component $D_0$, however, with the reversed matching direction. To indicate which group's characteristics are used to estimate the counterfactual potential outcome, refer to which group is assigned the `xref`-label. 
 
 Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via matching hinges on the assumption of conditional independence. This is also the reason why matching-based treatment effect estimation only provides estimates of $ATT$ or $ATC$ (or even $ATE$) and omits other components ($D_X$, $D_A$, or $D_B$), which are not of direct interest. While the decomposition framework also operates the same counterfactual as the treatment effect estimation (e.g., what would group's $A$ outcome be, if it had the characteristics of group $B$), it does not necessarily aim at a causal interpretation. If the decomposition components are of descriptive interest, the matching-based decomposition does not invoke the assumption of conditional independence. 
 
