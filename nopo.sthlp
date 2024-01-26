@@ -220,6 +220,10 @@ Note that some of the kmatch variables contain the same information as the varia
 {phang}. {stata nopomatch educ_c exper_c tenure_c, outcome(lnwage) by(female)}{p_end}
 {phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) xref(0) normalize}{p_end}
 
+{pstd}Comparison to twofold regression-based decomposition via {help oaxaca:{it:oaxaca}}{p_end}
+{phang}. {stata oaxaca lnwage educ exper tenure, by(female) weight(0) nodetail}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) swap}{p_end}
+
 
 {marker returns}{...}
 {title:Stored results}
