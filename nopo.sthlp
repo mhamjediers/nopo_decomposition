@@ -72,16 +72,12 @@ between two groups {it:A} and {it:B} by matching them on a set of characteristic
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}
-As the unexplained component {it:D0} is not attributable to compositional differences, it has two interpretations among matched units: 
-1) It is the gap that remains if one group had the same characteristics as the other, reference group. 
-2) It is the gap that remains if one group had the same returns as the other, reference group.
-The output of {cmd:nopo decomp} therefore indicates which group serves as the reference group for the 
-characteristics-based interpretation ({cmd:xref()}) and for the return-based interpretation ({cmd:bref()}; 
-in a regression-based decomposition, this indicates the group which coefficient-vector is applied).
+To achieve this decomposition, the matching generates counterfactual group {it:A{superscript:B}} by weighting all atched observation of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}.
+The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B{superscript:A}} using the {cmd:xref()} or {cmd:bref()} option. 
+
 
 {pstd}    
 A detailed explanation of the methodology is also provided in an {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
-For a comparison of regression-based and matching-based decomposition see Hamjediers & Sprengholz (2023). 
 
 {pstd}{ul:Matching approaches:} 
 
@@ -310,11 +306,6 @@ regression adjustment. Available from {browse https://ideas.repec.org/c/boc/boco
 {phang}
 {c N~}opo, H. (2008). Matching as a Tool to Decompose Wage Gaps. The Review of Economics 
 and Statistics, 90(2), 290–299. {browse "https://doi.org/10/b6tqwq"}
-
-{phang}
-Hamjediers M. & Sprengholz M. (2023). Comparing the Incomparable? Issues of Lacking 
-Common Support, Functional Form Mis-Specification, and Insufficient Sample Size in 
-Decompositions. Sociological Methodology, 53(2), 344-365. {browse "https://doi.org/10.1177/00811750231169729"}
 
 
 {title:Acknowledgements}
