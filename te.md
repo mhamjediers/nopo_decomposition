@@ -83,7 +83,7 @@ The matching-based decomposition has some advantages and disadvantages compared 
 
 ### Relationship to Estimation of Treatment Effects via Matching 
 
-Depending on the direction of the matching underlying the decomposition, $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Unreated/Controls) from the treatment effects literature. 
+Depending on the direction of the matching underlying the decomposition, $D_0$ corresponds to either $ATT$ (Average Treatment effect on the Treated) or $ATC$ (Average Treatment effect on the Untreated/Controls) from the treatment effects literature. 
 
 Let $PO$ denote the (potential) outcome $Y$, the observed treatment status is denoted by $T$, with $T=1$ being treated and $T=0$ being untreated, and a potential treatment status that may or may not be observed is denoted by $t$. Using the potential outcome framework (Rubin, 2008), the $ATT$ is then defined as $ATT = PO_{t=1}^{T=1} - PO_{t=0}^{T=1}$, thus, as the average difference between the observed outcome for the treated as if they were treated ($PO_{t=1}^{T=1}$) and the unobservable, counterfactual outcome for the treated as if they were untreated ($PO_{t=0}^{T=1}$). 
 
