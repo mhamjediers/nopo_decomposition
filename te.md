@@ -16,7 +16,7 @@ Authors: Maximilian Sprengholz and Maik Hamjediers
 
 ## Ñopo's (2008) matching decomposition
 
-We are interested in the decomposition of the raw gap $D$ in outcome $Y$ between group A and group B
+We are interested in the decomposition of the raw gap $D$ in outcome $Y$ between group $A$ and group $B$
 
 $$
 D = \overline{Y}_B - \overline{Y}_A \quad ,
@@ -25,8 +25,9 @@ $$
 into an "explained" component that is based on differences between groups in characteristics that predict $Y$ and a remaining "unexplained" component. However, we do not want to compare apples and oranges, so that the decomposition also needs to calculate which part of $D$ is due to units in both groups which have combinations of predictive characteristics out of common support (characteristics that do not occur in both groups).
 
 Ñopo's matching achieves these goals as follows. In a one-to-many exact matching, each individual from group $B$ is matched to all individuals from group $A$ with the same combination of characteristics (each unique combination of characteristics represents one stratum). The matching flags for all observations of groups $A$ and $B$ if their characteristics are in common support (matched $m$) or out of common support (unmatched $u$). Over common support, the ratio of $B$ to $A$ units in each stratum can be used to create a reweighted group $A^B$ which has the exact same distribution across all strata as group $B$. The outcome of this counterfactual group $A^B$ can be interpreted in two ways: 
-1. as the average outcome of group $A$ if it had the same characteristics as group $B$ (rendering group $B$ as the reference group in terms of characteristics, which we denote throughout the documentation and output as `xref');
-2. as the average outcome of group $B$ if it had the same returns to characteristics as group $A$ (rendering group $A$ as the reference group in terms of returns, which we denote throughout the documentation and output as `bref').
+
+1. as the average outcome of group $A$ if it had the same characteristics as group $B$ (rendering group $B$ as the reference group in terms of characteristics, which we denote throughout the documentation and output as `xref`);
+2. as the average outcome of group $B$ if it had the same returns to characteristics as group $A$ (rendering group $A$ as the reference group in terms of returns, which we denote throughout the documentation and output as `bref`).
 
 The overall gap can then be additively decomposed into four parts:
 
