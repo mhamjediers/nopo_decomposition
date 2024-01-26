@@ -224,21 +224,24 @@ to build your own plot from the data.
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Example data ({stata "nopo ex 1":{it:click to run}}){p_end}
-{phang}. {stata webuse cattaneo2, clear}{p_end}
-{phang}. {stata recode mage (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-"), gen(mage_c)}{p_end}
-{phang}. {stata lab var mage_c "Mother's age"}{p_end}
-{phang}. {stata recode fage (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-"), gen(fage_c)}{p_end}
-{phang}. {stata lab var fage_c "Father's age"}{p_end}
+{pstd}Example data ({stata "nopo_ex 1":{it:click to run}}){p_end}
+{phang}. {stata "use http://fmwww.bc.edu/RePEc/bocode/o/oaxaca.dta , clear"}{p_end}
+{phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
+{phang}. {stata gen educ_c = round(educ,1)}{p_end}
+{phang}. {stata lab var educ_c "years of educational attainment (rounded)"}{p_end}
+{phang}. {stata lab var exper_c "years of work experience (5-year intervalls)"}{p_end}
+{phang}. {stata lab var tenure_c "years of job tenure (5-year intervalls)"}{p_end}
+{phang}. {stata lab def female 0 "Men" 1 "Women"}{p_end}
+{phang}. {stata lab val female female}{p_end}
 
 {pstd}Example decomposition{p_end}
-{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke)}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female)}{p_end}
 
 {pstd}Postestimation{p_end}
 {phang}. {stata nopo summarize, label}{p_end}
-{phang}. {stata nopo summarize i.mrace, label}{p_end}
+{phang}. {stata nopo summarize i.educ_c, label}{p_end}
 {phang}. {stata nopo gapoverdist}{p_end}
-{phang}. {stata nopo dadb mage_c}{p_end}
+{phang}. {stata nopo dadb tenure_c}{p_end}
 
 
 {title:References}

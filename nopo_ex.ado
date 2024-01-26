@@ -6,17 +6,20 @@ args ex
 
 if ("`ex'" == "1") {
   
-  // use cattaneo data
-  webuse cattaneo2, clear
+  // use data from oaxaca-help-file
+  use "http://fmwww.bc.edu/RePEc/bocode/o/oaxaca.dta", clear
+
 
   // categorize and label
-  foreach v in mage fage {
-    recode `v' (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-") ///
-      , gen(`v'_c)
-  }
-  lab var mage_c "Mother's age"
-  lab var fage_c "Father's age"
+	for any exper tenure: gen X_c = round(X,5)
+	gen educ_c = round(educ,1)
 
+	lab var educ_c "years of educational attainment (rounded)"
+	lab var exper_c "years of work experience (5-year intervalls)"
+	lab var tenure_c "years of job tenure (5-year intervalls)"
+	
+	lab def female 0 "Men" 1 "Women"
+    lab val female female
 }
 
 end

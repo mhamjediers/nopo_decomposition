@@ -192,30 +192,37 @@ Note that some of the kmatch variables contain the same information as the varia
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Example data ({stata "nopo ex 1":{it:click to run}}){p_end}
-{phang}. {stata webuse cattaneo2, clear}{p_end}
-{phang}. {stata recode mage (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-"), gen(mage_c)}{p_end}
-{phang}. {stata lab var mage_c "Mother's age"}{p_end}
-{phang}. {stata recode fage (min/18 = 1 "-18") (19/28 = 2 "19-28") (29/38 = 3 "29-38") (39/max = 4 "39-"), gen(fage_c)}{p_end}
-{phang}. {stata lab var fage_c "Father's age"}{p_end}
+{pstd}Example data ({stata "nopo_ex 1":{it:click to run}}){p_end}
+{phang}. {stata "use http://fmwww.bc.edu/RePEc/bocode/o/oaxaca.dta , clear"}{p_end}
+{phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
+{phang}. {stata gen educ_c = round(educ,1)}{p_end}
+{phang}. {stata lab var educ_c "years of educational attainment (rounded)"}{p_end}
+{phang}. {stata lab var exper_c "years of work experience (5-year intervalls)"}{p_end}
+{phang}. {stata lab var tenure_c "years of job tenure (5-year intervalls)"}{p_end}
+{phang}. {stata lab def female 0 "Men" 1 "Women"}{p_end}
+{phang}. {stata lab val female female}{p_end}
 
 {pstd}Decomposition - Standalone{p_end}
-{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke)}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female)}{p_end}
 
 {pstd}Decomposition - After {help kmatch:{it:kmatch}}{p_end}
-{phang}. {stata kmatch em mbsmoke mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids (bweight), att}{p_end}
+{phang}. {stata kmatch em female educ_c exper_c tenure_c (lnwage), att}{p_end}
 {phang}. {stata nopo decomp}{p_end}
 
 {pstd}Decomposition - Using propensity-score or multivariate-distance matching}{p_end}
-{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) kmatch(ps)}{p_end}
-{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) kmatch(md)}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) kmatch(ps)}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) kmatch(md)}{p_end}
 
 {pstd}Standard errors{p_end}
-{phang}. {stata "bootstrap, reps(100): nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke)"}{p_end}
+{phang}. {stata "bootstrap, reps(100): nopo decomp lnwage educ_c exper_c tenure_c, by(female)"}{p_end}
 
 {pstd}Obtain the same results as {help nopomatch:{it:nopomatch}}{p_end}
-{phang}. {stata nopomatch mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, outcome(bweight) by(mbsmoke)}{p_end}
-{phang}. {stata nopo decomp bweight mage_c fage_c prenatal1 mmarried fbaby foreign alcohol deadkids, by(mbsmoke) xref(0) normalize}{p_end}
+{phang}. {stata nopomatch educ_c exper_c tenure_c, outcome(lnwage) by(female)}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) xref(0) normalize}{p_end}
+
+{pstd}Comparison to twofold regression-based decomposition via {help oaxaca:{it:oaxaca}}{p_end}
+{phang}. {stata oaxaca lnwage educ exper tenure, by(female) weight(0) nodetail}{p_end}
+{phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female) swap}{p_end}
 
 
 {marker returns}{...}
@@ -255,6 +262,8 @@ Note that some of the kmatch variables contain the same information as the varia
 {synopt:{cmd:e(tval)}}list of variables on which groups are matched{p_end}
 {synopt:{cmd:e(tvar)}}name of group variable{p_end}
 {synopt:{cmd:e(teffect)}}matching direction ({bf:ATT} or {bf:ATC}){p_end}
+{synopt:{cmd:e(wexp)}}weight expression (if weights are applied){p_end}
+{synopt:{cmd:e(wtype)}}{it:fweights}, {it:pweights}, and {it:iweights} (if weights are applied){p_end}
 {synopt:{cmd:e(cmd)}}{cmd:nopo}{p_end}
 {synopt:{cmd:e(properties)}}{cmd:b}{p_end}
 
