@@ -114,11 +114,20 @@ Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via m
 
 It provides descriptive statistics (e.g., means and standard deviations) for each group and by matching status. Additionally, the descriptive statistics for the invoked counterfactual group of $A^B$ is reported, which allows, on the one hand, to assess the balancing between the counterfactual weighted group $A^B$ and the target distribution of the characteristics-wise reference group $B$ (`xref`), and on the other hand, the extent of differences in the characteristics between $A^B$ and $A$, which underlay the explained component $D_X$. 
 
-### Decomposition-components across the distribution of $Y$$ (`gapoverdist`)
+### Decomposition-components across the distribution of $Y$ (`gapoverdist`)
+
+Plots decomposition-components over the distribution of $Y$.  
+
+Therefore, we compare the means of $Y$ at each quantile for the respective groups (e.g. the matched and unmatched of group $B$ for $D_B$). This means for each quantile that the single component values do not add up to $D$. But the quantile values of each component sum to the overall decomposition component values.
+
 
 ### Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)
 
+Creates a plot showing how the different levels of one single characteristic $x$ contribute to the components $D_A$ and $D_B$. This contribution emerges because these levels are associated with either many unmatched units and/or large differences in the outcome $Y$ by matching status within groups $A$ and $B$.
 
+To acknowledge the latter, the difference in the means of $Y$ between the matched ($A,m_{X=x}$ and $B,m_{X=x}$) and unmatched ($A,u_{X=x}$ and $B,u_{X=x}$) units of each group is calculated separetely for each level and depicted. However, the components $D_A$ and $D_B$ not only depend on the difference between matched and unmatched units, but also on the share of unmatched units (see equation defining $D_A$ and $D_B$). Accordingly, the mean differences for each level are additionally weighted by the share of unmatched units for each level to obtain the level's contribution. In other words, we apply the equations that define $D_A$ and $D_B$ separetely for each level of the respective characteristic. 
+
+Note that this contribution is not the same as a detailed decomposition in regression-based approaches (which is generally not possible with matching). The contribution to $D_A$ and $D_B$ pertains only to the comparison between matched and unmatched units among group $A$ and $B$ and is interdepent with the matching across all other characteristics of the matching set.
 
 
 ## References:
