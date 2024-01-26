@@ -10,7 +10,6 @@ if ("`ex'" == "1") {
   use "http://fmwww.bc.edu/RePEc/bocode/o/oaxaca.dta", clear
 
 
-
   // categorize and label
 	for any exper tenure: gen X_c = round(X,5)
 	gen educ_c = round(educ,1)

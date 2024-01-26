@@ -224,7 +224,7 @@ to build your own plot from the data.
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Example data ({stata "nopo ex 1":{it:click to run}}){p_end}
+{pstd}Example data ({stata "nopo_ex 1":{it:click to run}}){p_end}
 {phang}. {stata "use http://fmwww.bc.edu/RePEc/bocode/o/oaxaca.dta , clear"}{p_end}
 {phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
 {phang}. {stata gen educ_c = round(educ,1)}{p_end}
