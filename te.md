@@ -2,7 +2,19 @@
 
 Authors: Maximilian Sprengholz and Maik Hamjediers
 
-## Ñopo's (2008) matching decomposition:
+**Table of contents**
+1. [Ñopo's (2008) matching decomposition](#ñopos-2008-matching-decomposition)
+   1. [On the Choice of the Matching Procedure](#on-the-choice-of-the-matching-procedure)
+   2. [Relationship to Regression-Based Decompositions](#relationship-to-regression-based-decompositions)
+   3. [Relationship to Estimation of Treatment Effects via Matching](#relationship-to-estimation-of-treatment-effects-via-matching)
+2. [Post-Estimation Statistics](#post-estimation-statistics)
+   1. [Descriptive statistics by matching status (`summarize`)](#descriptive-statistics-by-matching-status-summarize)
+   2. [Decomposition-components across the distribution of $Y$ (`gapoverdist`)](#decomposition-components-across-the-distribution-of-y-gapoverdist)
+   3. [Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)](#contribution-of-characteristics-to-the-components-d_a-and-d_b-dadb)
+3. [References](#references)
+
+
+## Ñopo's (2008) matching decomposition
 
 We are interested in the decomposition of the raw gap $D$ in outcome $Y$ between group A and group B
 
@@ -17,7 +29,7 @@ into an "explained" component that is based on differences between groups in cha
 The overall gap can then be additively decomposed into four parts:
 
 ```math
-\begin{equation}
+\begin{equation} \tag{1}
 \begin{array}{rcccccc}
 D &=& D_0  &+& D_X &+& D_A + D_B \\
 &=& \overbrace{\overline{Y}_{B,m} - \overline{Y}_{A^B,m}} &+& \overbrace{\overline{Y}_{A^B,m} - \overline{Y}_{A,m}} &+& \underbrace{D_A + D_B}_{\mathclap{\substack{\text{out of} \\ \text{support}}}}
@@ -29,7 +41,7 @@ $D_X$ is the average gap between the matched units of re-weighted group $A^B$ an
 By contrast, $D_0$ is the average gap between matched units of group $B$ and the re-weighted group $A^B$. Since $B$ and $A^B$ are equally distributed across matched strata, $D_0$ captures how much of the raw gap remains unexplained by differences in the considered characteristics. When compositional differences between groups limit common support, the effect that unmatched individuals in both groups have on $D$ is captured by the components $D_A$ and $D_B$:
 
 ```math
-\begin{equation}
+\begin{equation} \tag{2}
 	D_A =  \underbrace{(\overline{Y}_{A,m} - \overline{Y}_{A,u})}_{\mathclap{\substack{\text{gap between matched} \\ \text{and unmatched }A}}} \cdot \underbrace{(N_{A,u}/N_A)}_{\mathclap{\substack{\text{share of} \\ \text{unmatched }A}}}  \quad\quad
 	D_B =  \underbrace{(\overline{Y}_{B,u} - \overline{Y}_{B,m})}_{\mathclap{\substack{\text{gap between unmatched} \\ \text{and matched }B}}} \cdot \underbrace{(N_{B,u}/N_B)}_{\mathclap{\substack{\text{share of} \\ \text{unmatched }B}}} 
 \end{equation}
@@ -104,7 +116,6 @@ Alternatively, we could also switch the matching direction to estimate the avera
 
 Thus, the $ATC$ equals again the unexplained decomposition-component $D_0$, however, with the reversed matching direction. To indicate which group's characteristics are used to estimate the counterfactual potential outcome, refer to which group is assigned the `xref`-label; to switch the matching direction, you can use this option to adjust it accordingly. 
 
-
 Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via matching hinges on the assumption of conditional independence. This is also the reason why matching-based treatment effect estimation only provides estimates of $ATT$ or $ATC$ (or even $ATE$) and omits other components ($D_X$, $D_A$, or $D_B$), which are not of direct interest. While the decomposition framework also operates the same counterfactual as the treatment effect estimation (e.g., what would group's $A$ outcome be, if it had the characteristics of group $B$), it does not necessarily aim at a causal interpretation. If the decomposition components are of descriptive interest, the matching-based decomposition does not invoke the assumption of conditional independence. 
 
 
@@ -118,19 +129,19 @@ It provides descriptive statistics (e.g., means and standard deviations) for eac
 
 Plots decomposition-components over the distribution of $Y$.  
 
-Therefore, we compare the means of $Y$ at each quantile for the respective groups (e.g. the matched and unmatched of group $B$ for $D_B$). This means for each quantile that the single component values do not add up to $D$. But the quantile values of each component sum to the overall decomposition component values.
+Therefore, we compare the means of $Y$ at each quantile for the respective groups (e.g. the matched and unmatched of group $B$ for $D_B$). This means for each quantile that the single component values *do not* add up to $D$. But the quantile values of each component sum to the overall decomposition component values.
 
 
 ### Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)
 
 Creates a plot showing how the different levels of one single characteristic $x$ contribute to the components $D_A$ and $D_B$. This contribution emerges because these levels are associated with either many unmatched units and/or large differences in the outcome $Y$ by matching status within groups $A$ and $B$.
 
-To acknowledge the latter, the difference in the means of $Y$ between the matched ($A,m_{X=x}$ and $B,m_{X=x}$) and unmatched ($A,u_{X=x}$ and $B,u_{X=x}$) units of each group is calculated separetely for each level and depicted. However, the components $D_A$ and $D_B$ not only depend on the difference between matched and unmatched units, but also on the share of unmatched units (see equation defining $D_A$ and $D_B$). Accordingly, the mean differences for each level are additionally weighted by the share of unmatched units for each level to obtain the level's contribution. In other words, we apply the equations that define $D_A$ and $D_B$ separetely for each level of the respective characteristic. 
+To acknowledge the latter, the difference in the means between the matched and unmatched units of each group is calculated separetely for each level and depicted. However, the components $D_A$ and $D_B$ not only depend on the difference between matched and unmatched units, but also on the share of unmatched units (see Equation 2). Accordingly, the mean differences for each level are additionally weighted by the share of unmatched units for each level to obtain the level's contribution. In other words, we apply the equations that define $D_A$ and $D_B$ separetely for each level of the respective characteristic. 
 
-Note that this contribution is not the same as a detailed decomposition in regression-based approaches (which is generally not possible with matching). The contribution to $D_A$ and $D_B$ pertains only to the comparison between matched and unmatched units among group $A$ and $B$ and is interdepent with the matching across all other characteristics of the matching set.
+Note that this contribution is *not the same* as a detailed decomposition in regression-based approaches (which is generally not possible with matching). The contribution to $D_A$ and $D_B$ pertains only to the comparison between matched and unmatched units among group $A$ and $B$ and is interdepent with the matching across all other characteristics of the matching set.
 
 
-## References:
+## References
 
 Blinder A.S. (1973). Wage Discrimination: Reduced Form and Structural Estimates. Journal of Human Resources, 8(4), 436–55. https://doi.org/10.2307/144855
 
