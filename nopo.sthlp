@@ -114,6 +114,10 @@ We are working out how the analytical SEs as detailed by {c N~}opo (2008) for {i
 presence of covariance. If you can help, please reach out to us via 
 {browse "https://github.com/mhamjediers/nopo_decomposition/issues/14":GitHub}.
 
+{pstd}{ul:Postestimation:}
+
+{pstd} See {help nopo_postestimation:{bf:nopo postestimation}} for available features after estimation.
+
 {marker opts}{...}
 {title:Options}
 
