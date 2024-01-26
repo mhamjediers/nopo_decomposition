@@ -111,12 +111,12 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`xref'" != "") {
         // get numeric value
         local _xref = stritrim("`xref'")
-        local _xref = ustrregexra("`_xref'", "^\w+[\s]?[=]+\s", "")
+        local _xref = ustrregexra("`_xref'", "^\w+[\s]?[=]+[\s]?", "")
       }
       if ("`bref'" != "") {
         // get numeric value
         local _bref = stritrim("`bref'")
-        local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+\s", "")
+        local _bref = ustrregexra("`_bref'", "^\w+[\s]?[=]+[\s]?", "")
       }
       if ("`_xref'" != "" & "`_bref'" != "" & "`_xref'" == "`_bref'") {
         // check if xref and bref make sense
@@ -177,7 +177,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         }
         cap drop _`_depvarabbrev'_norm
         // sum: always group A = Control = T == 0
-        qui sum `_depvar' if `by' == `_cval' & `touse' `_sum_weightexp', meanonly
+        sum `_depvar' if `by' == `_cval' & `touse' `_sum_weightexp', meanonly
         qui gen _`_depvarabbrev'_norm = `_depvar' / r(mean) if `touse'
         local _depvarlbl : variable label `_depvar'			
         // set normalized var as _depvar!
@@ -521,8 +521,8 @@ program define nopo_decomp, eclass
     scalar _msharewA = (_nmwA / _nwA) * 100
     if ("`naivese'" == "") {
       sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample', meanonly
-      scalar _meanA = r(mean)
-      scalar _mgapA = _meanA - _meanumA
+      scalar _meanmA = r(mean)
+      scalar _mgapA = _meanmA - _meanumA
       mat b[1,4] = _mgapA * (_numwA / _nwA)
       if (b[1,4] == .) mat b[1,4] = 0
     }
@@ -565,8 +565,8 @@ program define nopo_decomp, eclass
     scalar _msharewB = (_nmwB / _nwB) * 100
     if ("`naivese'" == "") {
       sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample', meanonly
-      scalar _meanB = r(mean)
-      scalar _mgapB = _meanB - _meanumB
+      scalar _meanmB = r(mean)
+      scalar _mgapB = _meanmB - _meanumB
       mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
       if (b[1,5] == .) mat b[1,5] = 0
     }
@@ -677,6 +677,7 @@ program define nopo_decomp, eclass
     ereturn local groupB = "`_groupB'"
     ereturn local xref = "`xref'"
     ereturn local bref = "`bref'"
+    ereturn local by = "`_tvar'"
     ereturn local matchset = strltrim("`_matchset'")
     // nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
     // empty locals are not returned by Stata by default
@@ -801,7 +802,7 @@ program define nopo_decomp, eclass
     */ as result _col(33) %7.1f _mshareB /*
     */ _col(46) %7.1f `=100-_mshareB'
   di as text "{hline 29}{c BT}{hline 48}"
-  if ("`_wtype'" != "") di as text "Note: N and % are unweighted." 
+  if ("`_wtype'" != "" & "`_wexp'" != "=1") di as text "Note: N and % are unweighted." 
   dis ""
 
   // display estimates
@@ -938,12 +939,12 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
       noisily matlist _M, border(all) showcoleq(combined) ///
         rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g | %19.0g & %18.0g &)
       noisily dis "Note:"
-      noisily dis "- The component sum across quantiles should correspond to the estimates with"
-      noisily dis "  well populated quantiles."
+      noisily dis "- The component sum across well-populated quantiles should correspond to the"
+      noisily dis "  component estimates."
       if (_M[2,3] < `nquantiles' | _M[3,3] < `nquantiles' | _M[4,3] < `nquantiles' | _M[5,3] < `nquantiles') {
         noisily dis "- There are less unique quantile values than quantiles requested which means"
         noisily dis "  that across some quantiles, the value of `_depvar' does not change for"
-        noisily dis "  (one of) the groups compared to estimate the component."
+        noisily dis "  (one of) the groups compared to the estimate the component."
       }
       if (inlist(., _M[2,2], _M[3,2], _M[4,2], _M[5,2])) {
         noisily dis "- No gap over the distribution could be estimated for the components where N"
@@ -997,6 +998,11 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
       return local twoptsdx = `"`twoptsdx'"'
       return local twoptsda = `"`twoptsda'"'
       return local twoptsdb = `"`twoptsdb'"'
+      if (`xsize' == 0 | `ysize' == 0) {
+        qui gr_setscheme
+        if (`xsize' == 0) local xsize = "`.__SCHEME.graphsize.x'"
+        if (`ysize' == 0) local ysize = "`.__SCHEME.graphsize.y'"
+      }
       return scalar xsize = `xsize'
       return scalar ysize = `ysize'
     

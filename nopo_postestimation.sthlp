@@ -116,7 +116,7 @@ You can also use the {cmd:save()} option to build the plot from the underlying d
 to build your own plot from the data.
 
 {phang}
-{cmd:save(}{help filename:{it:filename}}{cmd:)} saves the underlying plot data.
+{cmd:save(}{help filename:{it:filename}}{cmd:)} saves the underlying plot data (which will be replaced if it already exists).
 
 {dlgtab:Stored results of nopo gapoverdist}
 
@@ -200,7 +200,7 @@ underlying data yourself.
 to build your own plot from the data.
 
 {phang}
-{cmd:save(}{help filename:{it:filename}}{cmd:)} saves the underlying plot data.
+{cmd:save(}{help filename:{it:filename}}{cmd:)} saves the underlying plot data (which will be replaced if it already exists).
 
 {dlgtab:Stored results of nopo dadb}
 
