@@ -933,18 +933,18 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
       }
       mat _M = e(b)' , _M
       mat rownames _M = D D0 DX DA DB
-      local colnames `" "Estimate" "Sum over q" "Minimum among compared groups: Unique q values" "Minimum among compared groups: N" "'
+      local colnames `" "Estimate" "Mean over q" "Minimum among compared groups: Unique q values" "Minimum among compared groups: N" "'
       mat colnames _M = `colnames'
       noisily dis "Component distribution across `nquantiles' quantiles of `_depvar' requested"
       noisily matlist _M, border(all) showcoleq(combined) ///
         rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g | %19.0g & %18.0g &)
       noisily dis "Note:"
-      noisily dis "- The component sum across well-populated quantiles should correspond to the"
+      noisily dis "- The component mean across well-populated quantiles should correspond to the"
       noisily dis "  component estimates."
       if (_M[2,3] < `nquantiles' | _M[3,3] < `nquantiles' | _M[4,3] < `nquantiles' | _M[5,3] < `nquantiles') {
         noisily dis "- There are less unique quantile values than quantiles requested which means"
         noisily dis "  that across some quantiles, the value of `_depvar' does not change for"
-        noisily dis "  (one of) the groups compared to the estimate the component."
+        noisily dis "  (one of) the groups compared to estimate the component."
       }
       if (inlist(., _M[2,2], _M[3,2], _M[4,2], _M[5,2])) {
         noisily dis "- No gap over the distribution could be estimated for the components where N"
@@ -1048,7 +1048,7 @@ quietly {
     local _qsuccess = 1 // use as trigger conditional on success in quantile estimation
     forvalues i = 0/1 {
       // quantiles
-        cap xtile `quantile'_`i' = `varlist' if `by' == `i' [`weight'`exp'], nquantiles(`nquantiles')
+      cap xtile `quantile'_`i' = `varlist' if `by' == `i' [`weight'`exp'], nquantiles(`nquantiles')
       // handle situation where requested quantiles are more than available obs per group
       if (_rc != 198) {
         // save number of quantiles (for info if they have been expanded)
@@ -1109,7 +1109,7 @@ quietly {
       keep `diff' `quantile'
       rename `diff' diff
 
-      // add quantile count to inform about contant values
+      // add quantile count to inform about constant values
       gen `comp'_qcntmin = `_qcntmin'
 
     }

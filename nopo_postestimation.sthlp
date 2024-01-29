@@ -83,12 +83,21 @@ on various specifications.
 {cmd:nopo gapoverdist} [{cmd:,} {it:options}]
 
 {pstd}
-Plots decomposition-components over the distribution of {depvar}.  
+Plots decomposition-components over the distribution of {depvar}  
 
-Therefore, we compare {depvar} {it:means} at each quantile for the respective groups 
-(e.g. the matched and unmatched of group {it:B} for {it:DB}). This means for each quantile that
-the single component values {it:do not} add up to {it:D}. But the quantile values of 
-each component sum to the decomposition component values produced by {cmd:nopo decomp}.
+This command plots decomposition components based on the distribution of {depvar} in each of the groups
+which are compared in the respective calculation. The same calculation is performed as in the overall decomposition,
+but instead of the overall {depvar} means of each group, we plug in the component-and-group-specific {depvar} 
+mean for each requested quantile. Consider, {it:D0} and quartiles as an example. Here, we would take the difference 
+between (1) the mean wage in Q1 of the wage distribution of the matched group {it:A} and the (2) mean wage in Q1 of
+the wage distribution of the matched and reweighted group {it:B}; repeated for each quartile. The mean of the 
+quantile-spcific values per component correspond to the estimates returned by {cmd:nopo decomp}.
+
+Please note that the decomposition components might not add up to {it:D} for each quantile. This is usually the 
+case without common support, simply because the {depvar} distribution might vary greatly between the matched and 
+unmatched in each group. For example, when all units in {depvar} Q1 of groups {it:A} and {it:B} are matched, 
+{it:D} for Q1 can only be based on the {depvar} values of the matched; and these values would always be exceeded
+by the values {depvar} values among the unmatched (assuming there are some).
 
 {dlgtab:Options of nopo gapoverdist}
 
@@ -125,8 +134,8 @@ to build your own plot from the data.
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Scalars}{p_end}
-{synopt:{cmd:r(ysize)}}value of option {cmd:ysize()} {p_end}
-{synopt:{cmd:r(xsize)}}value of option {cmd:xsize()} {p_end}
+{synopt:{cmd:r(ysize)}}value of option {cmd:ysize()} or system default (if retrievable) {p_end}
+{synopt:{cmd:r(xsize)}}value of option {cmd:xsize()} or system default (if retrievable) {p_end}
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Macros}{p_end}
@@ -209,8 +218,8 @@ to build your own plot from the data.
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Scalars}{p_end}
-{synopt:{cmd:r(ysize)}}value of option {cmd:ysize()} {p_end}
-{synopt:{cmd:r(xsize)}}value of option {cmd:xsize()} {p_end}
+{synopt:{cmd:r(ysize)}}value of option {cmd:ysize()} or computed default {p_end}
+{synopt:{cmd:r(xsize)}}value of option {cmd:xsize()} or computed default {p_end}
 
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Macros}{p_end}
