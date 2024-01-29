@@ -966,7 +966,11 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
           local ++_i
         }
         if ("`recast'" == "") local recast "line"
-        if (`"`twopts'"' == "") local twopts `"legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) xlab(, grid) ylab(, grid)"'
+        if (`"`twopts'"' == "") {
+          if (`nquantiles' <= 10) local _xlab "xlab(1(1)`nquantiles', grid)"
+            else local _xlab "xlab(, grid)"
+          local twopts `"legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) `_xlab' ylab(, grid)"'
+        }
         if (`xsize' > 0) local twopts `"`twopts' xsize(`xsize')"'
         if (`ysize' > 0) local twopts `"`twopts' ysize(`ysize')"'
         if ("`recast'" == "line") {
@@ -1063,9 +1067,10 @@ quietly {
         bys `by': egen `totweight' = total(`weightvar')
         bys `by' (`quantile'_`i'): replace `quantile'_`i' = ///
           ceil(sum(`weightvar') * `nquantiles' / `totweight') if `by' == `i'
+        // account for potential ceiling imprecision
+        replace `quantile'_`i' = `nquantiles' if `quantile'_`i' > `nquantiles'
         replace `quantile' = `quantile'_`i' if `by' == `i'
         drop `totweight'
-        
       } 
       else {
         local _qsuccess = 0
