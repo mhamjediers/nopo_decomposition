@@ -99,7 +99,7 @@ Please note that the decomposition components might not add up to {it:D} for eac
 case without common support, simply because the {depvar} distribution might vary greatly between the matched and 
 unmatched in each group. For example, when all units in {depvar} Q1 of groups {it:A} and {it:B} are matched, 
 {it:D} for Q1 can only be based on the {depvar} values of the matched; and these values would always be exceeded
-by the values {depvar} values among the unmatched (assuming there are some).
+by the {depvar} values among the unmatched (assuming there are some).
 
 {dlgtab:Options of nopo gapoverdist}
 

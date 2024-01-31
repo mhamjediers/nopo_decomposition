@@ -75,9 +75,11 @@ between two groups {it:A} and {it:B} by matching them on a set of characteristic
 To achieve this decomposition, the matching generates counterfactual group {it:A{superscript:B}} by weighting all atched observation of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}.
 The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B{superscript:A}} using the {cmd:xref()} or {cmd:bref()} option. 
 
+{pstd}
+Note that positive values for {it:DA} reflect unmatched units having {it:lower} values in {it:Y} than matched units among group {it:A}, whereas positive values of {it:DB} reflect unmatched units having {it:higher} values in {it:Y} than matched units among group {it:B}.
 
 {pstd}    
-A detailed explanation of the methodology is also provided in an {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
+A detailed explanation of the methodology is provided in an {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}. 
 
 {pstd}{ul:Matching approaches:} 
 

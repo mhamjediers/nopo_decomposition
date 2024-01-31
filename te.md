@@ -127,14 +127,25 @@ It provides descriptive statistics (e.g., means and standard deviations) for eac
 
 Plots decomposition-components over the distribution of $Y$.  
 
-Therefore, we compare the means of $Y$ at each quantile for the respective groups (e.g. the matched and unmatched of group $B$ for $D_B$). This means for each quantile that the single component values *do not* add up to $D$. But the quantile values of each component sum to the overall decomposition component values.
+This command plots decomposition components based on the distribution of $Y$ in each of the groups
+which are compared in the respective calculation. The same calculation is performed as in the overall decomposition,
+but instead of the overall $Y$ means of each group, we plug in the component-and-group-specific $Y$
+mean for each requested quantile. Consider, $D_0$ and quartiles as an example. Here, we would take the difference 
+between (1) the mean wage in Q1 of the wage distribution of the matched group $A$ and the (2) mean wage in Q1 of
+the wage distribution of the matched and reweighted group $B$; repeated for each quartile. 
+
+Please note that the decomposition components might not add up to $D$ for each quantile. This is usually the 
+case without common support, simply because the distribution of $Y$ might vary greatly between the matched and 
+unmatched in each group. For example, when all units in Q1 of groups $A$ and $B$ are matched, 
+$D$for Q1 can only be based on the values of the matched; and these values would always be exceeded
+by the values among the unmatched (assuming there are some).
 
 
 ### Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)
 
 Creates a plot showing how the different levels of one single characteristic $x$ contribute to the components $D_A$ and $D_B$. This contribution emerges because these levels are associated with either many unmatched units and/or large differences in the outcome $Y$ by matching status within groups $A$ and $B$.
 
-To acknowledge the latter, the difference in the means between the matched and unmatched units of each group is calculated separetely for each level and depicted. However, the components $D_A$ and $D_B$ not only depend on the difference between matched and unmatched units, but also on the share of unmatched units (see Equation 2). Accordingly, the mean differences for each level are additionally weighted by the share of unmatched units for each level to obtain the level's contribution. In other words, we apply the equations that define $D_A$ and $D_B$ separetely for each level of the respective characteristic. 
+To acknowledge the latter, the mean of the unmatched units of each group is calculated separetely for each level and substracted by the overall mean of the matched units for the respective group. However, the components $D_A$ and $D_B$ not only depend on the difference between matched and unmatched units, but also on the share of unmatched units (see Equation 2). Accordingly, the mean differences for each level are additionally weighted by the share of unmatched units for each level to obtain the level's contribution. 
 
 Note that this contribution is *not the same* as a detailed decomposition in regression-based approaches (which is generally not possible with matching). The contribution to $D_A$ and $D_B$ pertains only to the comparison between matched and unmatched units among group $A$ and $B$ and is interdepent with the matching across all other characteristics of the matching set.
 
