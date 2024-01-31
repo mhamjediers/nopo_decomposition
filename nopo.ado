@@ -1163,6 +1163,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
   [twoptsscatter(string asis)] ///
   [twoptsn(string asis)] ///
   [twoptsby(string asis)] ///
+  [xlabfmt(string)] ///
   [xsize(real 0)] ///
   [ysize(real 0)] ///
   [nodraw] ///
@@ -1358,6 +1359,8 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
           else if (`_nplotbylvls'/5 < 2) local _yrangemax = `_nplotbylvls' + 2
           else local _yrangemax = `_nplotbylvls'/5 + `_nplotbylvls'
         
+        if ("`xlabfmt'" == "") local xlabfmt "%03.2f"
+
         if (`ysize' == 0) local ysize = `_nplotbylvls'/5 + 5
         if (`xsize' == 0) {
           if (`ysize' < 8) local xsize = 9
@@ -1379,8 +1382,8 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
             ) rows(2) margin(zero)  region(style(none)) size(small))
           ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
           yscale(range(`_yrangemax' 1)) ytitle("")
-          xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, axis(1) grid labsize(small))
-          xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, axis(2) grid labsize(small))
+          xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, format(`xlabfmt') axis(1) grid labsize(small))
+          xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, format(`xlabfmt') axis(2) grid labsize(small))
           xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
           subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
           scheme(s1mono) xsize(`xsize') ysize(`ysize')

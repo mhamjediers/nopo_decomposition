@@ -85,6 +85,7 @@ on various specifications.
 {pstd}
 Plots decomposition-components over the distribution of {depvar}  
 
+{pstd}
 This command plots decomposition components based on the distribution of {depvar} in each of the groups
 which are compared in the respective calculation. The same calculation is performed as in the overall decomposition,
 but instead of the overall {depvar} means of each group, we plug in the component-and-group-specific {depvar} 
@@ -93,6 +94,7 @@ between (1) the mean wage in Q1 of the wage distribution of the matched group {i
 the wage distribution of the matched and reweighted group {it:B}; repeated for each quartile. The mean of the 
 quantile-spcific values per component correspond to the estimates returned by {cmd:nopo decomp}.
 
+{pstd}
 Please note that the decomposition components might not add up to {it:D} for each quantile. This is usually the 
 case without common support, simply because the {depvar} distribution might vary greatly between the matched and 
 unmatched in each group. For example, when all units in {depvar} Q1 of groups {it:A} and {it:B} are matched, 
