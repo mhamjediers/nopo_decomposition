@@ -80,16 +80,13 @@ on various specifications.
 {title:Description of nopo gapoverdist}
 
 {p 2 2 2}
-{cmd:nopo gapoverdist} [{cmd:,} {it:options}]
-
-{pstd}
-Plots decomposition-components over the distribution of {depvar}  
+{cmd:nopo gapoverdist} [d d0 dx da db] [{cmd:,} {it:options}]
 
 {pstd}
 This command plots decomposition components based on the distribution of {depvar} in each of the groups
 which are compared in the respective calculation. The same calculation is performed as in the overall decomposition,
 but instead of the overall {depvar} means of each group, we plug in the component-and-group-specific {depvar} 
-mean for each requested quantile. Consider, {it:D0} and quartiles as an example. Here, we would take the difference 
+mean for each requested quantile. Consider {it:D0} and quartiles as an example. Here, we would take the difference 
 between (1) the mean wage in Q1 of the wage distribution of the matched group {it:A} and the (2) mean wage in Q1 of
 the wage distribution of the matched and reweighted group {it:B}; repeated for each quartile. The mean of the 
 quantile-spcific values per component correspond to the estimates returned by {cmd:nopo decomp}.
@@ -100,6 +97,10 @@ case without common support, simply because the {depvar} distribution might vary
 unmatched in each group. For example, when all units in {depvar} Q1 of groups {it:A} and {it:B} are matched, 
 {it:D} for Q1 can only be based on the {depvar} values of the matched; and these values would always be exceeded
 by the {depvar} values among the unmatched (assuming there are some).
+
+{pstd}
+You can specify which decomposition components to plot (default are all) by explicitly calling, for example,
+{cmd:nopo gapoverdist d d0 dx}.
 
 {dlgtab:Options of nopo gapoverdist}
 
@@ -205,6 +206,10 @@ underlying data yourself.
 
 {phang}
 {cmd:xsize(}{it:real}{cmd:)} and {cmd:ysize(}{it:real}{cmd:)} set the x and y dimensions of the plot.
+
+{phang}
+{cmd:xlabfmt(}{help format:{it:%fmt}}{cmd:)} sets the format of the x-axis labels and range. Try different
+formats when the gridlines of the top and bottom x-axes do not align (or use {cmd:save()} to build your own graph).
 
 {phang}
 {cmd:nodraw} specifies that the plot is not produced at all. Useful in combination with {cmd:save()}

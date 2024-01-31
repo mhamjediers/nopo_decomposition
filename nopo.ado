@@ -665,6 +665,7 @@ program define nopo_decomp, eclass
     }
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"
+    ereturn local title = "Nopo Decomposition"
     if ("`_wtype'" != "" & "`_wexp'" != "=1") {
       ereturn local wtype = "`_wtype'"
       ereturn local wexp = "`_wexp'"
@@ -839,7 +840,7 @@ Does that sound sensible?
 // gap over distribution plotting wrapper: 5 plots needed (one for each gap component)
 cap program drop nopo_gapoverdist
 program define nopo_gapoverdist, rclass
-syntax [if] [in], /// if/in might produce misleading results; undocumented
+syntax [namelist] [if] [in], /// if/in might produce misleading results; undocumented
   [NQuantiles(integer 100)] ///
   [RAWUMdiff] /// undocumented
   [recast(string)] ///
@@ -894,82 +895,130 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
     // options passthru
     local opts `"nq(`nquantiles') qmin(`qmin') qmax(`qmax') `revsign' `relative'"'
 
-    // create plot values for each component
-    // D
-    tempfile d
-    noisily nopo_gapdist `_depvar' if `touse' `_weightexp', by(`treat') comp(d) `opts' save(`d')
-    // D0
-    tempfile d0
-    noisily nopo_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
-      , by(`treat') comp(d0) `opts' save(`d0')
-    // DX (requires passing of matching weight)
-    tempfile dx
-    noisily nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
-      , by(`treat') xref(`_xref') comp(dx) mweight(`_mweight') `opts' save(`dx')
-    // DA
-    tempfile da
-    noisily nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
-      , by(`_support') comp(da) `rawumdiff' `opts' save(`da')
-    // DB
-    tempfile db
-    noisily nopo_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
-      , by(`_support') comp(db) `rawumdiff' `opts' save(`db')
+    // requested components
+    if ("`namelist'" != "") {
+      local _components
+      foreach _c in d d0 dx da db {
+        if (ustrregexm("`namelist'", "\b`_c'\b") == 1) local _components "`_components' `_c'"
+      }
+      local _components = ustrltrim("`_components'")
+      if ("`_components'" == "") {
+        dis as error "Provided namelist may only contain: d d0 dx da da"
+        error 198
+        exit
+      }
+    }
+    else {
+      // default is all
+      local _components "d d0 dx da db"
+    }
+
+    // create plot values for each requested component
+    if (ustrregexm("`_components'", "\bd\b") == 1) {
+      // D
+      tempfile d
+      noisily nopo_gapdist `_depvar' if `touse' `_weightexp', by(`treat') comp(d) `opts' save(`d')
+    }
+    if (ustrregexm("`_components'", "\bd0\b") == 1) {
+      // D0
+      tempfile d0
+      noisily nopo_gapdist `_depvar' if `touse' & `_support' [pw = `_mweight'] ///
+        , by(`treat') comp(d0) `opts' save(`d0')
+    }
+    if (ustrregexm("`_components'", "\bdx\b") == 1) {
+      // DX (requires passing of matching weight)
+      tempfile dx
+      noisily nopo_gapdist `_depvar' if `touse' & `_support' `_weightexp' ///
+        , by(`treat') xref(`_xref') comp(dx) mweight(`_mweight') `opts' save(`dx')
+    }
+    if (ustrregexm("`_components'", "\bda\b") == 1) {
+      // DA
+      tempfile da
+      noisily nopo_gapdist `_depvar' if `touse' & `treat' == 0 `_weightexp' ///
+        , by(`_support') comp(da) `rawumdiff' `opts' save(`da')
+    }
+    if (ustrregexm("`_components'", "\bdb\b") == 1) {
+      // DB
+      tempfile db
+      noisily nopo_gapdist `_depvar' if `touse' & `treat' == 1 `_weightexp' ///
+        , by(`_support') comp(db) `rawumdiff' `opts' save(`db')
+    }
 
     // output
     preserve
-      use `d', clear
-      rename diff d
-      foreach c in d0 dx da db {
-        merge 1:1 q using "``c''", nogen
-        rename diff `c'
-        lab var `c' "Decomposition component `c'"
+      gettoken _c1 _crest : _components
+      use "``_c1''", clear
+      rename diff `_c1'
+      foreach _c in `_crest' {
+        merge 1:1 q using "``_c''", nogen
+        rename diff `_c'
+        lab var `_c' "Component `_c'"
       }
       
       // summary table for sensibility checks
-      foreach c in d d0 dx da db {
-        tabstat `c' `c'_qcntmin `c'_nmin, save
-        if ("`c'" == "d") mat _M = r(StatTotal)
-          else mat _M = _M \ r(StatTotal)
+      local _rows = 0
+      local _rspec = "||"
+      foreach _c in `_components' {
+        local ++_rows
+        local _lbl = strupper("`_c'")
+        tabstat `_c' `_c'_qcntmin `_c'_nmin, save // mean over q
+        if (`_rows' == 1) mat _M = e(b)[1, "`_lbl'"], r(StatTotal)
+          else mat _M = _M \ e(b)[1, "`_lbl'"], r(StatTotal)
+        local _rownames = "`_rownames' `_lbl'"
+        if (`_rows' > 1) local _rspec "`_rspec'&"
       }
-      mat _M = e(b)' , _M
-      mat rownames _M = D D0 DX DA DB
-      local colnames `" "Estimate" "Mean over q" "Minimum among compared groups: Unique q values" "Minimum among compared groups: N" "'
-      mat colnames _M = `colnames'
+      local _rspec = "`_rspec'|"
+      mat rownames _M = `_rownames'
+      local _colnames `" "Estimate" "Mean over q" "Minimum among compared groups: Unique q values" "Minimum among compared groups: N" "'
+      mat colnames _M = `_colnames'
       noisily dis "Component distribution across `nquantiles' quantiles of `_depvar' requested"
       noisily matlist _M, border(all) showcoleq(combined) ///
-        rspec(||&&&&|) cspec(& %3s | %14.3g & %14.3g | %19.0g & %18.0g &)
+        rspec(`_rspec') cspec(& %3s | %14.3g & %14.3g | %19.0g & %18.0g &)
       noisily dis "Note:"
       noisily dis "- The component mean across well-populated quantiles should correspond to the"
       noisily dis "  component estimates."
-      if (_M[2,3] < `nquantiles' | _M[3,3] < `nquantiles' | _M[4,3] < `nquantiles' | _M[5,3] < `nquantiles') {
+      // check no of quantiles
+      local _qok = 1
+      local _nok = 1
+      forvalues _r = 1/`_rows' {
+        if (_M[`_r', 3] < `nquantiles') local _qok = 0
+        if (_M[`_r', 2] == .) local _nok = 0
+      }
+      if (`_qok' == 0) {
         noisily dis "- There are less unique quantile values than quantiles requested which means"
         noisily dis "  that across some quantiles, the value of `_depvar' does not change for"
         noisily dis "  (one of) the groups compared to estimate the component."
       }
-      if (inlist(., _M[2,2], _M[3,2], _M[4,2], _M[5,2])) {
+      // check obs
+      if (`_nok' == 0) {
         noisily dis "- No gap over the distribution could be estimated for the components where N"
         noisily dis "  of compared groups < no. of requested quantiles."
       }
+      // note options
       if (`nquantiles' == 100) noisily dis "- Use the nquantiles(#) option to set the number of quantiles."
       
       // plot
       if ("`nodraw'" == "") {
         
-        // defaults
-        local _i = 1 
-        foreach _comp in d d0 dx da db {
-          local _lbl = strupper("`_comp'")
-          count if !mi(`_comp')
+        // legend
+        local _dadblegend
+        local _i = 1
+        foreach _c in `_components' {      
+          // legend
+          local _lbl = strupper("`_c'")
+          count if !mi(`_c')
           if (r(N) > 0) {
             local _dadblegend `"`_dadblegend' `_i' "`_lbl'""'
           }
           local ++_i
         }
+
+        // defaults
         if ("`recast'" == "") local recast "line"
         if (`"`twopts'"' == "") {
           if (`nquantiles' <= 10) local _xlab "xlab(1(1)`nquantiles', grid)"
             else local _xlab "xlab(, grid)"
-          local twopts `"legend(order(`_dadblegend') rows(1) span) yline(0) scheme(s1mono) ylab(, angle(horizontal)) `_xlab' ylab(, grid)"'
+          local twopts `"legend(order(`_dadblegend') rows(1) span on region(style(none))) yline(0) scheme(s1mono) ylab(, angle(horizontal) grid) `_xlab' ytitle("")"'
         }
         if (`xsize' > 0) local twopts `"`twopts' xsize(`xsize')"'
         if (`ysize' > 0) local twopts `"`twopts' ysize(`ysize')"'
@@ -981,13 +1030,14 @@ syntax [if] [in], /// if/in might produce misleading results; undocumented
           if (`"`twoptsdb'"' == "") local twoptsdb "lp(longdash_dot)"
         }
 
-        twoway ///
-          (`recast' d q, `twoptsd') ///
-          (`recast' d0 q, `twoptsd0') ///
-          (`recast' dx q, `twoptsdx') ///
-          (`recast' da q, `twoptsda') ///
-          (`recast' db q, `twoptsdb') ///
-          , `twopts'
+        // gather plots
+        local _plots
+        foreach _c in `_components' {      
+          local _plots `"`_plots' (`recast' `_c' q, `twopts`_c'')"'
+        }
+
+        // plot
+        twoway `_plots', `twopts'
 
       }
       
@@ -1269,17 +1319,17 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
     // gen means
     if ("`nosort'" == "") {	
       preserve
-        collapse (mean) `_depvar' `_weightexp', by(`plotby')
+        collapse (mean) `_depvar' `_weightexp' if `touse', by(`plotby')
         sort `_depvar'
         drop `_depvar'
         tempvar sorter
         if ("`descending'" != "") gen `sorter' = _n
           else gen `sorter' = _N - _n + 1
-         tempfile sorted
+        tempfile sorted
         save `sorted'
       restore
       merge m:1 `plotby' using `sorted', nogen
-    }	
+    }
     // reorder and relabel
     local _plotbyvallbl : value label `plotby'
     local _s = 0
@@ -1347,19 +1397,22 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       replace mdepvar_diff_weighted = . if n_weighted == 0
 
       if ("`nodraw'" == "") {
+        
+        // set format for xlab & xrange
+        if ("`xlabfmt'" == "") local xlabfmt "%3.2f"
 
         // N as text: get plot area and coordinates from data
         sum mdepvar_diff if n_weighted >= `nmin'
-        if (abs(r(max)) > abs(r(min))) local _mmax = abs(r(max)) * 1.75 // room obs text
+        if (abs(r(max)) > abs(r(min))) local _mmax = round(abs(r(max)) * 1.75, 2) // room obs text
           else local _mmax = abs(r(min)) * 1.8
+        local _mmax: dis `xlabfmt' `_mmax'
         sum mdepvar_diff_weighted if n_weighted >= `nmin'
         if (abs(r(max)) > abs(r(min))) local _wmmax = abs(r(max)) * 1.75 // room obs text
           else local _wmmax = abs(r(min)) * 1.75
+        local _wmmax: dis `xlabfmt' `_wmmax'
         if (`_nplotbylvls'/5 < 1) local _yrangemax = `_nplotbylvls' + 1
           else if (`_nplotbylvls'/5 < 2) local _yrangemax = `_nplotbylvls' + 2
           else local _yrangemax = `_nplotbylvls'/5 + `_nplotbylvls'
-        
-        if ("`xlabfmt'" == "") local xlabfmt "%03.2f"
 
         if (`ysize' == 0) local ysize = `_nplotbylvls'/5 + 5
         if (`xsize' == 0) {
@@ -1371,7 +1424,8 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
         tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
         cap drop nx
         gen nx = `_mmax' // x value for n counts (added as mlabel)
-        local _text `" text(`_yrangemax' `_mmax' "N unmatched" "(weighted)", place(sw) just(right) size(small) xaxis(2)) "'
+        if ("`e(wtype)'" != "") local _wnote `""weighted""'
+        local _text `" text(`_yrangemax' `_mmax' "N unmatched" `_wnote', place(sw) just(right) size(small) xaxis(2)) "'
 
         // set default plot options
         #delimit ;
@@ -1382,8 +1436,8 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
             ) rows(2) margin(zero)  region(style(none)) size(small))
           ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
           yscale(range(`_yrangemax' 1)) ytitle("")
-          xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, format(`xlabfmt') axis(1) grid labsize(small))
-          xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, format(`xlabfmt') axis(2) grid labsize(small))
+          xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, axis(1) grid labsize(small))
+          xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, axis(2) grid labsize(small))
           xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
           subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
           scheme(s1mono) xsize(`xsize') ysize(`ysize')
@@ -1659,13 +1713,13 @@ syntax [varlist (default=none fv)] [if] [in], ///
         // A -> A^B
         tabstat `_tabstatvars' if `treat' == 0 & `_support' == 1 & `touse' [aw = `_mweight'] ///
           , stat(`_statistics') save
-        local _colnames = `" `_colnames' "A_matched_weighted" "'
+        local _colnames = `" `_colnames' "A_weighted" "'
       }
       else if (`_xref' == 0) {
         // B -> B^A
         tabstat `_tabstatvars' if `treat' == 1 & `_support' == 1  & `touse' [aw = `_mweight'] ///
           , stat(`_statistics') save
-        local _colnames = `" `_colnames' "B_matched_weighted" "'
+        local _colnames = `" `_colnames' "B_weighted" "'
       }
       mat _S = r(StatTotal)
       if (`_factor' == 1) mat _S = _S'
@@ -1812,7 +1866,6 @@ syntax [varlist (default=none fv)] [if] [in], ///
         local _Blbl : label _bylbl 1
         local _colnames = usubinstr(`"`_colnames'"', "B:", "`_Blbl':", .)
       }
-      local _colnames = usubinstr(`"`_colnames'"', "_weighted", " & weighted", .)
     }
     foreach _m in M `statistics' {
       mat colnames _`_m' = `_colnames'
