@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.2   22aug2023  Maximilian Sprengholz & Maik Hamjediers}{...}
+{* *! version 1.0   01feb2024  Maximilian Sprengholz & Maik Hamjediers}{...}
 {vieweralsosee "kmatch" "kmatch"}{...}
 {vieweralsosee "nopomatch" "nopomatch"}{...}
 {viewerjumpto "Syntax" "nopo##syntax"}{...}
