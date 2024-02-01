@@ -35,8 +35,8 @@ The following postestimation commands are of special interest after {cmd:nopo de
 
 {pstd}
 Returns a descriptive table with selected statistics by group and matching/weighting status:
-{it:A unmatched}, {it:A matched}, {it:A/B matched and weighted} (depends on {cmd:xref()} if {it:A} 
-or {it:B}), {it:B matched}, and {it:B unmatched}. If no variables are specified, {depvar} and 
+{it:A unmatched}, {it:A matched}, {it:A^B} or {it:B^A} (matched and weighted; depends on the matching direction), 
+{it:B matched}, and {it:B unmatched}. If no variables are specified, {depvar} and 
 {varlist} from {cmd: nopo decomp} are summarized. By default, means and standard deviations are
 reported. For factor variables, the shares of factor levels are reported (indicate factors
 by  using factor notation in {varlist} of either {cmd: nopo summarize} or the prior {cmd:nopo decomp}).
@@ -83,16 +83,17 @@ on various specifications.
 {cmd:nopo gapoverdist} [d d0 dx da db] [{cmd:,} {it:options}]
 
 {pstd}
-This command plots decomposition components based on the distribution of {depvar} in each of the groups
-which are compared in the respective calculation. The same calculation is performed as in the overall decomposition,
+This command plots decomposition components based on the distribution of {depvar} by group and matching/weighting status 
+(thus, {it:A unmatched}, {it:A matched}, {it:A^B} or {it:B^A} , {it:B matched}, and {it:B unmatched}). 
+The same calculation is performed as in the overall decomposition,
 but instead of the overall {depvar} means of each group, we plug in the component-and-group-specific {depvar} 
 mean for each requested quantile. Consider {it:D0} and quartiles as an example. Here, we would take the difference 
 between (1) the mean wage in Q1 of the wage distribution of the matched group {it:A} and the (2) mean wage in Q1 of
-the wage distribution of the matched and reweighted group {it:B}; repeated for each quartile. The mean of the 
+the wage distribution of the matched and reweighted group {it:B^A}; repeated for each quartile. The mean of the 
 quantile-spcific values per component correspond to the estimates returned by {cmd:nopo decomp}.
 
 {pstd}
-Please note that the decomposition components might not add up to {it:D} for each quantile. This is usually the 
+Please note that the decomposition components might not add up to {it:D} within each quantile. This is usually the 
 case without common support, simply because the {depvar} distribution might vary greatly between the matched and 
 unmatched in each group. For example, when all units in {depvar} Q1 of groups {it:A} and {it:B} are matched, 
 {it:D} for Q1 can only be based on the {depvar} values of the matched; and these values would always be exceeded
@@ -161,18 +162,18 @@ to build your own plot from the data.
 Creates a plot showing how the different levels of {varname} contribute to {it:DA} and {it:DB}
 because these levels are associated with either many unmatched units and/or large differences in 
 {depvar} by matching status within groups {it:A} and {it:B}
-(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation})
-for details.
+(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation}
+for details).
 
 {pstd}
 The bar-segments of the plot denote the difference between category-specific mean of unmatched units and 
-the overall mean of matched units. The scatter-markers denote the contribution of this difference to the 
-components {it:DA} or {it:DB}, which depends on the size of the difference and the number of unmatched units
+the overall mean of matched units. The scatter-markers denote the contribution of this difference to {it:D}, 
+which depends on the size of the difference and the number of unmatched units
 in the respective category. Additionally, the number of unmatched units for each category are displayed.
 
 {pstd}
 Note that the output {it:is not} the same as a detailed decomposition in regression-based approaches 
-(which is generally not possible with matching). The contribution to {it:DA} and {it:DB} pertains only 
+(which is generally not possible with matching). The contribution to {it:D} pertains only 
 to the comparison between matched and unmatched units among group {it:A} and {it:B} and is interdepent
 with the matching across all other characteristics of the matching set.
 
@@ -257,6 +258,7 @@ to build your own plot from the data.
 {phang}. {stata nopo summarize, label}{p_end}
 {phang}. {stata nopo summarize i.educ_c, label}{p_end}
 {phang}. {stata nopo gapoverdist}{p_end}
+{phang}. {stata nopo gapoverdist d d0}{p_end}
 {phang}. {stata nopo dadb tenure_c}{p_end}
 
 

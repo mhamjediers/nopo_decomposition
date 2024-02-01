@@ -34,8 +34,8 @@
     General
 {synopt :{cmdab:by(}{help varname:{it:varname}}{cmdab:)}}Group variable by which to estimate and decompose gaps in {depvar:} (required) {p_end}{...}
 {synopt :{cmdab:swap}}Swap groups{p_end}{...}
-{synopt :{cmdab:xref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:characteristics} (cannot be the same as {cmdab:bref()}) {p_end}{...}
-{synopt :{cmdab:bref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of {it:returns} (cannot be the same as {cmdab:xref()}) {p_end}{...}
+{synopt :{cmdab:xref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of characteristics {p_end}{...}
+{synopt :{cmdab:bref(}{varname}{it: == #}{cmdab:)}}Set reference group in terms of returns {p_end}{...}
 
     Matching procedure 
 {synopt :{cmdab:km:atch(}em|md|ps{cmdab:)}}Choose between exact (em, default), multivariate-distance (md), and propensity score (ps) matching{p_end}{...}
@@ -72,8 +72,7 @@ between two groups {it:A} and {it:B} by matching them on a set of characteristic
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}
-To achieve this decomposition, the matching generates counterfactual group {it:A{superscript:B}} by weighting all atched observation of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}.
-The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B{superscript:A}} using the {cmd:xref()} or {cmd:bref()} option. 
+To achieve this decomposition, the matching generates counterfactual group {it:A^B} by weighting all atched observation of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}. The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B^A} using the {cmd:xref()} or {cmd:bref()} option. 
 
 {pstd}
 Note that positive values for {it:DA} reflect unmatched units having {it:lower} values in {it:Y} than matched units among group {it:A}, whereas positive values of {it:DB} reflect unmatched units having {it:higher} values in {it:Y} than matched units among group {it:B}.
@@ -92,7 +91,7 @@ An exact matching ensures that the interpretation of the unexplained {it:D0} and
 directly refer to the characteristics {it:X} (e.g., {it:D0} being the remaining gap if both groups had the same
 characteristics as group {it:B}). 
 This interpretation changes slightly in the case of multivariate-distance and propensity-score matching, as {it:D0} 
-then refers to both groups having an equal likelihood to be the group specified in {cmd:xref()} based on the characteristics {it:X}.
+then refers to both groups having an equal likelihood to be the group specified as {cmd:xref} based on the characteristics {it:X}.
 Note that the results of the decomposition may hinge on the specifics of either matching procedure 
 (e.g., the extent of coarsening of continuous variables before exact matching, or the bandwidth selection 
 for determining matches in terms of the propensity-score or multivariate-distance).
@@ -122,33 +121,31 @@ presence of covariance. If you can help, please reach out to us via
 
 {phang}
 {cmdab:by(}{help varname:{it:varname}}{cmdab:)} specifies the groups between which we estimate and 
-decompose the gap in {depvar:} (required). Needs to be numeric with two levels. By default, the 
-first {cmd:by} group is group {it:A}, which is the reference group in terms of {it:returns}
-and the second group is group {it:B}, which is the reference group in terms of {it:characteristics} 
-(see {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} for details). 
-Use {cmd:xref()}/{cmd:bref()} or {cmd:swap} to change.
+decompose the gap in {depvar:} (required). Needs to be numeric with two levels. By default, the gap is 
+definied as the mean value of the first {cmd:by} group is substracted from the second group, and
+the first group is matched to the second group via a one-to-many matching.
+Use {cmd:xref()}/{cmd:bref()} to adjust the matching direction or {cmd:swap} to change.
 
 {phang}
 {cmdab:swap} groups {it:A} and {it:B}, so that the sign of {it:D} is reversed and and the respective reference 
 for characteristics and returns is switched.
 
 {phang}
-{cmdab:xref(}{varname}{it: == #}{cmd:)} allows to manually set the reference in terms of {it:characteristics}. 
-See {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} 
-for a detailed explanation what that means in the matching approach. Naturally, {cmd:xref()} and 
-{cmd:bref()} cannot be the same.
+{cmdab:xref(}{varname}{it: == #}{cmd:)} allows to adjust the mathcing direction and thereby 
+manually set the reference group for the counteractual group in terms of {it:characteristics}. 
+Naturally, {cmd:xref()} and {cmd:bref()} cannot be the same.
 
 {phang}
-{cmdab:bref(}{varname}{it: == #}{cmd:)} allows to manually set the reference in terms of {it:returns}. 
-See {browse "https://github.com/mhamjediers/nopo_decomposition/blob/main/te.md":online documentation} 
-for a detailed explanation what that means in the matching approach. Naturally, {cmd:bref()} and 
-{cmd:xref()} cannot be the same.
+{cmdab:bref(}{varname}{it: == #}{cmd:)} allows to adjust the mathcing direction and thereby 
+manually set the reference group for the counteractual group in terms of {it:returns}. 
+Naturally, {cmd:bref()} and {cmd:xref()} cannot be the same.
 
 
 {dlgtab:Matching procedure}
 
 {phang}
-{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the matching approach. The default is to use 
+{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the measure how both groups are matched, while the
+decomposition always relays on a one-to-many matching procedure. The default is to use 
 {it:exact matching} {cmd:kmatch(em)}, in which case all variables in {varlist} are treated as 
 factors. For multivariate-distance {cmd:kmatch(md)} and propensity score {cmd:kmatch(ps)} 
 matching, make sure to indicate via factor notation which variables are factors and which are
@@ -168,7 +165,7 @@ called internally. See {help kmatch##goptions:{it:general_options}},
 {phang}
 {cmdab:norm:alize} estimates by the {depvar} mean of group {it: A}. Coefficients can then be interpreted in a 
 relative manner, e.g. that group {it:B} earns on average {it:x percent} wages relative to group {it:A}. 
-The comparison group can be changed by using also the option {cmdab:swap}.
+The comparison group can be changed by using the option {cmdab:swap}.
 Generates {bf:_{depvar}_norm}.
 
 {phang}
