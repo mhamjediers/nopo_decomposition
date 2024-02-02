@@ -28,12 +28,12 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
    (1) Call a Nopo (2008) style decomposition after matching via kmatch. If a varlist is
        specified, this wrapper calls a default version of kmatch, otherwise it checks if all 
-     requirements are met by the kmatch performed before nopo. Estimates are returned for
-     the decomposition components and a few auxiliary things.
+       requirements are met by the kmatch performed before nopo. Estimates are returned for
+       the decomposition components and a few auxiliary things.
    (2) Call postestimation stuff:
-      - plot gap components over the outcome distribution
-     - plot contributions to DA/DB by variable level
-     - show summary table by group:
+       - plot gap components over the outcome distribution
+       - plot contributions to DA/DB by variable level
+       - show summary table by group:
        A_unmatched, A_matched, A_matched_weighted/B_matched_weighted, B_matched, B_unmatched
   */
   
