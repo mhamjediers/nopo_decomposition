@@ -1,4 +1,4 @@
-*! version 1.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers
+*! version 1.0.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers
 
 // Preparing example data for help-file examples
 cap program drop nopo_ex
