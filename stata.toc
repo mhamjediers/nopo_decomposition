@@ -1,4 +1,4 @@
-v 0.1
+v 1.0
 d Maximilian Sprengholz & Maik Hamjediers
 d Humboldt Universität zu Berlin
 d maximilian.sprengholz@hu-berlin.de
