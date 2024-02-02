@@ -173,9 +173,9 @@ in the respective category. Additionally, the number of unmatched units for each
 
 {pstd}
 Note that the output {it:is not} the same as a detailed decomposition in regression-based approaches 
-(which is generally not possible with matching). The contribution to {it:D} pertains only 
-to the comparison between matched and unmatched units among group {it:A} and {it:B} and is interdepent
-with the matching across all other characteristics of the matching set.
+(which is generally not possible with matching). The "contribution" to {it:D} refers only to the 
+comparison between matched and {varname}-level-specific unmatched units among group {it:A} and 
+{it:B}, and is interdependent with all other characteristics of the matching set besides {varname}.
 
 {dlgtab:Options of nopo dadb}
 

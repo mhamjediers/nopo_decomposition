@@ -72,7 +72,7 @@ between two groups {it:A} and {it:B} by matching them on a set of characteristic
 {it:- DB} is the part of the gap attributable to unmatched units in {it:B}{p_end}
 
 {pstd}
-To achieve this decomposition, the matching generates counterfactual group {it:A^B} by weighting all atched observation of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}. The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B^A} using the {cmd:xref()} or {cmd:bref()} option. 
+For this decomposition, the matching generates counterfactual group {it:A^B} by weighting all matched observations of group {it:A} in order to provide the exact same distribution in {it:X} as matched units of group {it:B}. The outcome of this counterfactual group can be interpreted in two ways: (1) as the average outcome of group {it:A} if it had the same characteristics as group {it:B} (for which we denote group {it:B} as {cmd:xref}) and (2) as the average outcome of group {it:B} if it had the same returns to characteristics as group {it:A} (for which we denote group {it:A} as {cmd:bref}). One can easily change this interpretation, by switching the matching direction and producing the counterfactual group {it:B^A} using the {cmd:xref()} or {cmd:bref()} option. 
 
 {pstd}
 Note that positive values for {it:DA} reflect unmatched units having {it:lower} values in {it:Y} than matched units among group {it:A}, whereas positive values of {it:DB} reflect unmatched units having {it:higher} values in {it:Y} than matched units among group {it:B}.
@@ -131,12 +131,12 @@ Use {cmd:xref()}/{cmd:bref()} to adjust the matching direction or {cmd:swap} to 
 for characteristics and returns is switched.
 
 {phang}
-{cmdab:xref(}{varname}{it: == #}{cmd:)} allows to adjust the mathcing direction and thereby 
+{cmdab:xref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
 manually set the reference group for the counteractual group in terms of {it:characteristics}. 
 Naturally, {cmd:xref()} and {cmd:bref()} cannot be the same.
 
 {phang}
-{cmdab:bref(}{varname}{it: == #}{cmd:)} allows to adjust the mathcing direction and thereby 
+{cmdab:bref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
 manually set the reference group for the counteractual group in terms of {it:returns}. 
 Naturally, {cmd:bref()} and {cmd:xref()} cannot be the same.
 
