@@ -3,6 +3,7 @@
 // Preparing example data for help-file examples
 cap program drop nopo_ex
 program define nopo_ex
+version 15
 args ex
 
 if ("`ex'" == "1") {

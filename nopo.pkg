@@ -7,6 +7,8 @@ d
 d Distribution-Date:   202402
 d License: MIT
 d
+d Requires: Stata version 15
+d
 d Maximilian Sprengholz
 d Humboldt Universität zu Berlin
 d maximilian.sprengholz@hu-berlin.de
