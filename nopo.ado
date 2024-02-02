@@ -1295,11 +1295,12 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       local _weightexp "[`e(wtype)'`e(wexp)']"
       if ("`e(wtype)'" == "pweight") local _sum_weightexp = usubinstr("`_weightexp'", "pweight", "aweight", .)
         else local _sum_weightexp = `_weightexp'
+      local _w = usubinstr("`e(wexp)'", "=", "", .)
     }
     else {
-      tempvar weight
-      gen `weight' = 1
-      local _weightexp "[aw = `weight']"
+      tempvar _w
+      gen `_w' = 1
+      local _weightexp "[aw = `_w']"
     }
 
     // save levels of plotby
@@ -1374,10 +1375,10 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
           local _wntotal = r(sum_w)
           replace mdepvar_diff = `_depvar' - `_mdepvar_matched' ///
             if `plotby' == `_l' & `treat' == `_t' & `_support' == 0 & `touse'
-          replace mdepvar_diff_weighted = mdepvar_diff * (`weight'/`_wntotal') ///
+          replace mdepvar_diff_weighted = mdepvar_diff * (`_w'/`_wntotal') ///
             if `plotby' == `_l' & `treat' == `_t' & `_support' == 0 & `touse'
           count if `treat' == `_t' & `touse'
-          replace n_weighted = `weight' * (r(N)/`_wntotal') ///
+          replace n_weighted = `_w' * (r(N)/`_wntotal') ///
             if `plotby' == `_l' & `treat' == `_t' & `_support' == 0 & `touse'
         }
       }
@@ -1426,7 +1427,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
         tostring n_weighted, gen(n_weighted_str) format(%9.0f) force
         cap drop nx
         gen nx = `_mmax' // x value for n counts (added as mlabel)
-        if ("`e(wtype)'" != "") local _wnote `""weighted""'
+        if ("`e(wtype)'" != "") local _wnote `""(weighted)""'
         local _text `" text(`_yrangemax' `_mmax' "N unmatched" `_wnote', place(sw) just(right) size(small) xaxis(2)) "'
 
         // set default plot options
