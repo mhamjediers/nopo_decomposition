@@ -36,6 +36,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
    (2) Call postestimation stuff:
        - plot gap components over the outcome distribution
        - plot contributions to DA/DB by variable level
+	   - run matchings with all combinations of variables separately to assess common support
        - show summary table by group:
        A_unmatched, A_matched, A_matched_weighted/B_matched_weighted, B_matched, B_unmatched
   */
@@ -43,9 +44,9 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   // tokenize; determine decomp operation
   if ("`anything'" != "") gettoken subcmd varlist : anything
     else local subcmd "decomp"
-  if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize", "ex")) {
+  if (!inlist("`subcmd'", "decomp", "gapoverdist", "dadb", "summarize", "ex", "commsupport")) {
     dis as error "nopo subcommand must be one of:"
-    dis as error "'decomp', 'gapoverdist', 'dadb', 'summarize'"
+    dis as error "'decomp', 'gapoverdist', 'dadb', 'summarize', 'commsupport'"
     error 198
     exit
   }
@@ -1905,5 +1906,129 @@ syntax [varlist (default=none fv)] [if] [in], ///
     }
 
   }
+
+end
+
+// Post-estimation command for common support analysis
+cap program drop nopo_commsuppport
+program define nopo_commsuppport, rclass
+
+syntax [if] [in] , ///
+	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
+	[always(varlist)] /// specify variables to always include in each model
+	[nodraw]
+	
+qui {
+	 // check if prior command was nopo
+    if ("`e(cmd)'" != "nopo") {
+      noisily dis as error "Previous command was not nopo decomp"
+      error 301
+      exit
+    }
+
+    // set input from syntax and nopo returns
+    // sample
+    tempvar touse
+    mark `touse' `if' `in'
+    replace `touse' = 0 if !e(sample)
+
+	// kmatch-command-parts
+	local kmatch_subcmd `e(kmatch_subcmd)'
+	local matchset `e(matchset)'
+	local by `e(by)'
+	local tval = `e(tval)'
+	local nA = `e(nA)'
+	local nB = `e(nB)'
+	
+	local nvars = `:word count `matchset'' // number of variables in matchingset
+	
+	if "`varlabel'" != "" { // if requested, obtain variable labels
+		foreach v of local matchset {
+			local vlab: var lab `v'
+			local labellist `"`labellist' "`vlab'""'
+		}
+	}
+
+	// Run kmatch with specified options across all combinations of variables in matchingset
+	local tuplist: list matchset - always // if specified, only generate combinations of other variables
+	tuples `tuplist'
+	mat t = J(`ntuples',2,.) 
+	foreach t of num 1 (1) `ntuples' {
+		kmatch `kmatch_subcmd' `by' `always' `tuple`t'' if `touse' == 1, tval(`tval') 
+		matrix N = e(_N)
+		mat t[`t', 1 ] = N[2,1] / `nA' * 100
+		mat t[`t', 2 ] = N[1,1] / `nB' * 100
+		local tuple`t' `e(xvars)' // if some variables are always used, they will be added back to the tuples
+		local rowlab `"`rowlab' "`tuple`t''""'
+	}
+	matrix colnames t = mshareA mshareB
+	matrix rownames t = `rowlab'
+
+	*New data set of matching-matrix
+	preserve 
+		clear
+		svmat t, names(col)
+		
+		gen comb  = "" // label which combinations are underlying
+		foreach t of num 1 (1) `ntuples' {
+			replace comb = "`tuple`t''" in `t'
+		}
+		
+		gen t = _n 
+		sort mshareA
+		gen sortA = _n // sorting variable for share of matched in A
+		sort mshareB
+		gen sortB = _n // sorting variable for share of matched in A
+		
+		expand `nvars' // expand to also mark unused variables via scatter 
+		bys t: gen var = _n 
+		gen incl = 0
+		local i = 1
+		local phantom = " " 
+		foreach v of local matchset {
+			replace incl = 1 if regexm(comb, "`v'") & var == `i' // mark which variables are used
+			if "`varlabel'" != "" {
+				gettoken vlab labellist:labellist
+				local lab "`vlab'"
+			}
+			else {
+				local lab "`v'"
+			}
+			lab def var `i' "`lab'", modify // ylabels for bottom-graph 
+			if strlen("`lab'") > strlen("`phantom'") {
+				local phantom = "`lab'" // phantom label of longest label for upper graph
+			}
+			local i = `i' + 1 
+		}
+		lab val var var
+		
+		foreach gr in A B {
+			// bottom graph of which matching variables were used 
+			twoway scatter var sort`gr' if incl == 1, ms(O) ///
+				|| scatter var sort`gr' if incl == 0, ms(Oh) ///
+				ylabel(1 (1) `nvars', valuelabel angle(0) nogrid) ///
+				xscale(reverse fextend titlegap(7pt)) ///
+				xlabel(,nolab notick) xtitle("Combinations of characteristics") ///
+				legend(off) fysize(20) ytitle(" ") nodraw name(bottom, replace)
+			// upper graph of share of matched 
+			twoway line mshare`gr' sort`gr', sort(sort`gr') yscale(range(-5 105)) ///
+				ylabel(0 (20) 100,  angle(0)) ///
+				ymlabel(1.5 "`phantom'", custom angle(0) tlc(white%0) tstyle(major) labcol(white%0)) ///  
+				xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
+				legend(off) fysize(80) ytitle("Percent matched units") ///
+				nodraw name(top, replace)
+			// combine both for one group
+			graph combine top bottom , imargin(zero) c(1) ///
+				title("Common support analysis for group `gr'", size(medium)) nodraw name(group`gr', replace)
+		}
+		// combine groups
+		graph combine groupA groupB, row(1) `nodraw'
+
+	restore
+	
+	//return
+	matrix t = t'
+	return matrix commsupport = t
+}
 
 end
