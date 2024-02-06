@@ -1910,8 +1910,8 @@ syntax [varlist (default=none fv)] [if] [in], ///
 end
 
 // Post-estimation command for common support analysis
-cap program drop nopo_commsuppport
-program define nopo_commsuppport, rclass
+cap program drop nopo_commsupport
+program define nopo_commsupport, rclass
 
 syntax [if] [in] , ///
 	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
@@ -1925,6 +1925,8 @@ qui {
       error 301
       exit
     }
+
+	est store _nopo
 
     // set input from syntax and nopo returns
     // sample
@@ -2029,6 +2031,8 @@ qui {
 	//return
 	matrix t = t'
 	return matrix commsupport = t
+	
+	est restore _nopo
 }
 
 end
