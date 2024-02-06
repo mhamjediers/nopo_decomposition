@@ -1,4 +1,5 @@
 *! version 1.0.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers
+*! version 1.0.5   06feb2024  Maximilian Sprengholz & Maik Hamjediers
 
 //
 // wrapper
@@ -1922,6 +1923,7 @@ program define nopo_commsupport, rclass
 syntax [if] [in] , ///
 	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
 	[always(varlist)] /// specify variables to always include in each model
+	[nosort] ///
 	[nodraw]
 	
 qui {
@@ -1941,41 +1943,48 @@ qui {
     replace `touse' = 0 if !e(sample)
 
 	// kmatch-command-parts
-	local kmatch_subcmd `e(kmatch_subcmd)'
-	local matchset `e(matchset)'
-	local by `e(by)'
-	local tval = `e(tval)'
-	local nA = `e(nA)'
-	local nB = `e(nB)'
+	local _kmatch_subcmd `e(kmatch_subcmd)'
+	local _matchset `e(matchset)'
+	local _by `e(by)'
+	local _tval = `e(tval)'
+	local _nA = `e(nA)'
+	local _nB = `e(nB)'
 	
-	local nvars = `:word count `matchset'' // number of variables in matchingset
+	local _nvars = `:word count `_matchset'' // number of variables in matchingset
 	
 	if "`varlabel'" != "" { // if requested, obtain variable labels
-		foreach v of local matchset {
-			local vlab: var lab `v'
-			local labellist `"`labellist' "`vlab'""'
+		foreach v of local _matchset {
+			local _`v'lab: var lab `v' 
 		}
 	}
 
-	// Run kmatch with specified options across all combinations of variables in matchingset
-	local tuplist: list matchset - always // if specified, only generate combinations of other variables
-	tuples `tuplist'
-	mat t = J(`ntuples',2,.) 
-	foreach t of num 1 (1) `ntuples' {
-		kmatch `kmatch_subcmd' `by' `always' `tuple`t'' if `touse' == 1, tval(`tval') 
-		matrix N = e(_N)
-		mat t[`t', 1 ] = N[2,1] / `nA' * 100
-		mat t[`t', 2 ] = N[1,1] / `nB' * 100
-		local tuple`t' `e(xvars)' // if some variables are always used, they will be added back to the tuples
-		local rowlab `"`rowlab' "`tuple`t''""'
+	// check if always-variable contains those of matchingset 
+	local _check: list always - _matchset 
+	if "`_check'" != "" {
+		noisily dis as error "Variable(s) in always() are not part of the matching-set of previous nopo decomp:  `_check'"
+		error 103
+		exit
 	}
-	matrix colnames t = mshareA mshareB
-	matrix rownames t = `rowlab'
+
+	// Run kmatch with specified options across all combinations of variables in matchingset
+	local _tuplist: list _matchset - always // if specified, only generate combinations of other variables
+	tuples `_tuplist'
+	mat _t = J(`ntuples',2,.) 
+	foreach t of num 1 (1) `ntuples' {
+		kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
+		matrix N = e(_N)
+		mat _t[`t', 1 ] = N[2,1] / `_nA' * 100
+		mat _t[`t', 2 ] = N[1,1] / `_nB' * 100
+		local tuple`t' `e(xvars)' // if some variables are always used, they will be added back to the tuples
+		local _rowlab `"`_rowlab' "`tuple`t''""'
+	}
+	matrix colnames _t = mshareA mshareB
+	*matrix rownames _t = `_rowlab' // does not work with very long lists of variables
 
 	*New data set of matching-matrix
 	preserve 
 		clear
-		svmat t, names(col)
+		svmat _t, names(col)
 		
 		gen comb  = "" // label which combinations are underlying
 		foreach t of num 1 (1) `ntuples' {
@@ -1983,28 +1992,33 @@ qui {
 		}
 		
 		gen t = _n 
-		sort mshareA
-		gen sortA = _n // sorting variable for share of matched in A
-		sort mshareB
-		gen sortB = _n // sorting variable for share of matched in A
+		if "`nosort'" == "" {
+			sort mshareA
+			gen sortA = _n // sorting variable for share of matched in A
+			sort mshareB
+			gen sortB = _n // sorting variable for share of matched in B
+		}
+		else {
+			gen sortA = _n
+			gen sortB = _n
+		}
 		
-		expand `nvars' // expand to also mark unused variables via scatter 
+		expand `_nvars' // expand to also mark unused variables via scatter 
 		bys t: gen var = _n 
 		gen incl = 0
 		local i = 1
-		local phantom = " " 
-		foreach v of local matchset {
+		local _phantom = " " 
+		foreach v of local _matchset {
 			replace incl = 1 if regexm(comb, "`v'") & var == `i' // mark which variables are used
 			if "`varlabel'" != "" {
-				gettoken vlab labellist:labellist
-				local lab "`vlab'"
+				local lab `"`_`v'lab'"'
 			}
 			else {
 				local lab "`v'"
 			}
-			lab def var `i' "`lab'", modify // ylabels for bottom-graph 
-			if strlen("`lab'") > strlen("`phantom'") {
-				local phantom = "`lab'" // phantom label of longest label for upper graph
+			lab def var `i' `"`lab'"', modify // ylabels for bottom-graph 
+			if strlen(`"`lab'"') > strlen(`"`_phantom'"') {
+				local _phantom = `"`lab'"' // phantom label of longest label for upper graph
 			}
 			local i = `i' + 1 
 		}
@@ -2012,16 +2026,16 @@ qui {
 		
 		foreach gr in A B {
 			// bottom graph of which matching variables were used 
-			twoway scatter var sort`gr' if incl == 1, ms(O) ///
-				|| scatter var sort`gr' if incl == 0, ms(Oh) ///
-				ylabel(1 (1) `nvars', valuelabel angle(0) nogrid) ///
+			twoway scatter var sort`gr' if incl == 1, ms(o) ///
+				|| scatter var sort`gr' if incl == 0, ms(oh) ///
+				ylabel(1 (1) `_nvars', valuelabel angle(0) nogrid) ///
 				xscale(reverse fextend titlegap(7pt)) ///
 				xlabel(,nolab notick) xtitle("Combinations of characteristics") ///
 				legend(off) fysize(20) ytitle(" ") nodraw name(bottom, replace)
 			// upper graph of share of matched 
 			twoway line mshare`gr' sort`gr', sort(sort`gr') yscale(range(-5 105)) ///
 				ylabel(0 (20) 100,  angle(0)) ///
-				ymlabel(1.5 "`phantom'", custom angle(0) tlc(white%0) tstyle(major) labcol(white%0)) ///  
+				ymlabel(1.5 `"`_phantom'"', custom angle(0) tlc(white%0) tstyle(major) labcol(white%0)) ///  
 				xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
 				legend(off) fysize(80) ytitle("Percent matched units") ///
 				nodraw name(top, replace)
@@ -2035,8 +2049,11 @@ qui {
 	restore
 	
 	//return
-	matrix t = t'
-	return matrix commsupport = t
+	matrix _t = _t'
+	return matrix commsupport = _t
+	foreach t of num `ntuples' (1) 1 {
+		return local comb`t' = "`tuple`t''"
+	}
 	
 	est restore _nopo
 }

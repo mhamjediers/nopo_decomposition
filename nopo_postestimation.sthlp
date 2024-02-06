@@ -1,5 +1,7 @@
 {smcl}
 {* *! version 1.0.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers}{...}
+{* *! version 1.0.5   06feb2024  Maximilian Sprengholz & Maik Hamjediers}{...}
+
 {vieweralsosee "kmatch" "kmatch"}{...}
 {vieweralsosee "nopomatch" "nopomatch"}{...}
 {viewerjumpto "Syntax" "nopo##syntax"}{...}
@@ -21,6 +23,7 @@ The following postestimation commands are of special interest after {cmd:nopo de
 {p2coldent :Command}Description{p_end}
 {synoptline}
 {synopt :{helpb nopo_postestimation##summarize:nopo summarize}}descriptive table by group and matching/weighting status{p_end}
+{synopt :{helpb nopo_postestimation##commsupport:nopo commsupport}}matching on all combinations of {varlist} and plot common support for each matching{p_end}
 {synopt :{helpb nopo_postestimation##gapoverdist:nopo gapoverdist}}plotting decomposition-components over the distribution of {depvar}{p_end}
 {synopt :{helpb nopo_postestimation##dadb:nopo dadb}}plot that displays contribute to components {it:DA} and {it:DB}{p_end}
 {synoptline}
@@ -74,6 +77,49 @@ on various specifications.
 {p2col 5 20 24 2: Matrices}{p_end}
 {synopt:{cmd:r(table)}}matrix of the descriptive statistics by group and matching/weighting status{p_end}
 {synopt:{cmd:r({it:statnames})}}matrix of each statistic of {cmdab:stat:istics()} by group and matching/weighting status{p_end}
+
+
+{marker commsupport}{...}
+{title:Description for nopo commsupport}
+
+{p 2 2 2}
+{cmd:nopo commsupport} [{cmd:, always({varlist})} {it: displayoptions}]
+
+{pstd}
+Runs a matching for all possible combinations of the variables in the matching set of a previous call of {cmd:nopo decomp} 
+and plots the share of matched units among group {it:A} and {it:B} of each matching. This allows to assess for which 
+characteristics (or their combinations) lacks of common support are espacially high or low. 
+
+{dlgtab:Options of nopo commsupport}
+
+{phang}
+always({varlist}) specifies variables that are included in each matching and never omitted. {varlist} can only 
+contain variables used in the matching of the previous {cmd:nopo decomp}.
+
+{phang}
+{it: displayoptions} comprise:
+
+{p 6 8 2}
+{cmdab:varlab:el} displays variables labels instead of variable names in the bottom part of each plot. 
+
+{p 6 8 2}
+{cmd:nosort} does not sort the matching-combinations by share of common support among group {it:A} and {it:B}
+
+{p 6 8 2}
+{cmd:nodraw} specifies that the plot is not produced at all. Useful in combination with {cmd:save()}
+to build your own plot from the data.
+
+{dlgtab:Stored results of nopo commsupport}
+
+{pstd}
+{cmdab:nopo commsupport} stores the following in {cmd:r()}:
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Matrices}{p_end}
+{synopt:{cmd:r(commsupport)}}matrix of percentage of matched units for group {it:A} and {it:B} for each matching{p_end}
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Macros}{p_end}
+{synopt:{cmd:r(comb#)}}underlying matchingset for row # from matrix r(commsupport){p_end}
 
 
 {marker gapoverdist}{...}
