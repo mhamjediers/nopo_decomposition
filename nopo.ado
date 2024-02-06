@@ -1436,7 +1436,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
         #delimit ;
         if (`"`twopts'"' == "") local twopts `"
           legend(order(
-            3 "Contribution of unmatched to D (top x-axis)"
+            3 "Contribution of unmatched to DA/DB (top x-axis)"
             1 "Category-specific mean of unmatched - overall mean of matched (bottom x-axis)"
             ) rows(2) margin(zero)  region(style(none)) size(small))
           ylabel(1(1)`_nplotbylvls', valuelabel grid angle(horizontal) labsize(small))
@@ -1467,7 +1467,13 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
           (bar mdepvar_diff `plotbyreleveled' if n_weighted >= `nmin', `twoptsbar') ///
           (scatter `plotbyreleveled' mdepvar_diff_weighted if n_weighted >= `nmin', `twoptsscatter') ///
           (scatter `plotbyreleveled' nx, `twoptsn' ///
-          , by(`treat', `twoptsby') `twopts'
+          , by(`treat', `twoptsby') `twopts' nodraw name(dadb)
+        
+        // fix labels
+        .dadb.plotregion1.xaxis1[1].title.text = {"Contribution of unmatched to DA"}
+        .dadb.plotregion1.xaxis1[2].title.text = {"Contribution of unmatched to DB"}
+        graph display
+	
       }
 
       // save plot data?
