@@ -6,9 +6,18 @@ This Stata `.ado` implements a matching-based decomposition analysis of differen
 
 ## Installation
 
+To download and install the module from the Statistical Software Components (SSC):
+```bash
+ssc install nopo
+```
+
+Alternatively, install the current version from GitHub (GitHub files might contain the latest updates that have not been currently published in the SSC):
 ```bash
 net install nopo, from("https://raw.githubusercontent.com/mhamjediers/nopo_decomposition/main/")
 ```
+
+## Suggested citation:
+Sprengholz, Maximilian & Maik Hamjediers, 2024. "NOPO: Stata module to perform Nopo (2008) matching decompositions," [Statistical Software Components S459289](https://ideas.repec.org/c/boc/bocode/s459289.html), Boston College Department of Economics. 
 
 ## Documentation
 
