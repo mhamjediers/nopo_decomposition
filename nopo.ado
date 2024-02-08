@@ -160,6 +160,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`weight'" != "") local _weightexp "[`weight'`exp']"
       if ("`kmnoisily'" != "") local kmnoisily = "noisily"
 
+	  //return error if _depvar is in varlist 
+	  local _checkdv: list _depvar - varlist
+	  if "`_checkdv'" == "" {
+	  	noisily dis as error "Outcome `_depvar' may not be included in variable list for matching"
+		error 103
+		exit 
+	  }
+	  
       // clean factor notation if exact matching
       // kmatch em treats everything as factor and so does nopo_summarize after kmatch em
       if ("`kmatch'" == "em") {
