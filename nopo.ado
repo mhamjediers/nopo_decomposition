@@ -1933,18 +1933,13 @@ syntax [if] [in] , ///
 	[always(varlist)] /// specify variables to always include in each model
 	[INCLMarkers(string asis)] /// marker-options to indicated included variables
 	[OMITMarkers(string asis)] /// marker-options to indicated omitted variables
-	[nosort] ///
-	[nodraw]
+	[XTItle(string asis)] /// 
+	[YTItle(string asis)] /// 
+	[YLABel(string asis)] ///
+	[LPattern(passthru) LWidth(passthru) LColor(passthru) LAlign(passthru) LSTYle(passthru)] /// line option 
+	[nosort]  ///
+	[*] // star for all graph combine options
 	
-	/*Further options should be:
-		xtitle
-		title 
-		ytitle
-		linepattern
-		ylabel for upper graphs
-		ylabel size for both graphs
-		title for subgraphs?
-	*/
 	
 qui {
 	 // check if prior command was nopo
@@ -1967,6 +1962,7 @@ qui {
 	local _matchset `e(matchset)'
 	local _by `e(by)'
 	local _tval = `e(tval)'
+	local _wtype `e(wtype)'
 	
 	local _nvars = `:word count `_matchset'' // number of variables in matchingset
 	
@@ -1996,6 +1992,21 @@ qui {
 	// Defaults for graph-options
 	if ("`inclmarkers'" == "") local inclmarkers "ms(o)"
 	if ("`omitmarkers'" == "") local omitmarkers "ms(oh)"
+	if ("`xtitle'" == "") local xtitle "Combinations of characteristics"
+	if ("`ytitle'" == "") local ytitle "Percent matched units"
+	if "`ylabel'" != "" { // splitting ylabel-option into valuerule and suboptions
+		gettoken ylabrule ylabsub:ylabel , parse(,)	
+		if ustrregexm("`ylabsub'", "angle") == 0 {
+			local ylabsub "`ylabsub' angle(0)"
+		}
+		if (ustrregexm("`ylabsub'", "tstyle") == 1) {
+			dis as text "Sub-Option tstyle() in ylabel() may lead to misalignment of upper and bottom panel of plots"
+		}
+	}
+	else {
+		local ylabrule "0 (20) 100"
+		local ylabsub ", angle(0)"
+	}
 	
 	
 	// Run kmatch with specified options across all combinations of variables in matchingset
@@ -2053,29 +2064,33 @@ qui {
 			}
 			local i = `i' + 1 
 		}
-		lab val var var
+		lab val var var	
 		
+		// plot for each group
 		foreach gr in A B {
 			// bottom graph of which matching variables were used 
 			twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
 				|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
-				ylabel(1 (1) `_nvars', valuelabel angle(0) nogrid) ///
+				ylabel(1 (1) `_nvars' `ylabsub' valuelabel nogrid) ///
 				xscale(reverse fextend titlegap(7pt)) ///
-				xlabel(,nolab notick) xtitle("Combinations of characteristics") ///
-				legend(off) fysize(20) ytitle(" ") nodraw name(bottom, replace)
+				xlabel(,nolab notick) xtitle(`xtitle') ///
+				legend(off) fysize(20) ytitle(" ") nodraw name(_bottom, replace)
 			// upper graph of share of matched 
-			twoway line mshare`gr' sort`gr', sort(sort`gr') yscale(range(-5 105)) ///
-				ylabel(0 (20) 100,  angle(0)) ///
-				ymlabel(1.5 `"`_phantom'"', custom angle(0) tlc(white%0) tstyle(major) labcol(white%0)) ///  
+			twoway line mshare`gr' sort`gr', ///
+				`lpattern' `lwdith' `lcolor' `align' `lstyle' ///
+				sort(sort`gr') yscale(range(-5 105)) ///
+				ylabel(`ylabrule' `ylabsub') ///
+				ymlabel(1.5 `"`_phantom'"' `ylabsub' custom tlc(%0) tstyle(major) labcol(%0)) ///  
 				xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
-				legend(off) fysize(80) ytitle("Percent matched units") ///
-				nodraw name(top, replace)
+				legend(off) fysize(80) ytitle(`ytitle') ///
+				nodraw name(_top, replace)
 			// combine both for one group
-			graph combine top bottom , imargin(zero) c(1) ///
-				title("Common support analysis for group `gr'", size(medium)) nodraw name(group`gr', replace)
+			graph combine _top _bottom , imargin(zero) c(1) ///
+				title("Common support analysis for group `gr'", size(medium)) ///
+				nodraw name(_group`gr', replace)				
 		}
 		// combine groups
-		graph combine groupA groupB, row(1) `nodraw'
+		graph combine _groupA _groupB, `options'
 
 	restore
 	
@@ -2085,6 +2100,7 @@ qui {
 	foreach t of num `ntuples' (1) 1 {
 		return local comb`t' = "`tuple`t''"
 	}
+	if ("`_wtype'" != "") noisily dis as text _newline "Note: Percentages of matched are based on unweighted observations."
 	
 	est restore _nopo
 }

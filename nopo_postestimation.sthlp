@@ -93,7 +93,7 @@ characteristics (or their combinations) lacks of common support are espacially h
 {dlgtab:Options of nopo commsupport}
 
 {phang}
-always({varlist}) specifies variables that are included in each matching and never omitted. {varlist} can only 
+{cmd:always(}{varlist}{cmd:)} specifies variables that are included in each matching and never omitted. {varlist} can only 
 contain variables used in the matching of the previous {cmd:nopo decomp}.
 
 {phang}
@@ -106,8 +106,19 @@ contain variables used in the matching of the previous {cmd:nopo decomp}.
 {cmd:nosort} does not sort the matching-combinations by share of common support among group {it:A} and {it:B}
 
 {p 6 8 2}
-{cmd:nodraw} specifies that the plot is not produced at all. Useful in combination with {cmd:save()}
-to build your own plot from the data.
+{cmdab:inclm:arkers(}{it:{help scatter##marker_options:marker_options}}{cmd:)} and {cmdab:omitm:arkers(}{help scatter##marker_options:marker_options}{cmd:)} allow to specify the appearance of the markers in the bottom plot of variables included or omitted in each matching. 
+
+{p 6 8 2}
+{cmdab:xti:tle(}{it:{help axis_title_options}}{cmd:)} and {cmdab:yti:tle(}{help axis_title_options}{cmd:)} specify the titles to appear next to the axes. They also allow you to format the title fonts. See {manhelpi axis_title_options G-3}.
+
+{p 6 8 2}
+{cmdab:ylab:el(}{it:{help axis_label_options}}{cmd:)} specifies how y-axis of the upper plot should be labeled and ticked. This option allows you to control the placement of major ticks and labels. {it:axis_label_options} also allow you to add or to suppress grid lines on your graphs.  See {manhelpi axis_label_options G-3}.
+
+{p 6 8 2}
+{cmdab:lp:attern()}, {cmdab:lw:idth()}, {cmdab:lc:olor()}, {cmdab:la:lign()}, and {cmdab:lsty:le()} allow to change the look of the line for the percentage of matched units in the upper plot. See {it: {help connect_options}} for the specifications.
+
+{p 6 8 2}
+Additionally, all options available for {bf:{help graph combine}} can be used.
 
 {dlgtab:Stored results of nopo commsupport}
 
