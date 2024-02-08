@@ -1936,6 +1936,7 @@ syntax [if] [in] , ///
 	[XTItle(string asis)] /// 
 	[YTItle(string asis)] /// 
 	[YLABel(string asis)] ///
+	[ZLABel(string asis)] /// y-Labels for bottom graph
 	[LPattern(passthru) LWidth(passthru) LColor(passthru) LAlign(passthru) LSTYle(passthru)] /// line option 
 	[nosort]  ///
 	[*] // star for all graph combine options
@@ -1994,18 +1995,21 @@ qui {
 	if ("`omitmarkers'" == "") local omitmarkers "ms(oh)"
 	if ("`xtitle'" == "") local xtitle "Combinations of characteristics"
 	if ("`ytitle'" == "") local ytitle "Percent matched units"
-	if "`ylabel'" != "" { // splitting ylabel-option into valuerule and suboptions
-		gettoken ylabrule ylabsub:ylabel , parse(,)	
-		if ustrregexm("`ylabsub'", "angle") == 0 {
-			local ylabsub "`ylabsub' angle(0)"
-		}
-		if (ustrregexm("`ylabsub'", "tstyle") == 1) {
-			dis as text "Sub-Option tstyle() in ylabel() may lead to misalignment of upper and bottom panel of plots"
+	if "`ylabel'" != "" { 
+		if ustrregexm("`ylabel'", "angle") == 0 {
+			local ylabel "`ylabel' angle(0)"
 		}
 	}
 	else {
-		local ylabrule "0 (20) 100"
-		local ylabsub ", angle(0)"
+		local ylabrule "0 (20) 100, angle(0)"
+	}
+	if "`zlabel'" != "" {
+		if (ustrregexm("`zlabel'", "tstyle") == 0) local zlabel "`zlabel' tstyle(major)"
+		if (ustrregexm("`zlabel'", "nogrid") == 0) local zlabel "`zlabel' nogrid"
+		if (ustrregexm("`zlabel'", "angle") == 0)  local zlabel "`zlabel' angle(0)"
+	}
+	else  {
+		local zlabel "tstyle(major) nogrid angle(0)"
 	}
 	
 	
@@ -2071,7 +2075,7 @@ qui {
 			// bottom graph of which matching variables were used 
 			twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
 				|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
-				ylabel(1 (1) `_nvars' `ylabsub' valuelabel nogrid) ///
+				ylabel(1 (1) `_nvars', `zlabel' valuelabel) ///
 				xscale(reverse fextend titlegap(7pt)) ///
 				xlabel(,nolab notick) xtitle(`xtitle') ///
 				legend(off) fysize(20) ytitle(" ") nodraw name(_bottom, replace)
@@ -2079,14 +2083,14 @@ qui {
 			twoway line mshare`gr' sort`gr', ///
 				`lpattern' `lwdith' `lcolor' `align' `lstyle' ///
 				sort(sort`gr') yscale(range(-5 105)) ///
-				ylabel(`ylabrule' `ylabsub') ///
-				ymlabel(1.5 `"`_phantom'"' `ylabsub' custom tlc(%0) tstyle(major) labcol(%0)) ///  
+				ylabel(`ylabel') ///
+				ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///  
 				xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
 				legend(off) fysize(80) ytitle(`ytitle') ///
+				title("Common support analysis for group `gr'") ///
 				nodraw name(_top, replace)
 			// combine both for one group
 			graph combine _top _bottom , imargin(zero) c(1) ///
-				title("Common support analysis for group `gr'", size(medium)) ///
 				nodraw name(_group`gr', replace)				
 		}
 		// combine groups
