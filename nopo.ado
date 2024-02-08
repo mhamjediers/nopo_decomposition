@@ -1923,8 +1923,20 @@ program define nopo_commsupport, rclass
 syntax [if] [in] , ///
 	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
 	[always(varlist)] /// specify variables to always include in each model
+	[INCLMarkers(string asis)] /// marker-options to indicated included variables
+	[OMITMarkers(string asis)] /// marker-options to indicated omitted variables
 	[nosort] ///
 	[nodraw]
+	
+	/*Further options should be:
+		xtitle
+		title 
+		ytitle
+		linepattern
+		ylabel for upper graphs
+		ylabel size for both graphs
+		title for subgraphs?
+	*/
 	
 qui {
 	 // check if prior command was nopo
@@ -1947,8 +1959,6 @@ qui {
 	local _matchset `e(matchset)'
 	local _by `e(by)'
 	local _tval = `e(tval)'
-	local _nA = `e(nA)'
-	local _nB = `e(nB)'
 	
 	local _nvars = `:word count `_matchset'' // number of variables in matchingset
 	
@@ -1966,15 +1976,28 @@ qui {
 		exit
 	}
 
-	// Run kmatch with specified options across all combinations of variables in matchingset
 	local _tuplist: list _matchset - always // if specified, only generate combinations of other variables
+	if "`_tuplist'" == ""  { // check whether different combinations can be generated
+		noisily dis as error "All variables of matching-set of previous nopo decomp are specified in always()"
+		noisily dis as error "No remaining combinations to test"
+		error 103
+		exit
+
+	}
+	
+	// Defaults for graph-options
+	if ("`inclmarkers'" == "") local inclmarkers "ms(o)"
+	if ("`omitmarkers'" == "") local omitmarkers "ms(oh)"
+	
+	
+	// Run kmatch with specified options across all combinations of variables in matchingset
 	tuples `_tuplist'
 	mat _t = J(`ntuples',2,.) 
 	foreach t of num 1 (1) `ntuples' {
 		kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
 		matrix N = e(_N)
-		mat _t[`t', 1 ] = N[2,1] / `_nA' * 100
-		mat _t[`t', 2 ] = N[1,1] / `_nB' * 100
+		mat _t[`t', 1 ] = N[2,1] / N[2,3] * 100
+		mat _t[`t', 2 ] = N[1,1] / N[1,3] * 100
 		local tuple`t' `e(xvars)' // if some variables are always used, they will be added back to the tuples
 		local _rowlab `"`_rowlab' "`tuple`t''""'
 	}
@@ -2026,8 +2049,8 @@ qui {
 		
 		foreach gr in A B {
 			// bottom graph of which matching variables were used 
-			twoway scatter var sort`gr' if incl == 1, ms(o) ///
-				|| scatter var sort`gr' if incl == 0, ms(oh) ///
+			twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
+				|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
 				ylabel(1 (1) `_nvars', valuelabel angle(0) nogrid) ///
 				xscale(reverse fextend titlegap(7pt)) ///
 				xlabel(,nolab notick) xtitle("Combinations of characteristics") ///
