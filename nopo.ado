@@ -2001,16 +2001,12 @@ qui {
 		}
 	}
 	else {
-		local ylabrule "0 (20) 100, angle(0)"
+		local ylabel "0 (20) 100, angle(0)"
 	}
-	if "`zlabel'" != "" {
-		if (ustrregexm("`zlabel'", "tstyle") == 0) local zlabel "`zlabel' tstyle(major)"
-		if (ustrregexm("`zlabel'", "nogrid") == 0) local zlabel "`zlabel' nogrid"
-		if (ustrregexm("`zlabel'", "angle") == 0)  local zlabel "`zlabel' angle(0)"
-	}
-	else  {
-		local zlabel "tstyle(major) nogrid angle(0)"
-	}
+	if (ustrregexm("`zlabel'", "tstyle") == 0) local zlabel "`zlabel' tstyle(major)"
+	if (ustrregexm("`zlabel'", "labstyle") == 0) local zlabel "`zlabel' labstyle(tick_label)"
+	if (ustrregexm("`zlabel'", "nogrid") == 0) local zlabel "`zlabel' nogrid"
+	if (ustrregexm("`zlabel'", "angle") == 0)  local zlabel "`zlabel' angle(0)"
 	
 	
 	// Run kmatch with specified options across all combinations of variables in matchingset
@@ -2027,7 +2023,7 @@ qui {
 	matrix colnames _t = mshareA mshareB
 	*matrix rownames _t = `_rowlab' // does not work with very long lists of variables
 
-	*New data set of matching-matrix
+	//New data set of matching-matrix
 	preserve 
 		clear
 		svmat _t, names(col)
@@ -2085,17 +2081,17 @@ qui {
 				sort(sort`gr') yscale(range(-5 105)) ///
 				ylabel(`ylabel') ///
 				ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///  
-				xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
+				xscale(reverse off) xlabel(,nolab notick) xtitle("") /// 
 				legend(off) fysize(80) ytitle(`ytitle') ///
-				title("Common support analysis for group `gr'") ///
 				nodraw name(_top, replace)
 			// combine both for one group
 			graph combine _top _bottom , imargin(zero) c(1) ///
+				title("Common support for group `gr'", size(medium)) ///
 				nodraw name(_group`gr', replace)				
 		}
 		// combine groups
 		graph combine _groupA _groupB, `options'
-
+		graph drop _bottom _top _groupA  _groupB
 	restore
 	
 	//return

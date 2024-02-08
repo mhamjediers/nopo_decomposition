@@ -314,13 +314,18 @@ to build your own plot from the data.
 {pstd}Example decomposition{p_end}
 {phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female)}{p_end}
 
-{pstd}Postestimation{p_end}
+{pstd}Postestimation commands{p_end}
 {phang}. {stata nopo summarize, label}{p_end}
 {phang}. {stata nopo summarize i.educ_c, label}{p_end}
+
+{phang}. {stata nopo commsupport}{p_end}
+{phang}. {stata nopo commsupport, varlabel zlabel(labsize(small)) omitmarker(ms(X))}{p_end}
+
 {phang}. {stata nopo gapoverdist}{p_end}
 {phang}. {stata nopo gapoverdist d d0}{p_end}
-{phang}. {stata nopo dadb tenure_c}{p_end}
 
+{phang}. {stata nopo dadb tenure_c}{p_end}
+{phang}. {stata nopo dadb tenure_c, nosort nmin(10)}{p_end}
 
 {title:References}
 
