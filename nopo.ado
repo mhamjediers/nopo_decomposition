@@ -331,33 +331,10 @@ program define nopo_decomp, eclass
     replace `treat' = 1 if `_tvar' == `_tval'
     local _te = strupper("`att'`atc'")
     
-    // determine matching set from kmatch for return passthru; drop doublettes
-	/*
-    local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
-    local _nvarset : word count `_varset'
-    while (`_nvarset' > 0) {
-      gettoken _word _rest : _varset
-      // save first occurence
-      local _matchset "`_matchset' `_word'"
-      // delete the rest
-      local _varset = ustrregexra("`_rest'", "\b`_word'\b", "")
-      // save new list
-      local _nvarset : word count `_varset'
-    }
-    local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
-	*/
-	
-	*Alternative to 334-348:
-	// determine matching set from kmatch for return passthru; drop doublettes
-	/*
+	  // determine matching set from kmatch for return passthru; drop doublettes
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
     fvrevar `_varset', list
-    local _matchset `r(varlist)'
-	*/
-	
-	//unify the name of the matching-set variablelist
-    local _matchset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
-    local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
+    local _matchset = strrtrim(strltrim(stritrim("`r(varlist)'")))
 
     // weights
     if ("`e(wtype)'" != "") {
