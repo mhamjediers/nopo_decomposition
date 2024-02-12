@@ -332,6 +332,7 @@ program define nopo_decomp, eclass
     local _te = strupper("`att'`atc'")
     
     // determine matching set from kmatch for return passthru; drop doublettes
+	/*
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
     local _nvarset : word count `_varset'
     while (`_nvarset' > 0) {
@@ -344,7 +345,20 @@ program define nopo_decomp, eclass
       local _nvarset : word count `_varset'
     }
     local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
-    
+	*/
+	
+	*Alternative to 334-348:
+	// determine matching set from kmatch for return passthru; drop doublettes
+	/*
+    local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
+    fvrevar `_varset', list
+    local _matchset `r(varlist)'
+	*/
+	
+	//unify the name of the matching-set variablelist
+    local _matchset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
+    local _matchset = strrtrim(strltrim(stritrim("`_matchset'")))
+
     // weights
     if ("`e(wtype)'" != "") {
       local _wtype = e(wtype)
@@ -1930,7 +1944,7 @@ program define nopo_commsupport, rclass
 
 syntax [if] [in] , ///
 	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
-	[always(varlist)] /// specify variables to always include in each model
+	[always(varlist fv)] /// specify variables to always include in each model
 	[INCLMarkers(string asis)] /// marker-options to indicated included variables
 	[OMITMarkers(string asis)] /// marker-options to indicated omitted variables
 	[XTItle(string asis)] /// 
@@ -1968,15 +1982,28 @@ qui {
 	local _nvars = `:word count `_matchset'' // number of variables in matchingset
 	
 	if "`varlabel'" != "" { // if requested, obtain variable labels
-		foreach v of local _matchset {
-			local _`v'lab: var lab `v' 
+		local i = 1
+		foreach v of loca _matchset {
+			fvrevar `v', list
+			if "`v'" == "`r(varlist)'" {
+				local _`i'lab: var lab `v'
+			}
+			else {
+				if `:word count `r(varlist)'' == 1 {
+					local _`i'lab: var lab `r(varlist)'
+				}
+				if `:word count `r(varlist)'' != 1 {
+					local _`i'lab "`v'" // no label for interactions
+				}
+			}
+			local i = `i' + 1
 		}
 	}
 
 	// check if always-variable contains those of matchingset 
 	local _check: list always - _matchset 
 	if "`_check'" != "" {
-		noisily dis as error "Variable(s) in always() are not part of the matching-set of previous nopo decomp:  `_check'"
+		noisily dis as error "Variable(s) in always() are not part of the matching-set of previous nopo decomp: `_check'"
 		error 103
 		exit
 	}
@@ -1987,9 +2014,8 @@ qui {
 		noisily dis as error "No remaining combinations to test"
 		error 103
 		exit
-
 	}
-	
+
 	// Defaults for graph-options
 	if ("`inclmarkers'" == "") local inclmarkers "ms(o)"
 	if ("`omitmarkers'" == "") local omitmarkers "ms(oh)"
@@ -2009,8 +2035,29 @@ qui {
 	if (ustrregexm("`zlabel'", "angle") == 0)  local zlabel "`zlabel' angle(0)"
 	
 	
+	// Generate list with all possible combinations
+	// Code from tuples-Package, v4.2.0 (Joseph N. Luchman, daniel klein, & NJC, 2021)
+	tokenize `"`macval(_tuplist)'"'
+    local n : word count `macval(_tuplist)'
+    local ntuples = 2^`n'-1
+    local k = 0
+        forvalues i = 1/`ntuples' {
+            quietly inbase 2 `i'
+            local indicators : display %0`n'.0f `r(base)'
+            local one 0
+            local tuple // void
+            local space // void
+            forvalues j = 1/`n' {
+                if (substr("`indicators'", `j', 1) == "1") {
+                    local tuple `"`macval(tuple)'`space'`macval(`j')'"'
+                    local space " "
+                }
+            }
+            local tuple`++k' `"`macval(tuple)'"'
+        }
+	// output is number of tuples (ntuples) and local of tuple`t' for each combination
+	
 	// Run kmatch with specified options across all combinations of variables in matchingset
-	tuples `_tuplist'
 	mat _t = J(`ntuples',2,.) 
 	foreach t of num 1 (1) `ntuples' {
 		kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
@@ -2051,9 +2098,9 @@ qui {
 		local i = 1
 		local _phantom = " " 
 		foreach v of local _matchset {
-			replace incl = 1 if regexm(comb, "`v'") & var == `i' // mark which variables are used
+			replace incl = 1 if regexm(comb, "`v'")  & var == `i' // mark which variables are used
 			if "`varlabel'" != "" {
-				local lab `"`_`v'lab'"'
+				local lab `"`_`i'lab'"' 
 			}
 			else {
 				local lab "`v'"

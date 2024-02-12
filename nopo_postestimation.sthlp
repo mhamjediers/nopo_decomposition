@@ -94,7 +94,7 @@ characteristics (or their combinations) lacks of common support are espacially h
 
 {phang}
 {cmd:always(}{varlist}{cmd:)} specifies variables that are included in each matching and never omitted. {varlist} can only 
-contain variables used in the matching of the previous {cmd:nopo decomp}.
+contain variables used in the matching of the previous {cmd:nopo decomp} and should correspond to the potential usage of factor-variables.
 
 {phang}
 {it: displayoptions} comprise:
@@ -103,7 +103,7 @@ contain variables used in the matching of the previous {cmd:nopo decomp}.
 {cmd:nosort} does not sort the matching-combinations by share of common support among group {it:A} and {it:B}
 
 {p 6 8 2}
-{cmdab:varlab:el} displays variables labels instead of variable names in the bottom part of each plot. 
+{cmdab:varlab:el} displays variables labels instead of variable names in the bottom part of each plot. Interacting factor-variables are not affected.
 
 {p 6 8 2}
 {cmdab:inclm:arkers(}{it:{help scatter##marker_options:marker_options}}{cmd:)} and {cmdab:omitm:arkers(}{help scatter##marker_options:marker_options}{cmd:)} allow to specify the appearance of the markers in the bottom plot of variables included or omitted in each matching. 
@@ -342,6 +342,7 @@ regression adjustment. Available from {browse https://ideas.repec.org/c/boc/boco
 {pstd}
 Special thanks to Carla Rowold for stress testing and many helpful comments.
 
+The command {cmd: nopo commsupport} includes a part of the {help tuples} package from J.N. Luchman, D. Klein, and N.J. Cox. We copied the code to avoid further dependencies.
 
 {title:Authors}
 
