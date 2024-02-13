@@ -249,6 +249,8 @@ Note that some of the kmatch variables contain the same information as the varia
 {synopt:{cmd:e(mweight)}}name of variable that denotes matching weight{p_end}
 {synopt:{cmd:e(matched)}}name of variable that denotes matching indicator{p_end}
 {synopt:{cmd:e(matchset)}}list of variables on which groups are matched{p_end}
+{synopt:{cmd:e(xvars)}}list of variables as used in matching (e.g., including interactions){p_end}
+{synopt:{cmd:e(ematch)}}list of variables on which exact matching was applied){p_end}
 {synopt:{cmd:e(groupA)}}expression that defines group {it:A} in terms of group-variable{p_end}
 {synopt:{cmd:e(groupB)}}expression that defines group {it:B} in terms of group-variable{p_end}
 {synopt:{cmd:e(xref)}}expression for the reference group in terms of {it:characteristics}{p_end}

@@ -100,6 +100,9 @@ contain variables used in the matching of the previous {cmd:nopo decomp} and sho
 {it: displayoptions} comprise:
 
 {p 6 8 2}
+{cmd:nodots} suppress dots for each separate matching run
+
+{p 6 8 2}
 {cmd:nosort} does not sort the matching-combinations by share of common support among group {it:A} and {it:B}
 
 {p 6 8 2}
@@ -133,6 +136,9 @@ Additionally, all options available for {bf:{help graph combine}} can be used.
 {synopt:{cmd:r(commsupport)}}matrix of percentage of matched units for group {it:A} and {it:B} for each matching{p_end}
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Macros}{p_end}
+{synopt:{cmd:r(ncomb)}}number of combinations of matching variables{p_end}
+{synopt:{cmd:r(xvars)}}list of variables as used in matching (e.g., including interactions){p_end}
+{synopt:{cmd:r(ematch)}}list of variables on which exact matching was applied){p_end}
 {synopt:{cmd:r(comb#)}}underlying matchingset for row # from matrix r(commsupport){p_end}
 
 

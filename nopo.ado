@@ -335,6 +335,8 @@ program define nopo_decomp, eclass
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
     fvrevar `_varset', list
     local _matchset = strrtrim(strltrim(stritrim("`r(varlist)'")))
+	local _xvars `e(xvars)'
+	local _ematch `e(ematch)'
 
     // weights
     if ("`e(wtype)'" != "") {
@@ -684,6 +686,8 @@ program define nopo_decomp, eclass
     ereturn local bref = "`bref'"
     ereturn local by = "`_tvar'"
     ereturn local matchset = strltrim("`_matchset'")
+	ereturn local xvars = strltrim("`_xvars'")
+	ereturn local ematch = strltrim("`_ematch'")
     // nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
     // empty locals are not returned by Stata by default
     cap drop _nopo_matched
@@ -1921,7 +1925,7 @@ program define nopo_commsupport, rclass
 
 syntax [if] [in] , ///
 	[VARLABel] /// whether to use variable labels on y-axis in bottom graph
-	[always(varlist fv)] /// specify variables to always include in each model
+	[ALWAYS(varlist fv)] /// specify variables to always include in each model
 	[INCLMarkers(string asis)] /// marker-options to indicated included variables
 	[OMITMarkers(string asis)] /// marker-options to indicated omitted variables
 	[XTItle(string asis)] /// 
@@ -1929,7 +1933,8 @@ syntax [if] [in] , ///
 	[YLABel(string asis)] ///
 	[ZLABel(string asis)] /// y-Labels for bottom graph
 	[LPattern(passthru) LWidth(passthru) LColor(passthru) LAlign(passthru) LSTYle(passthru)] /// line option 
-	[nosort]  ///
+	[NOSORT]  ///
+	[NODOTS] ///
 	[*] // star for all graph combine options
 	
 	
@@ -1951,7 +1956,10 @@ qui {
 
 	// kmatch-command-parts
 	local _kmatch_subcmd `e(kmatch_subcmd)'
-	local _matchset `e(matchset)'
+	local _xvars `e(xvars)'
+	local _ematch `e(ematch)'
+	local _matchset `_xvars' `_ematch'
+	local _matchset: list uniq _matchset
 	local _by `e(by)'
 	local _tval = `e(tval)'
 	local _wtype `e(wtype)'
@@ -2036,87 +2044,103 @@ qui {
 	
 	// Run kmatch with specified options across all combinations of variables in matchingset
 	mat _t = J(`ntuples',2,.) 
+	noisily {
+		if "`nodots'" == "" { 
+			_dots 0, title("Running `_kmatch_subcmd' matching for `ntuples' combinations of matching variables:")
+		}
+	}
 	foreach t of num 1 (1) `ntuples' {
-		kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
+		local _subxvars: list tuple`t' - _ematch
+		local _subematch: list _ematch & tuple`t'
+		if "`_subematch'" != "" & "`_kmatch_subcmd'" != "em" { // check whether exact-matching for some variables was applied
+			kmatch `_kmatch_subcmd' `_by' `always' `_subxvars' if `touse' == 1, tval(`_tval') ematch(`_subematch')
+		}
+		else {
+			kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
+		}
 		matrix N = e(_N)
 		mat _t[`t', 1 ] = N[2,1] / N[2,3] * 100
 		mat _t[`t', 2 ] = N[1,1] / N[1,3] * 100
 		local tuple`t' `e(xvars)' // if some variables are always used, they will be added back to the tuples
 		local _rowlab `"`_rowlab' "`tuple`t''""'
+		noisily: if ("`nodots'" == "") _dots `t' 0
 	}
 	matrix colnames _t = mshareA mshareB
 	*matrix rownames _t = `_rowlab' // does not work with very long lists of variables
-
+	
 	//New data set of matching-matrix
-	preserve 
-		clear
-		svmat _t, names(col)
-		
-		gen comb  = "" // label which combinations are underlying
-		foreach t of num 1 (1) `ntuples' {
-			replace comb = "`tuple`t''" in `t'
-		}
-		
-		gen t = _n 
-		if "`nosort'" == "" {
-			sort mshareA
-			gen sortA = _n // sorting variable for share of matched in A
-			sort mshareB
-			gen sortB = _n // sorting variable for share of matched in B
-		}
-		else {
-			gen sortA = _n
-			gen sortB = _n
-		}
-		
-		expand `_nvars' // expand to also mark unused variables via scatter 
-		bys t: gen var = _n 
-		gen incl = 0
-		local i = 1
-		local _phantom = " " 
-		foreach v of local _matchset {
-			replace incl = 1 if regexm(comb, "`v'")  & var == `i' // mark which variables are used
-			if "`varlabel'" != "" {
-				local lab `"`_`i'lab'"' 
+	if regexm("`options'", "nodraw") == 0 {
+		noisily: dis as txt _newline "Plotting common support graph"
+		preserve 
+			clear
+			svmat _t, names(col)
+			
+			gen comb  = "" // label which combinations are underlying
+			foreach t of num 1 (1) `ntuples' {
+				replace comb = "`tuple`t''" in `t'
+			}
+			
+			gen t = _n 
+			if "`nosort'" == "" {
+				sort mshareA
+				gen sortA = _n // sorting variable for share of matched in A
+				sort mshareB
+				gen sortB = _n // sorting variable for share of matched in B
 			}
 			else {
-				local lab "`v'"
+				gen sortA = _n
+				gen sortB = _n
 			}
-			lab def var `i' `"`lab'"', modify // ylabels for bottom-graph 
-			if strlen(`"`lab'"') > strlen(`"`_phantom'"') {
-				local _phantom = `"`lab'"' // phantom label of longest label for upper graph
+			
+			expand `_nvars' // expand to also mark unused variables via scatter 
+			bys t: gen var = _n 
+			gen incl = 0
+			local i = 1
+			local _phantom = " " 
+			foreach v of local _matchset {
+				replace incl = 1 if regexm(comb, "`v'")  & var == `i' // mark which variables are used
+				if "`varlabel'" != "" {
+					local lab `"`_`i'lab'"' 
+				}
+				else {
+					local lab "`v'"
+				}
+				lab def var `i' `"`lab'"', modify // ylabels for bottom-graph 
+				if strlen(`"`lab'"') > strlen(`"`_phantom'"') {
+					local _phantom = `"`lab'"' // phantom label of longest label for upper graph
+				}
+				local i = `i' + 1 
 			}
-			local i = `i' + 1 
-		}
-		lab val var var	
-		
-		// plot for each group
-		foreach gr in A B {
-			// bottom graph of which matching variables were used 
-			twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
-				|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
-				ylabel(1 (1) `_nvars', `zlabel' valuelabel) ///
-				xscale(reverse fextend titlegap(7pt)) ///
-				xlabel(,nolab notick) xtitle(`xtitle') ///
-				legend(off) fysize(20) ytitle(" ") nodraw name(_bottom, replace)
-			// upper graph of share of matched 
-			twoway line mshare`gr' sort`gr', ///
-				`lpattern' `lwdith' `lcolor' `align' `lstyle' ///
-				sort(sort`gr') yscale(range(-5 105)) ///
-				ylabel(`ylabel') ///
-				ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///  
-				xscale(reverse off) xlabel(,nolab notick) xtitle("") /// 
-				legend(off) fysize(80) ytitle(`ytitle') ///
-				nodraw name(_top, replace)
-			// combine both for one group
-			graph combine _top _bottom , imargin(zero) c(1) ///
-				title("Common support for group `gr'", size(medium)) ///
-				nodraw name(_group`gr', replace)				
-		}
-		// combine groups
-		graph combine _groupA _groupB, `options'
-		graph drop _bottom _top _groupA  _groupB
-	restore
+			lab val var var	
+			
+			// plot for each group
+			foreach gr in A B {
+				// bottom graph of which matching variables were used 
+				twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
+					|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
+					ylabel(1 (1) `_nvars', `zlabel' valuelabel) ///
+					xscale(reverse fextend titlegap(7pt)) ///
+					xlabel(,nolab notick) xtitle(`xtitle') ///
+					legend(off) fysize(20) ytitle(" ") nodraw name(_bottom, replace)
+				// upper graph of share of matched 
+				twoway line mshare`gr' sort`gr', ///
+					`lpattern' `lwdith' `lcolor' `align' `lstyle' ///
+					sort(sort`gr') yscale(range(-5 105)) ///
+					ylabel(`ylabel') ///
+					ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///  
+					xscale(reverse off) xlabel(,nolab notick) xtitle("") /// 
+					legend(off) fysize(80) ytitle(`ytitle') ///
+					nodraw name(_top, replace)
+				// combine both for one group
+				graph combine _top _bottom , imargin(zero) c(1) ///
+					title("Common support for group `gr'", size(medium)) ///
+					nodraw name(_group`gr', replace)				
+			}
+			// combine groups
+			graph combine _groupA _groupB, `options'
+			graph drop _bottom _top _groupA  _groupB
+		restore
+	}
 	
 	//return
 	matrix _t = _t'
@@ -2124,7 +2148,13 @@ qui {
 	foreach t of num `ntuples' (1) 1 {
 		return local comb`t' = "`tuple`t''"
 	}
-	if ("`_wtype'" != "") noisily dis as text _newline "Note: Percentages of matched are based on unweighted observations."
+	return local ematch = "`_ematch'"
+	return local xvars = "`_xvars'"
+	return local ncomb = "`ntuples'"
+	if ("`always'" != "") return local always = "`alyways'"
+	
+	noisily: if ("`_ematch'" == "") dis as txt "Exact matching applied to `_ematch'"
+	noisily: if ("`_wtype'" != "")  dis as text _newline "Note: Percentages of matched are based on unweighted observations."
 	
 	est restore _nopo
 }
