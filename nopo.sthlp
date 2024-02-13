@@ -244,23 +244,23 @@ Note that some of the kmatch variables contain the same information as the varia
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Macros}{p_end}
 {synopt:{cmd:e(kmatch_cmdline)}}command line of interal {cmd:kmatch} call{p_end}
-{synopt:{cmd:e(kmatch_subcmd)}}type of matching ({cmd:md}, {cmd:ps}, or {cmd:em}{p_end}
+{synopt:{cmd:e(kmatch_subcmd)}}type of matching ({cmd:md}, {cmd:ps}, or {cmd:em}){p_end}
 {synopt:{cmd:e(strata)}}name of variable that denotes matching stratum{p_end}
 {synopt:{cmd:e(mweight)}}name of variable that denotes matching weight{p_end}
 {synopt:{cmd:e(matched)}}name of variable that denotes matching indicator{p_end}
 {synopt:{cmd:e(matchset)}}list of variables on which groups are matched{p_end}
 {synopt:{cmd:e(xvars)}}list of variables as used in matching (e.g., including interactions){p_end}
-{synopt:{cmd:e(ematch)}}list of variables on which exact matching was applied){p_end}
+{synopt:{cmd:e(ematch)}}list of variables on which exact matching was applied{p_end}
 {synopt:{cmd:e(groupA)}}expression that defines group {it:A} in terms of group-variable{p_end}
 {synopt:{cmd:e(groupB)}}expression that defines group {it:B} in terms of group-variable{p_end}
 {synopt:{cmd:e(xref)}}expression for the reference group in terms of {it:characteristics}{p_end}
 {synopt:{cmd:e(bref)}}expression for the reference group in terms of {it:returns}{p_end}
-{synopt:{cmd:e(cval)}}list of variables on which groups are matched{p_end}
-{synopt:{cmd:e(tval)}}list of variables on which groups are matched{p_end}
+{synopt:{cmd:e(cval)}}value of group-variable to which units are matched{p_end}
+{synopt:{cmd:e(tval)}}value of group-variable which is matched{p_end}
 {synopt:{cmd:e(tvar)}}name of group variable{p_end}
 {synopt:{cmd:e(teffect)}}matching direction ({bf:ATT} or {bf:ATC}){p_end}
 {synopt:{cmd:e(wexp)}}weight expression (if weights are applied){p_end}
-{synopt:{cmd:e(wtype)}}{it:fweights}, {it:pweights}, and {it:iweights} (if weights are applied){p_end}
+{synopt:{cmd:e(wtype)}}{it:fweights}, {it:pweights}, or {it:iweights} (if weights are applied){p_end}
 {synopt:{cmd:e(cmd)}}{cmd:nopo}{p_end}
 {synopt:{cmd:e(properties)}}{cmd:b}{p_end}
 
