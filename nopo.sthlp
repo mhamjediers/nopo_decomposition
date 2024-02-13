@@ -132,20 +132,20 @@ for characteristics and returns is switched.
 
 {phang}
 {cmdab:xref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
-manually set the reference group for the counteractual group in terms of {it:characteristics}. 
+manually set the reference group for the counterfactual group in terms of {it:characteristics}. 
 Naturally, {cmd:xref()} and {cmd:bref()} cannot be the same.
 
 {phang}
 {cmdab:bref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
-manually set the reference group for the counteractual group in terms of {it:returns}. 
+manually set the reference group for the counterfactual group in terms of {it:returns}. 
 Naturally, {cmd:bref()} and {cmd:xref()} cannot be the same.
 
 
 {dlgtab:Matching procedure}
 
 {phang}
-{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the measure how both groups are matched, while the
-decomposition always relays on a one-to-many matching procedure. The default is to use 
+{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the measure on which both groups are matched, while the
+decomposition always relies on a one-to-many matching procedure. The default is to use 
 {it:exact matching} {cmd:kmatch(em)}, in which case all variables in {varlist} are treated as 
 factors. For multivariate-distance {cmd:kmatch(md)} and propensity score {cmd:kmatch(ps)} 
 matching, make sure to indicate via factor notation which variables are factors and which are
