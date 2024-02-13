@@ -17,8 +17,8 @@ if ("`ex'" == "1") {
 	gen educ_c = round(educ,1)
 
 	lab var educ_c "years of educational attainment (rounded)"
-	lab var exper_c "years of work experience (5-year intervalls)"
-	lab var tenure_c "years of job tenure (5-year intervalls)"
+	lab var exper_c "years of work experience (5-year intervals)"
+	lab var tenure_c "years of job tenure (5-year intervals)"
 	
 	lab def female 0 "Men" 1 "Women"
     lab val female female

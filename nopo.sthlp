@@ -192,8 +192,8 @@ Note that some of the kmatch variables contain the same information as the varia
 {phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
 {phang}. {stata gen educ_c = round(educ,1)}{p_end}
 {phang}. {stata lab var educ_c "years of educational attainment (rounded)"}{p_end}
-{phang}. {stata lab var exper_c "years of work experience (5-year intervalls)"}{p_end}
-{phang}. {stata lab var tenure_c "years of job tenure (5-year intervalls)"}{p_end}
+{phang}. {stata lab var exper_c "years of work experience (5-year intervals)"}{p_end}
+{phang}. {stata lab var tenure_c "years of job tenure (5-year intervals)"}{p_end}
 {phang}. {stata lab def female 0 "Men" 1 "Women"}{p_end}
 {phang}. {stata lab val female female}{p_end}
 
