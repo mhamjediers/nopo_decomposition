@@ -501,23 +501,29 @@ program define nopo_decomp, eclass
         else local _wtype_cons = "`_wtype'"
 
     // D
-    mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
-    scalar _meanA = e(b)[1,1]
-    scalar _meanB = e(b)[1,2]
-    if ("`naivese'" == "") {
-      mat b = J(1, 5, .)
-      mat b[1,1] = _meanB - _meanA
-    }
-    else {
-      reg `_depvar' i.`treat' [`_wtype_cons' `_wexp_cons'] if `sample'
-      estimates store d
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 0
+    scalar _meanA = r(mean)
+	local _nA = r(sum_w)
+	local _varA = r(Var)
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 1
+    scalar _meanB = r(mean)
+	local _nB = r(sum_w)
+	local _varB = r(Var)
+
+    mat b = J(1, 5, .)
+    mat b[1,1] = _meanB - _meanA
+    if ("`naivese'" != "") {	
+      mat V = J(5, 5, 0)
+	  mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
+	  noisily: matrix list V
     }
     
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
-    if ("`naivese'" == "") scalar _meanumA = r(mean)
+    scalar _meanumA = r(mean)
     scalar _numA = r(N)
     scalar _numwA = r(sum_w)
+	local _varumA = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     scalar _nA = r(N)
     scalar _nwA = r(sum_w)
@@ -525,14 +531,21 @@ program define nopo_decomp, eclass
     scalar _nmwA = _nwA - _numwA
     scalar _mshareA = (_nmA / _nA) * 100
     scalar _msharewA = (_nmwA / _nwA) * 100
-    if ("`naivese'" == "") {
-      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample', meanonly
-      scalar _meanmA = r(mean)
-      scalar _mgapA = _meanmA - _meanumA
-      mat b[1,4] = _mgapA * (_numwA / _nwA)
-      if (b[1,4] == .) mat b[1,4] = 0
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample'
+    scalar _meanmA = r(mean)
+	local _varmA = r(Var)
+    scalar _mgapA = _meanmA - _meanumA
+    mat b[1,4] = _mgapA * (_numwA / _nwA)
+    if (b[1,4] == .) mat b[1,4] = 0
+    if ("`naivese'" != "") {	
+		local _vargapA = `_varumA' / _numwA + `_varmA' / _nmwA
+		mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// 		gap^2 * var of share 
+			+ (1 - _msharewA/100)^2 * `_vargapA' ///										share^2 * var of gap 
+			+ (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' //				var of share * var of gap 	  
+		noisily: matrix list V
     }
-    else {
+    /*
+	else {
       // check if no variation in Y among unmatched: SE estimation problem with suest
       // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
       // do not check for other groups: among matched (also D0 DX) always serious estimation problem
@@ -556,12 +569,14 @@ program define nopo_decomp, eclass
       if (_numA > 0) scalar _mgapA = _b[1.`matched']
         else scalar _mgapA = .
     }
-
+	*/
+	
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
-    if ("`naivese'" == "") scalar _meanumB = r(mean)
+    scalar _meanumB = r(mean)
     scalar _numB = r(N)
     scalar _numwB = r(sum_w)
+	local _varumB = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     scalar _nB = r(N)
     scalar _nwB = r(sum_w)
@@ -569,13 +584,20 @@ program define nopo_decomp, eclass
     scalar _nmwB = _nwB - _numwB
     scalar _mshareB = (_nmB / _nB) * 100
     scalar _msharewB = (_nmwB / _nwB) * 100
-    if ("`naivese'" == "") {
-      sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample', meanonly
-      scalar _meanmB = r(mean)
-      scalar _mgapB = _meanmB - _meanumB
-      mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
-      if (b[1,5] == .) mat b[1,5] = 0
-    }
+    sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample'
+    scalar _meanmB = r(mean)
+	local _varmB = r(Var)
+    scalar _mgapB = _meanmB - _meanumB
+    mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
+    if (b[1,5] == .) mat b[1,5] = 0
+    if ("`naivese'" != "") {	
+		local _vargapB = `_varumB' / _numwB + `_varmB' / _nmwB
+		mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// 		gap^2 * var of share 
+			+ (1 - _msharewB/100)^2 * `_vargapB' ///										share^2 * var of gap 
+			+ (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' //				var of share * var of gap 	 
+		noisily: matrix list V
+	}
+    /*
     else {
       // check if no variation in Y among unmatched: SE estimation problem with suest
       // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
@@ -600,25 +622,27 @@ program define nopo_decomp, eclass
       if (_numB > 0) scalar _mgapB = _b[1.`matched']
         else scalar _mgapB = .
     }
+	*/
 
     // change to matching weight
     replace `weight_cons' = `mweight'
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
-    if ("`naivese'" == "") {
-      mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
-    }
-    else {
-      reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+    mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
+    if ("`naivese'" != "") {
+		
+     /*
+	  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
       ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
       estimates store d0
+	  */
     }
 
     // DX (always uses aweights and the matching weight returned by kmatch)
-    if ("`naivese'" == "") {
-      mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
-    }
-    else {
+    mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
+    if ("`naivese'" != "") {
+
+		/*
       /* if ("`att'" != "") local _xref = 1
         else local _xref = 0
       tempvar sub expanded
@@ -656,17 +680,19 @@ program define nopo_decomp, eclass
         (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
         (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
         , post */
+		*/
     }
 
     // return
     if (`"`naivese'"' == "") {
       // default
-      mat colnames b = D D0 DX DA DB
+      mat colnames b = D D0 DX DA DB     
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     else {
-      mat b = e(b)
-      mat V = e(V)
+	  mat colnames b = D D0 DX DA DB     
+	  mat colnames V = D D0 DX DA DB 
+	  mat rownames V = D D0 DX DA DB 
       ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     ereturn local cmd = "nopo"
