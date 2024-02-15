@@ -515,7 +515,6 @@ program define nopo_decomp, eclass
     if ("`naivese'" != "") {	
       mat V = J(5, 5, 0)
 	  mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
-	  noisily: matrix list V
     }
     
     // DA
@@ -542,7 +541,6 @@ program define nopo_decomp, eclass
 		mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewA/100)^2 * `_vargapA' ///										share^2 * var of gap 
 			+ (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' //				var of share * var of gap 	  
-		noisily: matrix list V
     }
     /*
 	else {
@@ -595,7 +593,6 @@ program define nopo_decomp, eclass
 		mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewB/100)^2 * `_vargapB' ///										share^2 * var of gap 
 			+ (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' //				var of share * var of gap 	 
-		noisily: matrix list V
 	}
     /*
     else {
