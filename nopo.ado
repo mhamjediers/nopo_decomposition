@@ -532,15 +532,16 @@ program define nopo_decomp, eclass
     scalar _msharewA = (_nmwA / _nwA) * 100
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample'
     scalar _meanmA = r(mean)
-	local _varmA = r(Var)
+	scalar _varmA = r(Var)
     scalar _mgapA = _meanmA - _meanumA
     mat b[1,4] = _mgapA * (_numwA / _nwA)
     if (b[1,4] == .) mat b[1,4] = 0
     if ("`naivese'" != "") {	
-		local _vargapA = `_varumA' / _numwA + `_varmA' / _nmwA
+		local _vargapA = `_varumA' / _numwA + _varmA / _nmwA
 		mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewA/100)^2 * `_vargapA' ///										share^2 * var of gap 
 			+ (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' //				var of share * var of gap 	  
+		if (V[4,4] == .) mat V[4,4] = 0
     }
     /*
 	else {
@@ -584,15 +585,16 @@ program define nopo_decomp, eclass
     scalar _msharewB = (_nmwB / _nwB) * 100
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample'
     scalar _meanmB = r(mean)
-	local _varmB = r(Var)
+	scalar _varmB = r(Var)
     scalar _mgapB = _meanmB - _meanumB
     mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
     if (b[1,5] == .) mat b[1,5] = 0
     if ("`naivese'" != "") {	
-		local _vargapB = `_varumB' / _numwB + `_varmB' / _nmwB
+		local _vargapB = `_varumB' / _numwB + _varmB / _nmwB
 		mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewB/100)^2 * `_vargapB' ///										share^2 * var of gap 
 			+ (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' //				var of share * var of gap 	 
+		if (V[5,5] == .) mat V[5,5] = 0
 	}
     /*
     else {
@@ -621,19 +623,54 @@ program define nopo_decomp, eclass
     }
 	*/
 
+    // D0 (always uses aweights and the matching weight returned by kmatch)
+    mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
+    if ("`naivese'" != "") &  ("`_kmatch_subcmd'" == "em") {
+		tempvar _yB
+		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
+		local _alpha = _nmwA / _nmwB   								// ratio of both groups
+		tempvar _wA
+		gen `_wA' = `treat' == 0 if `matched' == 1 & `sample'		// used to calculate share of group A per strata
+		
+		// Variance-Covariance estimation for counterfactual based on across strata
+		preserve 
+			collapse `_yB' (sd) _vB = `_yB' (sum) `_wA' if `matched' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
+			
+			replace _vB = _vB^2
+			replace `_wA' = `_wA' / _nmwA
+			
+			//Variance of counterfactual
+			gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
+			sum _vcf
+			local _vcf = r(sum)
+
+			//Covariance of weight and values for counterfactual
+			gen _cf = `_yB' * `_wA'
+			local _cf _cf
+			mata: C = st_data(., st_local("_cf"), .)
+			noisily: mata : sum(C*C')
+			noisily: mata : trace(C*C')
+			mata: _covcf = (sum(C*C') - trace(C*C'))
+			mata: st_numscalar("_covcf", _covcf)
+			
+		restore 
+		
+		display in red "(`=_varmA' / `=_nmwA') + (`_vcf' / `=_nmwB') - (`=_covcf'  / `=_nmwB'  / (`_alpha')^2"
+		
+		local _vAB =  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) // Overall variance of weighted counterfactual
+		matrix V[2,2] = _varmA / _nmwA + `_vAB' // variance of A and Variance of weighted counterfactuals
+		if (V[2,2] == .) mat V[2,2] = 0
+		  /*
+		  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
+		  ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
+		  estimates store d0
+		  */
+	}
+	
+	
     // change to matching weight
     replace `weight_cons' = `mweight'
 
-    // D0 (always uses aweights and the matching weight returned by kmatch)
-    mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
-    if ("`naivese'" != "") {
-		
-     /*
-	  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-      ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-      estimates store d0
-	  */
-    }
 
     // DX (always uses aweights and the matching weight returned by kmatch)
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
