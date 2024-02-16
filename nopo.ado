@@ -21,12 +21,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
-    naivese /// report naive SE from weighted reg and SUEST
+    NOPOSE /// report Nopo SE 
+	KMATCHSE /// report Nopo SE 
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
   ]
 
+  
   /*
    In essence, this wrapper does two things:
 
@@ -201,13 +203,18 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
       // SEs supposed to be bootstrapped, so default is to not to compute standard errors
       // if not specifically requested via naivese (probably wrong)
-      if ("`naivese'" == "") local nose = "nose"
-        else local nose
-      
+      if "`kmatchse'" == "" {
+	  	local nose = "nose"
+		local po 
+	  }
+      else {
+	  	local nose
+		local po = "po"
+      }
       // run
       quietly {	
         `kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-          , tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' `nose'
+          , tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' `nose' `po'
           // perhaps strip opts of gen commands
       }
       
@@ -284,10 +291,10 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   }
   // set passthru
   if ("`kmpassthru'" != "") local kmpassthru "kmpassthru(`kmpassthru')"
-  
+    
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
-    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `naivese' `options'
+    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `nopose' `kmatchse' `options' 
 
 end
 
@@ -307,7 +314,8 @@ program define nopo_decomp, eclass
       kmpassthru(string) ///
       kmkeepgen ///
       dtable ///
-      naivese ///
+      NOPOSE ///
+	  KMATCHSE ///
     ]
   
   quietly {
@@ -512,11 +520,11 @@ program define nopo_decomp, eclass
 
     mat b = J(1, 5, .)
     mat b[1,1] = _meanB - _meanA
-    if ("`naivese'" != "") {	
+    if ("`nopose'" != "") {	
       mat V = J(5, 5, 0)
 	  mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
     }
-    
+    	
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
     scalar _meanumA = r(mean)
@@ -536,7 +544,7 @@ program define nopo_decomp, eclass
     scalar _mgapA = _meanmA - _meanumA
     mat b[1,4] = _mgapA * (_numwA / _nwA)
     if (b[1,4] == .) mat b[1,4] = 0
-    if ("`naivese'" != "") {	
+    if ("`nopose'" != "") {	
 		local _vargapA = `_varumA' / _numwA + _varmA / _nmwA
 		mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewA/100)^2 * `_vargapA' ///										share^2 * var of gap 
@@ -589,7 +597,7 @@ program define nopo_decomp, eclass
     scalar _mgapB = _meanmB - _meanumB
     mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
     if (b[1,5] == .) mat b[1,5] = 0
-    if ("`naivese'" != "") {	
+    if ("`nopose'" != "") {	
 		local _vargapB = `_varumB' / _numwB + _varmB / _nmwB
 		mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// 		gap^2 * var of share 
 			+ (1 - _msharewB/100)^2 * `_vargapB' ///										share^2 * var of gap 
@@ -625,7 +633,7 @@ program define nopo_decomp, eclass
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
     mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
-    if ("`naivese'" != "") &  ("`_kmatch_subcmd'" == "em") {
+    if ("`nopose'" != "") &  ("`_kmatch_subcmd'" == "em") {
 		tempvar _yB
 		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
 		local _alpha = _nmwA / _nmwB   								// ratio of both groups
@@ -661,47 +669,26 @@ program define nopo_decomp, eclass
 		  */
 	}
 
+	if "`kmatchse'" != "" {
+		*noisily: ereturn list 
+		noisily: matrix list e(V)
+		noisily: matrix list e(b)
+	}
+
 
     // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
-	if ("`naivese'" != "") &  ("`_kmatch_subcmd'" == "em") {
-		tempvar _yB
-		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
-		local _alpha = _nmwA / _nmwB   								// ratio of both groups
-		tempvar _wA
-		gen `_wA' = `treat' == 0 if `matched' == 1 & `sample'		// used to calculate share of group A per strata
+	if ("`nopose'" != "") &  ("`_kmatch_subcmd'" == "em") {
+	
+		// Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
 		
-		// Variance-Covariance estimation for counterfactual based on across strata
-		preserve 
-			collapse `_yB' (sd) _vB = `_yB' (sum) `_wA' if `matched' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
-			
-			replace _vB = _vB^2
-			replace `_wA' = `_wA' / _nmwA
-			
-			//Variance of counterfactual
-			gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
-			sum _vcf
-			local _vcf = r(sum)
-
-			//Covariance of values for counterfactual and values of m
-			gen _cf = `_yB' * `_wA' * `_yB'
-			local _cf _cf
-			mata: C = st_data(., st_local("_cf"), .)
-			mata: _covcf = (sum(C*C') - trace(C*C'))
-			mata: st_numscalar("_covcf", _covcf)
-			
-		restore 
-		matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB) 
+		matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
 		if (V[3,3] == .) mat V[3,3] = 0
 		
 	
 		/*
       /* if ("`att'" != "") local _xref = 1
         else local _xref = 0
-		
-		    // change to matching weight
-			replace `weight_cons' = `mweight'
-			(always uses aweights and the matching weight returned by kmatch)
 		
       tempvar sub expanded
       expand 2 if `treat' != `_xref', gen(`expanded')
@@ -745,12 +732,12 @@ program define nopo_decomp, eclass
 
 	
     // return
-    if (`"`naivese'"' == "") {
+    if (`"`nopose'"' == "") {
       // default
       mat colnames b = D D0 DX DA DB     
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
-    else {
+    if ("`nopose'" != "") {
 	  mat colnames b = D D0 DX DA DB     
 	  mat colnames V = D D0 DX DA DB 
 	  mat rownames V = D D0 DX DA DB 
