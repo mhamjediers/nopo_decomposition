@@ -648,17 +648,11 @@ program define nopo_decomp, eclass
 			gen _cf = `_yB' * `_wA'
 			local _cf _cf
 			mata: C = st_data(., st_local("_cf"), .)
-			noisily: mata : sum(C*C')
-			noisily: mata : trace(C*C')
 			mata: _covcf = (sum(C*C') - trace(C*C'))
 			mata: st_numscalar("_covcf", _covcf)
 			
 		restore 
-		
-		display in red "(`=_varmA' / `=_nmwA') + (`_vcf' / `=_nmwB') - (`=_covcf'  / `=_nmwB'  / (`_alpha')^2"
-		
-		local _vAB =  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) // Overall variance of weighted counterfactual
-		matrix V[2,2] = _varmA / _nmwA + `_vAB' // variance of A and Variance of weighted counterfactuals
+		matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
 		if (V[2,2] == .) mat V[2,2] = 0
 		  /*
 		  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
@@ -666,19 +660,49 @@ program define nopo_decomp, eclass
 		  estimates store d0
 		  */
 	}
-	
-	
-    // change to matching weight
-    replace `weight_cons' = `mweight'
 
 
-    // DX (always uses aweights and the matching weight returned by kmatch)
+    // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
-    if ("`naivese'" != "") {
+	if ("`naivese'" != "") &  ("`_kmatch_subcmd'" == "em") {
+		tempvar _yB
+		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
+		local _alpha = _nmwA / _nmwB   								// ratio of both groups
+		tempvar _wA
+		gen `_wA' = `treat' == 0 if `matched' == 1 & `sample'		// used to calculate share of group A per strata
+		
+		// Variance-Covariance estimation for counterfactual based on across strata
+		preserve 
+			collapse `_yB' (sd) _vB = `_yB' (sum) `_wA' if `matched' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
+			
+			replace _vB = _vB^2
+			replace `_wA' = `_wA' / _nmwA
+			
+			//Variance of counterfactual
+			gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
+			sum _vcf
+			local _vcf = r(sum)
 
+			//Covariance of values for counterfactual and values of m
+			gen _cf = `_yB' * `_wA' * `_yB'
+			local _cf _cf
+			mata: C = st_data(., st_local("_cf"), .)
+			mata: _covcf = (sum(C*C') - trace(C*C'))
+			mata: st_numscalar("_covcf", _covcf)
+			
+		restore 
+		matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB) 
+		if (V[3,3] == .) mat V[3,3] = 0
+		
+	
 		/*
       /* if ("`att'" != "") local _xref = 1
         else local _xref = 0
+		
+		    // change to matching weight
+			replace `weight_cons' = `mweight'
+			(always uses aweights and the matching weight returned by kmatch)
+		
       tempvar sub expanded
       expand 2 if `treat' != `_xref', gen(`expanded')
       gen `sub' = `_xref' if `treat' != `_xref'
@@ -716,7 +740,10 @@ program define nopo_decomp, eclass
         , post */
 		*/
     }
+	
+	
 
+	
     // return
     if (`"`naivese'"' == "") {
       // default
