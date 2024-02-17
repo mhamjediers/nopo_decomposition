@@ -645,6 +645,8 @@ program define nopo_decomp, eclass
 			collapse `_yB' (sd) _vB = `_yB' (sum) `_wA' if `matched' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
 			
 			replace _vB = _vB^2
+			replace _vB = _varmB if _vB == . // To see whether this solves the problem --> we often lack variance in y, which leads to an underestimation of component 1
+			
 			replace `_wA' = `_wA' / _nmwA
 			
 			//Variance of counterfactual
