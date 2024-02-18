@@ -4,6 +4,8 @@ clear
 set obs 100 // number of repitions
 
 gen N = .
+gen double x = .
+gen double w = .
 gen double true1 = .
 gen double true2 = .
 gen double direct1 = .
@@ -13,13 +15,15 @@ gen double matrix2 = .
 gen double matrix3 = .
 gen double matrix4 = .
 gen double nopo = .
+gen double comp2 = .
+gen double comp1 = .
 
 count
 foreach s of num 1 (1) `r(N)' {
 
 	preserve 
 		clear 
-		set obs 20
+		set obs 100
 		gen w = runiform()
 		gen x = rnormal(3,1.5)  // + 1*w
 		*reg x w // enforce no covariance --> if no covariance, all estimations bring out the same result
@@ -84,8 +88,12 @@ foreach s of num 1 (1) `r(N)' {
 		mata: comp2 = (sum(((w :-mean(w))*(w :-mean(w))') * ((x :-mean(x))*(x :-mean(x))')) ///
 			- trace(((w :-mean(w))*(w :-mean(w))') * ((x :-mean(x))*(x :-mean(x))'))) :/ rows(x)^2
 		mata: nopo = comp1 - 2*comp2  // comp2 gets 0 if no covariance occurs
+		mata: st_numscalar("comp1", comp1)
+		mata: st_numscalar("comp2", comp2)
 		mata: st_numscalar("nopo", nopo)
 		local nopo = `=nopo' 
+		local comp2 = `=comp2' // get's relatively smaller if cov(w,x) -> 0 or N -> infty
+		local comp1 = `=comp1' 
 		
 		// empirical SE
 		local true1 = `xm' * `wm' // difference to true1 is zero if no covariance (obviously)
@@ -94,10 +102,18 @@ foreach s of num 1 (1) `r(N)' {
 		local true2 = `r(mean)'
 		local N = `r(N)'
 		
+		sum x
+		local x = `r(mean)'
+		sum w
+		local w = `r(mean)'
+		
 		
 	restore 
 
 	replace N =    `N'  in `s'
+	replace x =    `x'  in `s'
+	replace w =    `w'  in `s'
+	
 	replace true1 =    `true1'  in `s'
 	replace true2 =    `true2'  in `s'
 	if ("`direct1'" != "") replace direct1 = `direct1' in `s'
@@ -107,6 +123,8 @@ foreach s of num 1 (1) `r(N)' {
 	replace matrix3 = `matrix3' in `s'
 	replace matrix4 = `matrix4' in `s'
 	replace nopo =    `nopo'    in `s'
+	replace comp1 =    `comp1'    in `s'
+	replace comp2 =    `comp2'    in `s'
 
 }
 
@@ -114,11 +132,13 @@ sum true1, d
 sum true2, d
 br
 
+corr x w, cov
 
-
-collapse direct* matrix* nopo N (sd) true1 true2
+collapse direct* matrix* nopo comp* N (sd) true1 true2 x w 
 replace true1 = true1^2 * N 
 replace true2 = true2^2 * N
+replace x = x^2
+replace x = w^2
 
 ***---> the problem in nopos equation is that too often the variance of y in a stratum is zero (because only one observation)
 * thereby we substract too much of the covariance from the underestimated variance in y
