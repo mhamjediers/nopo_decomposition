@@ -295,7 +295,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
     , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `nopose' `kmatchse' `options' 
-
+	
 end
 
 
@@ -386,14 +386,14 @@ program define nopo_decomp, eclass
     if ("`_kmatch_subcmd'" == "ps") {
       local _strata
       local _ps = "`5'"
-      if ("`kmkeepgen'" == "") drop `1' `2' `3' `4' `6' 
+      if ("`kmkeepgen'" == "") drop `1' `4' `6' 
     }
     else {
       local _strata = "`5'"
       local _ps // unset
-      if ("`kmkeepgen'" == "") drop `1' `2' `3' `4'
+      if ("`kmkeepgen'" == "") drop `1' `4'
     }
-    
+	
     // obtaining number of strata and matched strata only for exact matching
     if ("`_kmatch_subcmd'" == "em") {
       mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
@@ -633,19 +633,38 @@ program define nopo_decomp, eclass
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
     mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
-    if ("`nopose'" != "") &  ("`_kmatch_subcmd'" == "em") {
+    if ("`nopose'" != "") {
 		tempvar _yB
 		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
 		local _alpha = _nmwA / _nmwB   								// ratio of both groups
-		tempvar _wA
-		gen `_wA' = `treat' == 0 if `matched' == 1 & `sample'		// used to calculate share of group A per strata
+		
+		//how many units are matched to each observation
+		if "`att'" == "att" {
+			local _wA _KM_nc
+		}
+		if "`atc'" == "atc" {
+			local _wA _KM_nm
+		}
+		
+		// Generate strata if not exact matching 
+		if ("`_kmatch_subcmd'" != "em") {
+			tempvar _varcomb
+			egen `_varcomb' = group(`_matchset')
+			local _strata `_varcomb'
+			sum `_wA'
+			replace `_wA' = `_wA' / `r(sum)' * _nmwA // std. back to obsverations per group A in cases of multiple matches
+		}
 		
 		// Variance-Covariance estimation for counterfactual based on across strata
 		preserve 
-			collapse `_yB' (sd) _vB = `_yB' (sum) `_wA' if `matched' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
+			collapse `_yB' `_wA'  (sd) _vB = `_yB' if `matched' == 1 & `treat' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
 			
 			replace _vB = _vB^2
-			replace _vB = _varmB if _vB == . // To see whether this solves the problem --> we often lack variance in y, which leads to an underestimation of component 1
+			misstable pat _vB
+			if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
+				local _note_on_SE "display note"
+				replace _vB = _varmB if _vB == .
+			}
 			
 			replace `_wA' = `_wA' / _nmwA
 			
@@ -664,6 +683,7 @@ program define nopo_decomp, eclass
 		restore 
 		matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
 		if (V[2,2] == .) mat V[2,2] = 0
+		
 		  /*
 		  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
 		  ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
@@ -680,7 +700,7 @@ program define nopo_decomp, eclass
 
     // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
-	if ("`nopose'" != "") &  ("`_kmatch_subcmd'" == "em") {
+	if ("`nopose'" != "") {
 	
 		// Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
 		
@@ -730,8 +750,9 @@ program define nopo_decomp, eclass
 		*/
     }
 	
-	
-
+	// drop _KM_nc and _KM_nm after the SE calculation
+	tokenize `e(generate)'
+    if ("`kmkeepgen'" == "") drop `2' `3' 
 	
     // return
     if (`"`nopose'"' == "") {
@@ -889,10 +910,16 @@ program define nopo_decomp, eclass
   di as text "{hline 29}{c BT}{hline 48}"
   if ("`_wtype'" != "" & "`_wexp'" != "=1") di as text "Note: N and % are unweighted." 
   dis ""
-
+  
   // display estimates
   if ("`dtable'" == "") {
     ereturn display
+  }
+  if "`_note_on_SE'" != "" {
+  	dis as text "Note: Some strata have only one observation, which permits strata-specific variances."
+	dis as text _skip(6) "For these strata, the overall variance in `_depvar' of matched units are plugged in."
+	dis as text _skip(6) "Standard errors for D0 and DX are not robust against potential heteroskedasticity."
+
   }
   
 end
