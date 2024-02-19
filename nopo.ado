@@ -663,7 +663,8 @@ program define nopo_decomp, eclass
 			misstable pat _vB
 			if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
 				local _note_on_SE "display note"
-				replace _vB = _varmB if _vB == .
+				*replace _vB = _varmB if _vB == . // plugging in global variance
+				replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
 			}
 			
 			replace `_wA' = `_wA' / _nmwA
