@@ -271,7 +271,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`e(generate)'" == "") local _cmdadd "`_cmdadd' generate"
       if ("`e(wgenerate)'" == "") local _cmdadd "`_cmdadd' wgenerate"
       if (strpos(`"`_cmdline'"', " replace") == 0) local _cmdadd " `_cmdadd' replace"
-      // PO not requested
+      // PO not requested (NEEDS CORRECTION: DEPENDS ON REQUESTED TEs)
       cap dis e(b)[1, "Y0"] + e(b)[1, "Y1"]
       if (_rc == 111) {
         local _cmdadd "`_cmdadd' po" 
@@ -707,13 +707,6 @@ program define nopo_decomp, eclass
 		  */
 	  }
 
-    if "`kmatchse'" != "" {
-      *noisily: ereturn list 
-      noisily: matrix list e(V)
-      noisily: matrix list e(b)
-    }
-
-
     // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
     if ("`nopose'" != "") {
@@ -763,13 +756,27 @@ program define nopo_decomp, eclass
         , post */
 		  */
     }
+
+    // kmatch SE: all components in one go via nlcom
+    if "`kmatchse'" != "" {
+      /*nlcom ///
+        (D0: _b[1.`treat'] ///
+        (D0: [d0_mean]1.`treat') ///
+        (DX: [dx_mean]1.`sub') ///
+        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
+        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
+        , post */
+      *noisily: ereturn list 
+      noisily: matrix list e(V)
+      noisily: matrix list e(b)
+    }
 	
     // drop _KM_nc and _KM_nm after the SE calculation
     tokenize `e(generate)'
     if ("`kmkeepgen'" == "") drop `2' `3' 
 	
     // return
-    if ("`nose'" != "") {
+    if ("`nopose'" == "" & "`kmatchse'" == "") {
       // default
       mat colnames b = D D0 DX DA DB     
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
