@@ -22,7 +22,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
     NOPOSE /// report Nopo SE 
-	KMATCHSE /// report Nopo SE 
+    KMATCHSE /// report Nopo SE 
     /// post
     att atc /// allow for these options to keep terminology consistent
     * ///
@@ -162,13 +162,13 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`weight'" != "") local _weightexp "[`weight'`exp']"
       if ("`kmnoisily'" != "") local kmnoisily = "noisily"
 
-	  //return error if _depvar is in varlist 
-	  local _checkdv: list _depvar - varlist
-	  if "`_checkdv'" == "" {
-	  	noisily dis as error "Outcome `_depvar' may not be included in variable list for matching"
-		error 103
-		exit 
-	  }
+      // return error if _depvar is in varlist 
+      local _checkdv: list _depvar - varlist
+      if "`_checkdv'" == "" {
+        noisily dis as error "Outcome `_depvar' may not be included in matching set"
+        error 103
+        exit 
+      }
 	  
       // clean factor notation if exact matching
       // kmatch em treats everything as factor and so does nopo_summarize after kmatch em
@@ -202,14 +202,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       }
 
       // SEs supposed to be bootstrapped, so default is to not to compute standard errors
-      // if not specifically requested via naivese (probably wrong)
+      // if not specifically requested
       if "`kmatchse'" == "" {
-	  	local nose = "nose"
-		local po 
-	  }
+        local nose = "nose"
+        local po 
+      }
       else {
-	  	local nose
-		local po = "po"
+        local nose
+        local po = "po"
       }
       // run
       quietly {	
@@ -343,8 +343,8 @@ program define nopo_decomp, eclass
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
     fvrevar `_varset', list
     local _matchset = strrtrim(strltrim(stritrim("`r(varlist)'")))
-	local _xvars `e(xvars)'
-	local _ematch `e(ematch)'
+    local _xvars `e(xvars)'
+    local _ematch `e(ematch)'
 
     // weights
     if ("`e(wtype)'" != "") {
@@ -506,23 +506,22 @@ program define nopo_decomp, eclass
     gen `weight_cons' `_wexp'
     local _wexp_cons = "=`weight_cons'"
     if ("`_wtype'" == "pweight") local _wtype_cons = "aweight"
-        else local _wtype_cons = "`_wtype'"
+      else local _wtype_cons = "`_wtype'"
 
     // D
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 0
     scalar _meanA = r(mean)
-	local _nA = r(sum_w)
-	local _varA = r(Var)
+    local _nA = r(sum_w)
+    local _varA = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 1
     scalar _meanB = r(mean)
-	local _nB = r(sum_w)
-	local _varB = r(Var)
-
+    local _nB = r(sum_w)
+    local _varB = r(Var)
     mat b = J(1, 5, .)
     mat b[1,1] = _meanB - _meanA
     if ("`nopose'" != "") {	
       mat V = J(5, 5, 0)
-	  mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
+      mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
     }
     	
     // DA
@@ -530,7 +529,7 @@ program define nopo_decomp, eclass
     scalar _meanumA = r(mean)
     scalar _numA = r(N)
     scalar _numwA = r(sum_w)
-	local _varumA = r(Var)
+    local _varumA = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
     scalar _nA = r(N)
     scalar _nwA = r(sum_w)
@@ -540,50 +539,50 @@ program define nopo_decomp, eclass
     scalar _msharewA = (_nmwA / _nwA) * 100
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 1 & `sample'
     scalar _meanmA = r(mean)
-	scalar _varmA = r(Var)
+    scalar _varmA = r(Var)
     scalar _mgapA = _meanmA - _meanumA
     mat b[1,4] = _mgapA * (_numwA / _nwA)
     if (b[1,4] == .) mat b[1,4] = 0
     if ("`nopose'" != "") {	
-		local _vargapA = `_varumA' / _numwA + _varmA / _nmwA
-		mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// 		gap^2 * var of share 
-			+ (1 - _msharewA/100)^2 * `_vargapA' ///										share^2 * var of gap 
-			+ (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' //				var of share * var of gap 	  
-		if (V[4,4] == .) mat V[4,4] = 0
+      local _vargapA = `_varumA' / _numwA + _varmA / _nmwA
+      mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// gap^2 * var of share 
+			+ (1 - _msharewA/100)^2 * `_vargapA' /// share^2 * var of gap 
+			+ (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' // var of share * var of gap 	  
+      if (V[4,4] == .) mat V[4,4] = 0
     }
     /*
-	else {
-      // check if no variation in Y among unmatched: SE estimation problem with suest
-      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
-      estimates store da
-      suest da
-      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-        noisily dis "No variation in `_depvar' among unmatched in group A."
-        if (e(b)[1, "mean:_cons"] < 1e-6) {
-          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 0 & `sample', nocons
-        }
-        else {
-          tempvar _cons
-          gen double `_cons' = e(b)[1, "mean:_cons"]
-          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 0 & `sample', hascons
-        }
+    else {
+        // check if no variation in Y among unmatched: SE estimation problem with suest
+        // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
+        // do not check for other groups: among matched (also D0 DX) always serious estimation problem
+        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
         estimates store da
+        suest da
+        if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
+          noisily dis "No variation in `_depvar' among unmatched in group A."
+          if (e(b)[1, "mean:_cons"] < 1e-6) {
+            reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
+              if `treat' == 0 & `sample', nocons
+          }
+          else {
+            tempvar _cons
+            gen double `_cons' = e(b)[1, "mean:_cons"]
+            reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
+              if `treat' == 0 & `sample', hascons
+          }
+          estimates store da
+        }
+        if (_numA > 0) scalar _mgapA = _b[1.`matched']
+          else scalar _mgapA = .
       }
-      if (_numA > 0) scalar _mgapA = _b[1.`matched']
-        else scalar _mgapA = .
-    }
-	*/
+    */
 	
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
     scalar _meanumB = r(mean)
     scalar _numB = r(N)
     scalar _numwB = r(sum_w)
-	local _varumB = r(Var)
+    local _varumB = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
     scalar _nB = r(N)
     scalar _nwB = r(sum_w)
@@ -593,17 +592,17 @@ program define nopo_decomp, eclass
     scalar _msharewB = (_nmwB / _nwB) * 100
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 1 & `sample'
     scalar _meanmB = r(mean)
-	scalar _varmB = r(Var)
+    scalar _varmB = r(Var)
     scalar _mgapB = _meanmB - _meanumB
     mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
     if (b[1,5] == .) mat b[1,5] = 0
     if ("`nopose'" != "") {	
-		local _vargapB = `_varumB' / _numwB + _varmB / _nmwB
-		mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// 		gap^2 * var of share 
-			+ (1 - _msharewB/100)^2 * `_vargapB' ///										share^2 * var of gap 
-			+ (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' //				var of share * var of gap 	 
-		if (V[5,5] == .) mat V[5,5] = 0
-	}
+      local _vargapB = `_varumB' / _numwB + _varmB / _nmwB
+      mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// gap^2 * var of share 
+        + (1 - _msharewB/100)^2 * `_vargapB' /// share^2 * var of gap 
+        + (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' // var of share * var of gap 	 
+      if (V[5,5] == .) mat V[5,5] = 0
+	  }
     /*
     else {
       // check if no variation in Y among unmatched: SE estimation problem with suest
@@ -629,87 +628,85 @@ program define nopo_decomp, eclass
       if (_numB > 0) scalar _mgapB = _b[1.`matched']
         else scalar _mgapB = .
     }
-	*/
+	  */
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
     mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
     if ("`nopose'" != "") {
-		tempvar _yB
-		gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
-		local _alpha = _nmwA / _nmwB   								// ratio of both groups
-		
-		//how many units are matched to each observation
-		if "`att'" == "att" {
-			local _wA _KM_nc
-		}
-		if "`atc'" == "atc" {
-			local _wA _KM_nm
-		}
-		
-		// Generate strata if not exact matching 
-		if ("`_kmatch_subcmd'" != "em") {
-			tempvar _varcomb
-			egen `_varcomb' = group(`_matchset')
-			local _strata `_varcomb'
-			sum `_wA'
-			replace `_wA' = `_wA' / `r(sum)' * _nmwA // std. back to obsverations per group A in cases of multiple matches
-		}
-		
-		// Variance-Covariance estimation for counterfactual based on across strata
-		preserve 
-			collapse `_yB' `_wA'  (sd) _vB = `_yB' if `matched' == 1 & `treat' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
-			
-			replace _vB = _vB^2
-			misstable pat _vB
-			if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
-				local _note_on_SE "display note"
-				*replace _vB = _varmB if _vB == . // plugging in global variance
-				replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
-			}
-			
-			replace `_wA' = `_wA' / _nmwA
-			
-			//Variance of counterfactual
-			gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
-			sum _vcf
-			local _vcf = r(sum)
+      tempvar _yB
+      gen `_yB' = `_depvar' if `treat' == 1 & `matched' == 1 & `sample' // mark wages of matched of group B
+      local _alpha = _nmwA / _nmwB // ratio of both groups
 
-			//Covariance of weight and values for counterfactual
-			gen _cf = `_yB' * `_wA'
-			local _cf _cf
-			mata: C = st_data(., st_local("_cf"), .)
-			mata: _covcf = (sum(C*C') - trace(C*C'))
-			mata: st_numscalar("_covcf", _covcf)
-			
-		restore 
-		matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
-		if (V[2,2] == .) mat V[2,2] = 0
+      // how many units are matched to each observation
+      if "`att'" == "att" {
+        local _wA _KM_nc
+      }
+      if "`atc'" == "atc" {
+        local _wA _KM_nm
+      }
+
+      // Generate strata if not exact matching 
+      if ("`_kmatch_subcmd'" != "em") {
+        tempvar _varcomb
+        egen `_varcomb' = group(`_matchset')
+        local _strata `_varcomb'
+        sum `_wA'
+        replace `_wA' = `_wA' / `r(sum)' * _nmwA // std. back to obsverations per group A in cases of multiple matches
+      }
+
+      // Variance-Covariance estimation for counterfactual based on across strata
+      preserve 
+        collapse `_yB' `_wA'  (sd) _vB = `_yB' if `matched' == 1 & `treat' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
+        
+        replace _vB = _vB^2
+        misstable pat _vB
+        if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
+          local _note_on_SE "display note"
+          *replace _vB = _varmB if _vB == . // plugging in global variance
+          replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
+        }
+        
+        replace `_wA' = `_wA' / _nmwA
+        
+        //Variance of counterfactual
+        gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
+        sum _vcf
+        local _vcf = r(sum)
+
+        //Covariance of weight and values for counterfactual
+        gen _cf = `_yB' * `_wA'
+        local _cf _cf
+        mata: C = st_data(., st_local("_cf"), .)
+        mata: _covcf = (sum(C*C') - trace(C*C'))
+        mata: st_numscalar("_covcf", _covcf)
+        
+      restore 
+      matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
+      if (V[2,2] == .) mat V[2,2] = 0
 		
 		  /*
 		  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
 		  ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
 		  estimates store d0
 		  */
-	}
+	  }
 
-	if "`kmatchse'" != "" {
-		*noisily: ereturn list 
-		noisily: matrix list e(V)
-		noisily: matrix list e(b)
-	}
+    if "`kmatchse'" != "" {
+      *noisily: ereturn list 
+      noisily: matrix list e(V)
+      noisily: matrix list e(b)
+    }
 
 
     // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
-	if ("`nopose'" != "") {
+    if ("`nopose'" != "") {
 	
-		// Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
+      // Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
+      matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
+      if (V[3,3] == .) mat V[3,3] = 0
 		
-		matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
-		if (V[3,3] == .) mat V[3,3] = 0
-		
-	
-		/*
+		  /*
       /* if ("`att'" != "") local _xref = 1
         else local _xref = 0
 		
@@ -748,11 +745,11 @@ program define nopo_decomp, eclass
         (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
         (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
         , post */
-		*/
+		  */
     }
 	
-	// drop _KM_nc and _KM_nm after the SE calculation
-	tokenize `e(generate)'
+    // drop _KM_nc and _KM_nm after the SE calculation
+    tokenize `e(generate)'
     if ("`kmkeepgen'" == "") drop `2' `3' 
 	
     // return
@@ -784,8 +781,8 @@ program define nopo_decomp, eclass
     ereturn local bref = "`bref'"
     ereturn local by = "`_tvar'"
     ereturn local matchset = strltrim("`_matchset'")
-	ereturn local xvars = strltrim("`_xvars'")
-	ereturn local ematch = strltrim("`_ematch'")
+    ereturn local xvars = strltrim("`_xvars'")
+    ereturn local ematch = strltrim("`_ematch'")
     // nopo vars (uses kmatch gen vars: weight & strata = copies = doublettes if kmkeepgen)
     // empty locals are not returned by Stata by default
     cap drop _nopo_matched
