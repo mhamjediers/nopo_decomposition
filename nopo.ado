@@ -204,7 +204,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
 
       // SEs supposed to be bootstrapped, so default is to not to compute standard errors
       // if not specifically requested
-      if "`kmatchse'" == "" {
+      if ("`kmatchse'" == "") {
         local nose = "nose"
         local po 
       }
@@ -212,6 +212,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         local nose
         local po = "po"
       }
+      
       // run
       quietly {	
         `kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
@@ -768,15 +769,17 @@ program define nopo_decomp, eclass
     if ("`kmkeepgen'" == "") drop `2' `3' 
 	
     // return
-    if (`"`nopose'"' == "") {
+    if ("`nose'" != "") {
       // default
       mat colnames b = D D0 DX DA DB     
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     else {
-      mat colnames b = D D0 DX DA DB     
-      mat colnames V = D D0 DX DA DB 
-      mat rownames V = D D0 DX DA DB 
+      if ("`nopose'" != "") {
+        mat colnames b = D D0 DX DA DB    
+        mat colnames V = D D0 DX DA DB
+        mat rownames V = D D0 DX DA DB
+      }
       ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     ereturn local cmd = "nopo"
@@ -929,10 +932,9 @@ program define nopo_decomp, eclass
     ereturn display
   }
   if "`_note_on_SE'" != "" {
-  	dis as text "Note: Some strata have only one observation, which permits strata-specific variances."
-	dis as text _skip(6) "For these strata, the overall variance in `_depvar' of matched units are plugged in."
-	dis as text _skip(6) "Standard errors for D0 and DX are not robust against potential heteroskedasticity."
-
+    dis as text "Note: Some strata have only one observation, which permits strata-specific variances."
+    dis as text _skip(6) "For these strata, the overall variance in `_depvar' of matched units are plugged in."
+    dis as text _skip(6) "Standard errors for D0 and DX are not robust against potential heteroskedasticity."
   }
   
 end
