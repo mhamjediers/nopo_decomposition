@@ -377,7 +377,7 @@ version 10.1
 		}
 	}
 	scalar _t2 = 2 * _t2 / `_nm'
-	noisily dis "total2 by hand:" _t2 // WHY DIVISION BY 2 BELOW? that is the difference...
+	noisily dis "total2 by hand:" _t2
 
 	// original computation
 	quietly gen _wfym=_wf*_ym
@@ -391,6 +391,7 @@ version 10.1
 	quietly drop _wfym _sumwfym1 _sumwfym2 _sumwfym3
 
 	local _total2 = 2*(`_total2')/((`_nm')*((`_alpha')^2))
+	noisily dis "total2 original:" `_total2'
 
 	/* forvalues i = 0/2 {
 		noisily dis "total `i': `_total`i''"

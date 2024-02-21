@@ -160,7 +160,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       
       // get input
       gettoken _depvar varlist : varlist
-      if ("`kmatch'" == "") local kmatch = "em"
+      if ("`kmatch'" == "") {
+        local kmatch = "em"
+      }
+      else if (!inlist("`kmatch'", "md", "ps")) {
+        dis as error "Option kmatch(`kmatch') invalid; use 'em', 'md' or 'ps'"
+        error 198
+        exit
+      }
       if ("`weight'" != "") local _weightexp "[`weight'`exp']"
       if ("`kmnoisily'" != "") local kmnoisily = "noisily"
 
@@ -206,23 +213,28 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       // SEs supposed to be bootstrapped, so default is to not to compute standard errors
       // if not specifically requested
       if ("`kmatchse'" == "") {
-        local nose = "nose"
-        local po 
+        local nose "nose"
+        local _aux "`att' `atc'" // only one treatment effect
       }
       else {
+        if ("`kmatch'" == "em") {
+          dis as error "Option kmatchse only valid for kmatch(md) and kmatch(ps), not kmatch(`kmatch')"
+          error 198
+          exit
+        }
         local nose
-        local po = "po"
+        local _aux "nate att atc po ifgenerate" // we need all IFs for calculation
       }
       
       // run
       quietly {	
         `kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
-          , tval(`_tval') `att' `atc' generate wgenerate replace `kmopts' `nose' `po'
-          // perhaps strip opts of gen commands
+          , tval(`_tval') generate wgenerate replace `kmopts' `nose' `_aux'
+          // kmopts should be stripped of already set options
       }
       
       // save matching weight variable for passthru
-      local _mweight = "mweight(`e(wgenerate)')" // only one possible
+      local _mweight = "mweight(_W_`=strupper("`att'`atc'")')"
       // clear varlist
       local varlist
     }
@@ -265,41 +277,74 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       exit
     }
     else {
+
+      // default to ATT if present and not specified; fallback to ATC
+      if ("`att'" == "" & "`atc'" == "" & "`e(att)'" != "") {
+        local att = "att"
+        local atc
+      }
+      else if ("`att'" == "" & "`atc'" == "" & "`e(atc)'" != "") {
+        local att
+        local atc = "atc"
+      }
+
       // check if necessary kamtch options have been set by user
       local _cmdline `" `e(cmdline)' "'
       local _cmdadd ""
       // matching vars not generated
       if ("`e(generate)'" == "") local _cmdadd "`_cmdadd' generate"
       if ("`e(wgenerate)'" == "") local _cmdadd "`_cmdadd' wgenerate"
-      if (strpos(`"`_cmdline'"', " replace") == 0) local _cmdadd " `_cmdadd' replace"
-      // PO not requested (NEEDS CORRECTION: DEPENDS ON REQUESTED TEs)
-      cap dis e(b)[1, "Y0"] + e(b)[1, "Y1"]
-      if (_rc == 111) {
-        local _cmdadd "`_cmdadd' po" 
+      if (strpos(`"`_cmdline'"', " replace") == 0) local _cmdadd "`_cmdadd' replace"
+      // IFs not generated (md & ps kmatch SE only)
+      if ("`kmatchse'" != "") {
+
+        // assert not em
+        if ("`e(subcmd)'" == "em") {
+          dis as error "Option kmatchse only valid for kmatch md and ps, not `e(subcmd)'"
+          error 198
+          exit
+        }
+
+        // check for nate, att, atc, po
+        if (ustrregexm(`"`_cmdline'"', "nate") == 0) local _cmdadd "`_cmdadd' nate"
+        if ("`e(att)'" == "") local _cmdadd "`_cmdadd' ate"
+        if ("`e(atc)'" == "") local _cmdadd "`_cmdadd' atc"
+        if ("`e(po)'" == "")  local _cmdadd "`_cmdadd' po"
+        // IF: consider user prefix (extract using requested te, which presence has been asserted);
+        // better than using cmdline given abbrev possibilities
+        if ("`e(ifgenerate)'" == "") {
+          local _cmdadd "`_cmdadd' ifgenerate"
+        }
+        else {
+          // only change if not default
+          if (ustrregexm(`"`e(cmdline)'"', "\sifgen[erate]*\s") == 0) {
+            // prefixed?
+            if (ustrregexm(`"`e(cmdline)'"', "ifgen[erate]*\((\S+\*)\)") == 1) {
+              local _cmdadd "`_cmdadd' ifgenerate(`=ustrregexs(1)')"
+              local _cmdline = ustrregexrf(`"`_cmdline'"', "ifgen[erate]*\((\S+\*)\)", "")
+            }
+            else {
+              // namelist would not be correctly assigned without manual checking
+              // too cumbersome for this edge case, just display a note
+              local _ifrenamed = 1
+              local _cmdadd "`_cmdadd' ifgenerate"
+              local _cmdline = ustrregexrf(`"`_cmdline'"', "ifgen[erate]*\(*\)", "")
+            }
+          } 
+        }
+
       }
       // msg
-      dis as text "nopo requires a prior kmatch run with certain options. Re-running with:"
-      dis as text strltrim("`_cmdadd'")
-      // run
+      dis as text "nopo requires a prior kmatch run with certain options. Re-running with added:"
+      dis as text "`_cmdadd'"
+      if ("`_ifrenamed'" == "1") dis as text "(user-provided ifgenerate() names could not be preserved)"
+      // re-run
       qui `_cmdline' `_cmdadd'
-    }
 
-    // default to ATT if present and not specified; fallback to ATC
-    if ("`att'" == "" & "`atc'" == "" & "`e(att)'" != "") {
-      local att = "att"
-      local atc
+      // save matching weight variable for passthru
+      local _mweight = ustrregexm("`e(wgenerate)'", "\b\S+_`att'`atc'\b", 1)
+      local _mweight = "mweight(`=ustrregexs(0)')"
     }
-    else if ("`att'" == "" & "`atc'" == "" & "`e(atc)'" != "") {
-      local att
-      local atc = "atc"
-    }
-    
-    // save matching weight variable for passthru (flexible approach to prior kmatch specs)
-    local _idx = 1
-    if ("`e(ate)'" != "") local ++_idx // if ate present, jump to next word in weight list
-    if ("`e(att)'" != "" & "`atc'" != "") local ++_idx // defaults to ATT
-    local _mweight : word `_idx' of `e(wgenerate)'
-    local _mweight "mweight(`_mweight')"
 
   }
   // set passthru
@@ -567,32 +612,6 @@ program define nopo_decomp, eclass
         + (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' // var of share * var of gap 	  
       if (V[4,4] == .) mat V[4,4] = 0
     }
-    /*
-    else {
-        // check if no variation in Y among unmatched: SE estimation problem with suest
-        // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-        // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-        reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
-        estimates store da
-        suest da
-        if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-          noisily dis "No variation in `_depvar' among unmatched in group A."
-          if (e(b)[1, "mean:_cons"] < 1e-6) {
-            reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-              if `treat' == 0 & `sample', nocons
-          }
-          else {
-            tempvar _cons
-            gen double `_cons' = e(b)[1, "mean:_cons"]
-            reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-              if `treat' == 0 & `sample', hascons
-          }
-          estimates store da
-        }
-        if (_numA > 0) scalar _mgapA = _b[1.`matched']
-          else scalar _mgapA = .
-      }
-    */
 	
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
@@ -621,32 +640,6 @@ program define nopo_decomp, eclass
         + (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' // var of share * var of gap 	 
       if (V[5,5] == .) mat V[5,5] = 0
 	  }
-    /*
-    else {
-      // check if no variation in Y among unmatched: SE estimation problem with suest
-      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
-      estimates store db
-      suest db
-      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-        noisily dis "No variation in `_depvar' among unmatched in group B."
-        if (e(b)[1, "mean:_cons"] < 1e-6) {
-          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 1 & `sample', nocons
-        }
-        else {
-          tempvar _cons
-          gen double `_cons' = e(b)[1, "mean:_cons"]
-          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 1 & `sample', hascons
-        }
-        estimates store db
-      }
-      if (_numB > 0) scalar _mgapB = _b[1.`matched']
-        else scalar _mgapB = .
-    }
-	  */
 
     // D0 (always uses aweights and the matching weight returned by kmatch)
     mat b[1,2] = _d0 // scalar fetched from kmatch ereturns
@@ -702,11 +695,6 @@ program define nopo_decomp, eclass
       matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
       if (V[2,2] == .) mat V[2,2] = 0
 		
-		  /*
-		  reg `_depvar' i.`treat' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-		  ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-		  estimates store d0
-		  */
 	  }
 	 	  
     // DX 
@@ -833,6 +821,7 @@ program define nopo_decomp, eclass
 	
     // kmatch SE: all components in one go via nlcom
     if "`kmatchse'" != "" {
+      matrix
       /*nlcom ///
         (D0: _b[1.`treat'] ///
         (D0: [d0_mean]1.`treat') ///
@@ -845,9 +834,12 @@ program define nopo_decomp, eclass
       noisily: matrix list e(b)
     }
 	
-    // drop _KM_nc and _KM_nm after the SE calculation
+    // drop _KM_nc and _KM_nm after SE calculation
     tokenize `e(generate)'
-    if ("`kmkeepgen'" == "") drop `2' `3' 
+    if ("`kmkeepgen'" == "") drop `2' `3'
+
+    // drop IFs after SE calculation
+    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `e(ifgenerate)'
 	
     // return
     if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
