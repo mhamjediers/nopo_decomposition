@@ -489,8 +489,8 @@ program define nopo_decomp, eclass
       local bref = "`_groupA'"
     }
 
-    // save treatment effect (as D0)
-    scalar _d0 = e(b)[1,1]
+    // save ATT/ATC as D0
+    scalar _d0 = e(b)[1, `"`=strupper("`att'`atc'")'"']
     
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
@@ -770,21 +770,23 @@ program define nopo_decomp, eclass
     if "`kmatchse'" != "" {
       
       // get relevant IFs
-      foreach _if in Y1_NATE Y0_NATE Y0_ATT Y0_ATC Y1_ATT Y1_ATC {
+      foreach _if in NATE ATT ATC Y0_ATT Y0_ATC Y1_ATT Y1_ATC {
         local _IF_`_if' = ustrregexm("`e(ifgenerate)'", "\b\S+`_if'\b", 1)
         local _IF_`_if' = ustrregexs(0)
       }
 
       // gen IF for DX
       cap drop _IF_DX
-      gen _IF_DX = `_IF_Y0_ATT' - `_IF_Y0_ATC'
+      if ("`att'" == "att") gen _IF_DX = `_IF_Y0_ATT' - `_IF_Y0_ATC'
+        else if ("`atc'" == "atc") gen _IF_DX = `_IF_Y1_ATT' - `_IF_Y1_ATC'
       
       // check not aweight
       if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
         else local _wtype_cons = "`_wtype'"
 
       // get SEs
-      total _IF_NATE _IF_ATT _IF_DX [`_wtype_cons' `_wexp']
+      if ("`att'" == "att") total _IF_NATE _IF_ATT _IF_DX [`_wtype_cons' `_wexp']
+        else if ("`atc'" == "atc") total _IF_NATE _IF_ATC _IF_DX [`_wtype_cons' `_wexp']
 
       // set V
       mat V = vecdiag(e(V)), 1, 1
