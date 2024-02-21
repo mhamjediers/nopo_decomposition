@@ -760,7 +760,7 @@ program define nopo_decomp, eclass
     }
 	
 	// Standard Errors via Influence functions (yet, currently not with weighting)
-	if ("`ifse'" != "") { 
+	if ("`ifse'" != "") &  ("`_kmatch_subcmd'" == "em") { 
 		preserve 
 			keep if  `sample'
 		  
@@ -863,10 +863,15 @@ program define nopo_decomp, eclass
 		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
       }
 	   if ("`ifse'" != "") {
+	   	if ("`_kmatch_subcmd'" == "em") {
         mat colnames b = D D0 DX DA DB    
         mat colnames V = D D0 DX DA DB
         mat rownames V = D D0 DX DA DB
 		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+		}
+		else {
+			display in red "Standard errors via influence functions only for exact matching"
+		}
       }
     }
     ereturn local cmd = "nopo"
