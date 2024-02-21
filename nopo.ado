@@ -22,7 +22,8 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
     NOPOSE /// report Nopo SE 
-    KMATCHSE /// report Nopo SE
+	IFSE /// report Influence-Function SE
+    KMATCHSE /// report kmatch SE
     KEEPOMitted /// keep omitted coefficients by setting them to 1e-10 (no SE)
     /// post
     att atc /// allow for these options to keep terminology consistent
@@ -306,7 +307,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
-    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `nopose' `kmatchse' `keepomitted' ///
+    , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `nopose' `ifse' `kmatchse' `keepomitted' ///
     `options' 
 	
 end
@@ -328,6 +329,7 @@ program define nopo_decomp, eclass
       kmkeepgen ///
       dtable ///
       NOPOSE ///
+	  IFSE ///
       KMATCHSE ///
       KEEPOMitted ///
     ]
@@ -678,8 +680,8 @@ program define nopo_decomp, eclass
         misstable pat _vB
         if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
           local _note_on_SE "display note"
-          *replace _vB = _varmB if _vB == . // plugging in global variance
-          replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
+          replace _vB = _varmB if _vB == . // plugging in global variance
+          //replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
         }
         
         replace `_wA' = `_wA' / _nmwA
@@ -706,7 +708,7 @@ program define nopo_decomp, eclass
 		  estimates store d0
 		  */
 	  }
-
+	 	  
     // DX 
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
     if ("`nopose'" != "") {
@@ -756,7 +758,79 @@ program define nopo_decomp, eclass
         , post */
 		  */
     }
+	
+	// Standard Errors via Influence functions (yet, currently not with weighting)
+	if ("`ifse'" != "") { 
+		preserve 
+			keep if  `sample'
+		  
+			// count number of observations within stratum
+			sort `_strata'
+			by `_strata': generate T = sum(`treat' == 1 & `matched' == 1)
+			by `_strata': replace T = T[_N] // size of treatment group within stratum
+			by `_strata': generate C = sum(`treat' == 0 & `matched' == 1)
+			by `_strata': replace C = C[_N] // size of control group within stratum
+		  
+			// exclude strata that have insufficient treatment variability (with default
+			// settings, teffect requires at least 3 treated and 3 controls per stratum)
+			*keep if T>=3 & C>=3
+			
+			// compute within-stratum outcome averages in control group
+			by `_strata': generate double y0 = sum(`_depvar'*(`treat'==0 & `matched' == 1))
+			by `_strata': replace y0 = y0[_N] / C if `matched' == 1
+		  
+			// data into mata
+			mata: N = st_nobs()
+			mata: D = st_data(.,"`treat'", .)
+			mata: Y = st_data(.,"`_depvar'", .)
+			mata: M = st_data(.,"`matched'", .)
+			mata: T = st_data(.,"T",.)
+			mata: C = st_data(.,"C", .)
+			mata: y0 = st_data(.,"y0", .)
+			
+			// D
+			mata: IF_D = (Y :- mean(Y, D)) + (Y :- mean(Y, !D))
+			
+			// subset to matched for D0 and DX
+			mata: Dm = D :* M
+			mata: Ym = Y :* M
+			mata: T =  T :* M
+			mata: C =  C :* M
+			mata: y0 = y0 :* M
+					
+			// compute IF for A(matched)
+			mata: IF_Am = N/sum(!Dm) * !Dm :* (Ym :- mean(Ym, !Dm))
+			// compute IF for B(matched)
+			mata: IF_Bm = N/sum(Dm) * Dm :* (Ym :- mean(Ym, Dm))
+			// compute IF for A^B
+			mata: IF_AB = N/sum(Dm) * (Dm :* (y0 :- mean(y0, Dm)) + T :/ C :* !Dm :* (Ym - y0))
+			// compute IF for D0
+			mata: IF_D0 = IF_Bm - IF_eta01
+			mata: IF_DX = IF_eta01 - IF_Am
 
+			// DA 
+			// subset to group A
+			mata: mA = M :* D
+			mata: YA = Y :* D
+			// compute IF of DA
+			mata: IF_DA = N/sum( mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
+						+ N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) /// mean of unmatched
+			
+			// DB
+			// subset to group B
+			mata: mB = M :* !D
+			mata: YB = Y :* !D
+			// compute IF of DB
+			mata: IF_DB = N/sum( mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
+						+ N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) /// mean of unmatched
+						
+			mata: V_if = variance((IF_D, IF_D0, IF_DX, IF_DA, IF_DB)) / N
+			mata: st_matrix("V", V_if)			
+			
+		restore		  
+	  }
+
+	
     // kmatch SE: all components in one go via nlcom
     if "`kmatchse'" != "" {
       /*nlcom ///
@@ -776,7 +850,7 @@ program define nopo_decomp, eclass
     if ("`kmkeepgen'" == "") drop `2' `3' 
 	
     // return
-    if ("`nopose'" == "" & "`kmatchse'" == "") {
+    if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
       // default
       mat colnames b = D D0 DX DA DB     
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
@@ -786,8 +860,14 @@ program define nopo_decomp, eclass
         mat colnames b = D D0 DX DA DB    
         mat colnames V = D D0 DX DA DB
         mat rownames V = D D0 DX DA DB
+		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
       }
-      ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+	   if ("`ifse'" != "") {
+        mat colnames b = D D0 DX DA DB    
+        mat colnames V = D D0 DX DA DB
+        mat rownames V = D D0 DX DA DB
+		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+      }
     }
     ereturn local cmd = "nopo"
     ereturn local subcmd = "`subcmd'"

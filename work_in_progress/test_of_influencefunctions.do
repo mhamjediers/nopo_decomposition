@@ -14,7 +14,6 @@ qui forvalues i = 1/`sim' {
 
 	mata: N = st_nobs()
 	mata: D = st_data(.,"d")
-    mata: NOTD = st_data(.,"notd")
 	mata: Y = st_data(.,"y")
 
 	mata: y0 = mean(Y, NOTD) // mean matched
