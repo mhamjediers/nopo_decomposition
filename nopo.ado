@@ -219,7 +219,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       else {
         if ("`kmatch'" == "em") {
           dis as error "Option kmatchse only valid for kmatch(md) and kmatch(ps), not kmatch(`kmatch')"
-          error 198
+          error 322
           exit
         }
         local nose
@@ -301,15 +301,15 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         // assert not em
         if ("`e(subcmd)'" == "em") {
           dis as error "Option kmatchse only valid for kmatch md and ps, not `e(subcmd)'"
-          error 198
+          error 322
           exit
         }
 
         // check for nate, att, atc, po
-        if (ustrregexm(`"`_cmdline'"', "nate") == 0) local _cmdadd "`_cmdadd' nate"
+        if (ustrregexm(`"`_cmdline'"', "\bnate\b") == 0) local _cmdadd "`_cmdadd' nate"
         if ("`e(att)'" == "") local _cmdadd "`_cmdadd' ate"
         if ("`e(atc)'" == "") local _cmdadd "`_cmdadd' atc"
-        if ("`e(po)'" == "")  local _cmdadd "`_cmdadd' po"
+        if (ustrregexm(`"`_cmdline'"', "\bpo\b") == 0)  local _cmdadd "`_cmdadd' po"
         // IF: consider user prefix (extract using requested te, which presence has been asserted);
         // better than using cmdline given abbrev possibilities
         if ("`e(ifgenerate)'" == "") {
@@ -545,23 +545,6 @@ program define nopo_decomp, eclass
     // gather/estimate components
     //
     
-    /*
-     suest is used to calculate SEs accounting for the covariance between components. 
-     DX is estimated as delta: = D - D0 - DA -DB. suest requires some hacking around weighting 
-     restrictions:
-
-     - D0 always needs aweights (pweights not allowed in suest)
-     - if user provides fweights, we need to tell Stata that the weight used in D0 estimates is
-       fweight instead of the actual aweight
-     - use vce only in suest estimation
-
-     SEs are not correct and are not returned if not specifically requested via 'naivese';
-     users have to use bootstrap
-
-     SPEED UP: since bootstrapping is necessary for anybody not requesting naivese, you can estimate
-     everything without standard errors.
-    */
-    
     // weighting helpers
     tempvar weight_cons
     gen `weight_cons' `_wexp'
@@ -650,10 +633,10 @@ program define nopo_decomp, eclass
 
       // how many units are matched to each observation
       if "`att'" == "att" {
-        local _wA _KM_nc
+        local _wA _KM_nc // not user-spec safe
       }
       if "`atc'" == "atc" {
-        local _wA _KM_nm
+        local _wA _KM_nm // not user-spec safe
       }
 
       // Generate strata if not exact matching 
@@ -704,142 +687,113 @@ program define nopo_decomp, eclass
       // Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
       matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
       if (V[3,3] == .) mat V[3,3] = 0
-		
-		  /*
-      /* if ("`att'" != "") local _xref = 1
-        else local _xref = 0
-		
-      tempvar sub expanded
-      expand 2 if `treat' != `_xref', gen(`expanded')
-      gen `sub' = `_xref' if `treat' != `_xref'
-      replace `sub' = abs(1 - `_xref') if `expanded' == 1
-      replace `weight_cons' `_wexp' if `expanded' == 1
-      noi reg `_depvar' i.`sub' [aw `_wexp_cons'] if `matched' == 1 & `sample'
-      ereturn local wtype = "`_wtype_cons'" // tell Stata we used the originally provided weight
-      estimates store dx
-      drop if `expanded' == 1 */
 
-      // change to standard weight
-      replace `weight_cons' `_wexp'
-
-      // suest & nlcom
-      suest d d0 da db, vce(`vce') // analytic and cluster only!
-      nlcom ///
-        (D: [d_mean]1.`treat') ///
-        (D0: [d0_mean]1.`treat') ///
-        (DX: [d_mean]1.`treat' ///
-            - [d0_mean]1.`treat' ///
-            - [da_mean]1.`matched' * ( _numwA / _nwA ) ///
-            - [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-        , post
-
-      // suest & nlcom
-      /* noi suest d d0 dx da db, vce(`vce') // analytic and cluster only!
-      nlcom ///
-        (D: [d_mean]1.`treat') ///
-        (D0: [d0_mean]1.`treat') ///
-        (DX: [dx_mean]1.`sub') ///
-        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-        , post */
-		  */
     }
 	
-	// Standard Errors via Influence functions (yet, currently not with weighting)
-	if ("`ifse'" != "") &  ("`_kmatch_subcmd'" == "em") { 
-		preserve 
-			keep if  `sample'
-		  
-			// count number of observations within stratum
-			sort `_strata'
-			by `_strata': generate T = sum(`treat' == 1 & `matched' == 1)
-			by `_strata': replace T = T[_N] // size of treatment group within stratum
-			by `_strata': generate C = sum(`treat' == 0 & `matched' == 1)
-			by `_strata': replace C = C[_N] // size of control group within stratum
-		  
-			// exclude strata that have insufficient treatment variability (with default
-			// settings, teffect requires at least 3 treated and 3 controls per stratum)
-			*keep if T>=3 & C>=3
-			
-			// compute within-stratum outcome averages in control group
-			by `_strata': generate double y0 = sum(`_depvar'*(`treat'==0 & `matched' == 1))
-			by `_strata': replace y0 = y0[_N] / C if `matched' == 1
-		  
-			// data into mata
-			mata: N = st_nobs()
-			mata: D = st_data(.,"`treat'", .)
-			mata: Y = st_data(.,"`_depvar'", .)
-			mata: M = st_data(.,"`matched'", .)
-			mata: T = st_data(.,"T",.)
-			mata: C = st_data(.,"C", .)
-			mata: y0 = st_data(.,"y0", .)
-			
-			// D
-			mata: IF_D = (Y :- mean(Y, D)) + (Y :- mean(Y, !D))
-			
-			// subset to matched for D0 and DX
-			mata: Dm = D :* M
-			mata: Ym = Y :* M
-			mata: T =  T :* M
-			mata: C =  C :* M
-			mata: y0 = y0 :* M
-					
-			// compute IF for A(matched)
-			mata: IF_Am = N/sum(!Dm) * !Dm :* (Ym :- mean(Ym, !Dm))
-			// compute IF for B(matched)
-			mata: IF_Bm = N/sum(Dm) * Dm :* (Ym :- mean(Ym, Dm))
-			// compute IF for A^B
-			mata: IF_AB = N/sum(Dm) * (Dm :* (y0 :- mean(y0, Dm)) + T :/ C :* !Dm :* (Ym - y0))
-			// compute IF for D0
-			mata: IF_D0 = IF_Bm - IF_eta01
-			mata: IF_DX = IF_eta01 - IF_Am
+    // Standard Errors via Influence functions (yet, currently not with weighting)
+    if ("`ifse'" != "") &  ("`_kmatch_subcmd'" == "em") { 
+      preserve 
+        keep if  `sample'
+        
+        // count number of observations within stratum
+        sort `_strata'
+        by `_strata': generate T = sum(`treat' == 1 & `matched' == 1)
+        by `_strata': replace T = T[_N] // size of treatment group within stratum
+        by `_strata': generate C = sum(`treat' == 0 & `matched' == 1)
+        by `_strata': replace C = C[_N] // size of control group within stratum
+        
+        // exclude strata that have insufficient treatment variability (with default
+        // settings, teffect requires at least 3 treated and 3 controls per stratum)
+        *keep if T>=3 & C>=3
+        
+        // compute within-stratum outcome averages in control group
+        by `_strata': generate double y0 = sum(`_depvar'*(`treat'==0 & `matched' == 1))
+        by `_strata': replace y0 = y0[_N] / C if `matched' == 1
+        
+        // data into mata
+        mata: N = st_nobs()
+        mata: D = st_data(.,"`treat'", .)
+        mata: Y = st_data(.,"`_depvar'", .)
+        mata: M = st_data(.,"`matched'", .)
+        mata: T = st_data(.,"T",.)
+        mata: C = st_data(.,"C", .)
+        mata: y0 = st_data(.,"y0", .)
+        
+        // D
+        mata: IF_D = (Y :- mean(Y, D)) + (Y :- mean(Y, !D))
+        
+        // subset to matched for D0 and DX
+        mata: Dm = D :* M
+        mata: Ym = Y :* M
+        mata: T =  T :* M
+        mata: C =  C :* M
+        mata: y0 = y0 :* M
+            
+        // compute IF for A(matched)
+        mata: IF_Am = N/sum(!Dm) * !Dm :* (Ym :- mean(Ym, !Dm))
+        // compute IF for B(matched)
+        mata: IF_Bm = N/sum(Dm) * Dm :* (Ym :- mean(Ym, Dm))
+        // compute IF for A^B
+        mata: IF_AB = N/sum(Dm) * (Dm :* (y0 :- mean(y0, Dm)) + T :/ C :* !Dm :* (Ym - y0))
+        // compute IF for D0
+        mata: IF_D0 = IF_Bm - IF_eta01
+        mata: IF_DX = IF_eta01 - IF_Am
 
-			// DA 
-			// subset to group A
-			mata: mA = M :* D
-			mata: YA = Y :* D
-			// compute IF of DA
-			mata: IF_DA = N/sum( mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
-						+ N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) /// mean of unmatched
-			
-			// DB
-			// subset to group B
-			mata: mB = M :* !D
-			mata: YB = Y :* !D
-			// compute IF of DB
-			mata: IF_DB = N/sum( mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
-						+ N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) /// mean of unmatched
-						
-			mata: V_if = variance((IF_D, IF_D0, IF_DX, IF_DA, IF_DB)) / N
-			mata: st_matrix("V", V_if)			
-			
-		restore		  
+        // DA 
+        // subset to group A
+        mata: mA = M :* D
+        mata: YA = Y :* D
+        // compute IF of DA
+        mata: IF_DA = N/sum( mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
+              + N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) /// mean of unmatched
+        
+        // DB
+        // subset to group B
+        mata: mB = M :* !D
+        mata: YB = Y :* !D
+        // compute IF of DB
+        mata: IF_DB = N/sum( mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
+              + N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) /// mean of unmatched
+              
+        mata: V_if = variance((IF_D, IF_D0, IF_DX, IF_DA, IF_DB)) / N
+        mata: st_matrix("V", V_if)			
+        
+      restore		  
 	  }
 
-	
-    // kmatch SE: all components in one go via nlcom
-    if "`kmatchse'" != "" {
-      matrix
-      /*nlcom ///
-        (D0: _b[1.`treat'] ///
-        (D0: [d0_mean]1.`treat') ///
-        (DX: [dx_mean]1.`sub') ///
-        (DA: [da_mean]1.`matched' * ( _numwA / _nwA )) ///
-        (DB: [db_mean]1.`matched' * -1 * ( _numwB / _nwB )) ///
-        , post */
-      *noisily: ereturn list 
-      noisily: matrix list e(V)
-      noisily: matrix list e(b)
-    }
-	
     // drop _KM_nc and _KM_nm after SE calculation
     tokenize `e(generate)'
     if ("`kmkeepgen'" == "") drop `2' `3'
 
+	
+    // kmatch SE (atm with total, has ereturns)
+    if "`kmatchse'" != "" {
+      
+      // get relevant IFs
+      foreach _if in Y1_NATE Y0_NATE Y0_ATT Y0_ATC Y1_ATT Y1_ATC {
+        local _IF_`_if' = ustrregexm("`e(ifgenerate)'", "\b\S+`_if'\b", 1)
+        local _IF_`_if' = ustrregexs(0)
+      }
+
+      // gen IF for DX
+      cap drop _IF_DX
+      gen _IF_DX = `_IF_Y0_ATT' - `_IF_Y0_ATC'
+      
+      // check not aweight
+      if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
+        else local _wtype_cons = "`_wtype'"
+
+      // get SEs
+      total _IF_NATE _IF_ATT _IF_DX [`_wtype_cons' `_wexp']
+
+      // set V
+      mat V = vecdiag(e(V)), 1, 1
+      mat V = diag(V)
+      
+    }
+
     // drop IFs after SE calculation
-    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `e(ifgenerate)'
+    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `e(ifgenerate)' _IF_DX
 	
     // return
     if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
@@ -848,22 +802,22 @@ program define nopo_decomp, eclass
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     else {
-      if ("`nopose'" != "") {
+      if ("`nopose'" != "" | "`kmatchse'" != "") {
         mat colnames b = D D0 DX DA DB    
         mat colnames V = D D0 DX DA DB
         mat rownames V = D D0 DX DA DB
-		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+		    ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
       }
-	   if ("`ifse'" != "") {
-	   	if ("`_kmatch_subcmd'" == "em") {
-        mat colnames b = D D0 DX DA DB    
-        mat colnames V = D D0 DX DA DB
-        mat rownames V = D D0 DX DA DB
-		ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
-		}
-		else {
-			display in red "Standard errors via influence functions only for exact matching"
-		}
+	    if ("`ifse'" != "") {
+        if ("`_kmatch_subcmd'" == "em") {
+          mat colnames b = D D0 DX DA DB    
+          mat colnames V = D D0 DX DA DB
+          mat rownames V = D D0 DX DA DB
+          ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
+        }
+        else {
+          display in red "Standard errors via influence functions only for exact matching"
+        }
       }
     }
     ereturn local cmd = "nopo"
