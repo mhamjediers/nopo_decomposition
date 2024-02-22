@@ -1,7 +1,8 @@
 cap cd "Z:\Projekte\stata_nopo_decomp\nopo_decomposition"
 run "nopo.ado"
-qui kmatch md female educ_c exper_c tenure_c (lnwage), ate att atc po ifgenerate(t1_*) replace
+kmatch md female educ_c exper_c tenure_c (lnwage) [pw=wt], nate ate att atc po  ifgenerate(t1_*) replace vce(cluster married) 
 nopo decomp, kmatchse att
+stop
 qui kmatch md female educ_c exper_c tenure_c (lnwage), ate att atc po ifgenerate(t1_*) replace
 nopo decomp, kmatchse atc
 stop

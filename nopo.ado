@@ -416,9 +416,21 @@ program define nopo_decomp, eclass
       local _wtype = "aweight"
       local _wexp = "=1"
     }
-    if ("`naivese'" != "") {
-      if ("`e(vce)'" == "analytic") local vce = "robust"
-        else local vce = "`e(vce)' `e(clustvar)'" // cluster only alternative
+    /*
+     VCE SHOULD BE GENERALLY SET IRRESPECTIVE OF REQUESTED SE: ENHANCEMENT
+    */
+    if ("`kmatchse'" != "") {
+      if ("`e(vce)'" == "cluster") {
+        local vce = "`e(vce)' `e(clustvar)'"
+      }
+      else if ("`e(vce)'" == "analytic") {
+        local vce = "analytic"
+      }
+      else {
+        dis as error "Allowed vce types are 'analytic' and 'cluster'. Use the bootstrap or jackknife prefix notation for these vce"
+        error 322
+        exit
+      } 
     }
     // generated matching vars processing
     /*
@@ -769,6 +781,10 @@ program define nopo_decomp, eclass
     // kmatch SE (atm with total, has ereturns)
     if "`kmatchse'" != "" {
       
+      // save before ereturn
+      local _ifgenerate "`e(ifgenerate)'"
+      local _wgenerate "`e(wgenerate)'"
+      
       // get relevant IFs
       foreach _if in NATE ATT ATC Y0_ATT Y0_ATC Y1_ATT Y1_ATC {
         local _IF_`_if' = ustrregexm("`e(ifgenerate)'", "\b\S+`_if'\b", 1)
@@ -776,17 +792,18 @@ program define nopo_decomp, eclass
       }
 
       // gen IF for DX
-      cap drop _IF_DX
-      if ("`att'" == "att") gen _IF_DX = `_IF_Y0_ATT' - `_IF_Y0_ATC'
-        else if ("`atc'" == "atc") gen _IF_DX = `_IF_Y1_ATT' - `_IF_Y1_ATC'
+      tempvar _IF_DX
+      if ("`att'" == "att") gen `_IF_DX' = `_IF_Y0_ATT' - `_IF_Y0_ATC'
+        else if ("`atc'" == "atc") gen `_IF_DX' = `_IF_Y1_ATT' - `_IF_Y1_ATC'
       
-      // check not aweight
-      if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
+      // check weight restrictions for total
+      if (inlist("`_wtype'", "aweight", "pweight") & "`vce'" == "analytic") local _wtype_cons = "iweight"
+        else if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
         else local _wtype_cons = "`_wtype'"
 
       // get SEs
-      if ("`att'" == "att") total _IF_NATE _IF_ATT _IF_DX [`_wtype_cons' `_wexp']
-        else if ("`atc'" == "atc") total _IF_NATE _IF_ATC _IF_DX [`_wtype_cons' `_wexp']
+      if ("`att'" == "att") total `_IF_NATE' `_IF_ATT' `_IF_DX' [`_wtype_cons' `_wexp'], vce(`vce')
+        else if ("`atc'" == "atc") total `_IF_NATE' `_IF_ATC' `_IF_DX' [`_wtype_cons' `_wexp'], vce(`vce')
 
       // set V
       mat V = vecdiag(e(V)), 1, 1
@@ -795,7 +812,7 @@ program define nopo_decomp, eclass
     }
 
     // drop IFs after SE calculation
-    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `e(ifgenerate)' _IF_DX
+    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `_ifgenerate' `_IF_DX'
 	
     // return
     if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
@@ -865,7 +882,7 @@ program define nopo_decomp, eclass
       lab var _nopo_ps "Matching propensity score"
       ereturn local ps = "_nopo_ps"
     }
-    if ("`kmkeepgen'" == "") drop `mweight' `_strata' `_ps'
+    if ("`kmkeepgen'" == "") drop `_wgenerate' `e(wgenerate)' `_strata' `_ps'
   
     if ("`_nn'" != "") ereturn scalar nn = `_nn'
     if ("`_bwidth'" != "") ereturn scalar bwidth = `_bwidth'
