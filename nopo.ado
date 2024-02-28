@@ -22,7 +22,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
     NOPOSE /// report Nopo SE 
-	IFSE /// report Influence-Function SE
+	  IFSE /// report Influence-Function SE
     KMATCHSE /// report kmatch SE
     KEEPOMitted /// keep omitted coefficients by setting them to 1e-10 (no SE)
     /// post
@@ -225,6 +225,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         local nose
         local _aux "nate att atc po ifgenerate" // we need all IFs for calculation
       }
+
+      // ensure shared bandwidth for both matching directions if md/ps
+      /*
+       We need to ensure the same bandwidth so that any unit is matched in both directions.
+       Otherwise we would have wrong matched shares (as some count as matched but have 0 weight)
+       and wrong depvar means for matched/unmatched entering DA/DB.
+      */
+      if ("`kmatch'" != "em") local _aux "`_aux' sharedbwidth"
       
       // run
       quietly {	
@@ -288,13 +296,15 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         local atc = "atc"
       }
 
-      // check if necessary kamtch options have been set by user
+      // check if necessary kmatch options have been set by user
       local _cmdline `" `e(cmdline)' "'
       local _cmdadd ""
       // matching vars not generated
       if ("`e(generate)'" == "") local _cmdadd "`_cmdadd' generate"
       if ("`e(wgenerate)'" == "") local _cmdadd "`_cmdadd' wgenerate"
-      if (strpos(`"`_cmdline'"', " replace") == 0) local _cmdadd "`_cmdadd' replace"
+      if (ustrregexm(`"`_cmdline'"', "\breplace\b") == 0) local _cmdadd "`_cmdadd' replace"
+      // shared bandwidth in both directions (necessary for correct DA/DB and kmatchse)
+      if ("`e(subcmd)'" != "em" & ustrregexm(`"`_cmdline'"', "\bsharedbwidth\b") == 0) local _cmdadd "`_cmdadd' sharedbwidth"
       // IFs not generated (md & ps kmatch SE only)
       if ("`kmatchse'" != "") {
 
@@ -374,7 +384,7 @@ program define nopo_decomp, eclass
       kmkeepgen ///
       dtable ///
       NOPOSE ///
-	  IFSE ///
+	    IFSE ///
       KMATCHSE ///
       KEEPOMitted ///
     ]
@@ -418,13 +428,15 @@ program define nopo_decomp, eclass
     }
     /*
      VCE SHOULD BE GENERALLY SET IRRESPECTIVE OF REQUESTED SE: ENHANCEMENT
+     But: strange thing: vce() and vce(analytic)
     */
     if ("`kmatchse'" != "") {
       if ("`e(vce)'" == "cluster") {
         local vce = "`e(vce)' `e(clustvar)'"
       }
       else if ("`e(vce)'" == "analytic") {
-        local vce = "analytic"
+        local vce = ""
+        dis as text "Note: 'kmatchse' standard errors are always robust irrespective of 'vce(analytic)'"
       }
       else {
         dis as error "Allowed vce types are 'analytic' and 'cluster'. Use the bootstrap or jackknife prefix notation for these vce"
@@ -795,24 +807,50 @@ program define nopo_decomp, eclass
       tempvar _IF_DX
       if ("`att'" == "att") gen `_IF_DX' = `_IF_Y0_ATT' - `_IF_Y0_ATC'
         else if ("`atc'" == "atc") gen `_IF_DX' = `_IF_Y1_ATT' - `_IF_Y1_ATC'
+
+      // gen IF for DA
+      tempvar _IF_DA
+      if (_numA > 0) {
+        summarize `_depvar' ///
+          if `matched' == 0 & `treat' == 0 & `sample' [`_wtype_cons' `_wexp_cons'], meanonly
+        generate `_IF_DA' = ///
+          (`matched' == 0 & `treat' == 0 & `sample') * (`_depvar' - r(mean)) / r(sum_w)
+        replace `_IF_DA' = (`_IF_Y0ATC' - `_IF_DA') * (_numwA / _nwA)
+      }
+      else {
+        gen `_IF_DA' = 0
+      }
+
+      // gen IF for DB
+      tempvar _IF_DB
+      if (_numB > 0) {
+        summarize `_depvar' ///
+          if `matched' == 0 & `treat' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], meanonly
+        generate `_IF_DB' = ///
+          (`matched' == 0 & `treat' == 1 & `sample') * (`_depvar' - r(mean)) / r(sum_w)
+        replace `_IF_DB' = (`_IF_Y1_ATT' - `_IF_DB') * (_numwB / _nwB)
+      }
+      else {
+        gen `_IF_DB' = 0
+      }
       
       // check weight restrictions for total
-      if (inlist("`_wtype'", "aweight", "pweight") & "`vce'" == "analytic") local _wtype_cons = "iweight"
-        else if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
+      if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
         else local _wtype_cons = "`_wtype'"
 
-      // get SEs
-      if ("`att'" == "att") total `_IF_NATE' `_IF_ATT' `_IF_DX' [`_wtype_cons' `_wexp'], vce(`vce')
-        else if ("`atc'" == "atc") total `_IF_NATE' `_IF_ATC' `_IF_DX' [`_wtype_cons' `_wexp'], vce(`vce')
-
-      // set V
-      mat V = vecdiag(e(V)), 1, 1
-      mat V = diag(V)
+      // get V
+      if ("`att'" == "att") {
+        noi total `_IF_NATE' `_IF_ATT' `_IF_DX' `_IF_DA' `_IF_DB' [`_wtype_cons' `_wexp'], vce(`vce')
+      }
+      else if ("`atc'" == "atc") {
+        noi total `_IF_NATE' `_IF_ATC' `_IF_DX' `_IF_DA' `_IF_DB' [`_wtype_cons' `_wexp'], vce(`vce')
+      }
+      mat V = e(V)
       
     }
 
     // drop IFs after SE calculation
-    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `_ifgenerate' `_IF_DX'
+    if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `_ifgenerate'
 	
     // return
     if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
@@ -835,6 +873,7 @@ program define nopo_decomp, eclass
           ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
         }
         else {
+          // STREAMLINE APPROACH: report estimates but no SE or error out (kmatchse does so)?
           display in red "Standard errors via influence functions only for exact matching"
         }
       }
