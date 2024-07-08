@@ -27,6 +27,10 @@ Please consider the help file provided with the package via `help nopo` and the 
 
 Please either open an issue here or drop us a [mail](mailto:maximilian.sprengholz@hu-berlin.de,maik.hamjediers@hu-berlin.de?subject=[nopo]%20Bug%20Report).
 
+## Version Log
+
+- `1.0.1`: Fixed Stata 15 error due to unallowed direct acces to special matrices such as `e(b)`
+
 ## References
 Jann, B. (2020). KMATCH: Stata module module for multivariate-distance and propensity-score matching, including entropy balancing, inverse probability weighting, (coarsened) exact matching, and regression adjustment. Statistical Software Components. https://ideas.repec.org//c/boc/bocode/s458346.html
 

@@ -1,4 +1,4 @@
-*! version 1.0.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers
+*! version 1.0.1   08jul2024  Maximilian Sprengholz & Maik Hamjediers
 
 //
 // wrapper
@@ -418,11 +418,15 @@ program define nopo_decomp, eclass
     }
 
     // save treatment effect (as D0)
-    scalar _d0 = e(b)[1,1]
+    mata: st_numscalar("_d0", st_matrix("e(b)")[1,1]) // backwards comp. matrix access
+    //scalar _d0 = e(b)[1,1]
     
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
-    if ("`e(bwidth)'" != "") local _bwidth = e(bwidth)[1, "`att'`atc'"]
+    if ("`e(bwidth)'" != "") {
+      mat _bw = e(bwidth)
+      local _bwidth = _bw[1, "`att'`atc'"]
+    }
     if ("`e(ridge)'" != "") local _ridge = e(ridge)
 
     // abort if matched without replacement (replacement necessary for correct weights)
@@ -499,8 +503,10 @@ program define nopo_decomp, eclass
 
     // D
     mean `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample', over(`treat')
-    scalar _meanA = e(b)[1,1]
-    scalar _meanB = e(b)[1,2]
+    mata: st_numscalar("_meanA", st_matrix("e(b)")[1,1]) // backwards comp. matrix access
+    //scalar _meanA = e(b)[1,1]
+    mata: st_numscalar("_meanB", st_matrix("e(b)")[1,2]) // backwards comp. matrix access
+    //scalar _meanB = e(b)[1,2]
     if ("`naivese'" == "") {
       mat b = J(1, 5, .)
       mat b[1,1] = _meanB - _meanA
@@ -529,30 +535,6 @@ program define nopo_decomp, eclass
       mat b[1,4] = _mgapA * (_numwA / _nwA)
       if (b[1,4] == .) mat b[1,4] = 0
     }
-    else {
-      // check if no variation in Y among unmatched: SE estimation problem with suest
-      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `sample'
-      estimates store da
-      suest da
-      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-        noisily dis "No variation in `_depvar' among unmatched in group A."
-        if (e(b)[1, "mean:_cons"] < 1e-6) {
-          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 0 & `sample', nocons
-        }
-        else {
-          tempvar _cons
-          gen double `_cons' = e(b)[1, "mean:_cons"]
-          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 0 & `sample', hascons
-        }
-        estimates store da
-      }
-      if (_numA > 0) scalar _mgapA = _b[1.`matched']
-        else scalar _mgapA = .
-    }
 
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
@@ -572,30 +554,6 @@ program define nopo_decomp, eclass
       scalar _mgapB = _meanmB - _meanumB
       mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
       if (b[1,5] == .) mat b[1,5] = 0
-    }
-    else {
-      // check if no variation in Y among unmatched: SE estimation problem with suest
-      // if suest SE is missing or infinitesimally small, estimate with manually plugged in constant
-      // do not check for other groups: among matched (also D0 DX) always serious estimation problem
-      reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `sample'
-      estimates store db
-      suest db
-      if (e(V)["mean:_cons", "mean:_cons"] < 1e-10) {
-        noisily dis "No variation in `_depvar' among unmatched in group B."
-        if (e(b)[1, "mean:_cons"] < 1e-6) {
-          reg `_depvar' i.`matched' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 1 & `sample', nocons
-        }
-        else {
-          tempvar _cons
-          gen double `_cons' = e(b)[1, "mean:_cons"]
-          reg `_depvar' i.`matched' `_cons' [`_wtype_cons' `_wexp_cons'] ///
-            if `treat' == 1 & `sample', hascons
-        }
-        estimates store db
-      }
-      if (_numB > 0) scalar _mgapB = _b[1.`matched']
-        else scalar _mgapB = .
     }
 
     // change to matching weight
@@ -965,8 +923,9 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
         local ++_rows
         local _lbl = strupper("`_c'")
         tabstat `_c' `_c'_qcntmin `_c'_nmin, save // mean over q
-        if (`_rows' == 1) mat _M = e(b)[1, "`_lbl'"], r(StatTotal)
-          else mat _M = _M \ e(b)[1, "`_lbl'"], r(StatTotal)
+        mata: st_numscalar("_comp", st_matrix("e(b)")[1,1]) // backwards comp. matrix access
+        if (`_rows' == 1) mat _M = _comp, r(StatTotal)
+          else mat _M = _M \ _comp, r(StatTotal)
         local _rownames = "`_rownames' `_lbl'"
         if (`_rows' > 1) local _rspec "`_rspec'&"
       }
