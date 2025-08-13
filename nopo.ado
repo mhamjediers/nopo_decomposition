@@ -760,8 +760,8 @@ program define nopo_decomp, eclass
         // compute IF for A^B
         mata: IF_AB = N/sum(Dm) * (Dm :* (y0 :- mean(y0, Dm)) + T :/ C :* !Dm :* (Ym - y0))
         // compute IF for D0
-        mata: IF_D0 = IF_Bm - IF_eta01
-        mata: IF_DX = IF_eta01 - IF_Am
+        mata: IF_D0 = IF_Bm - IF_AB
+        mata: IF_DX = IF_AB - IF_Am
 
         // DA 
         // subset to group A
@@ -769,16 +769,18 @@ program define nopo_decomp, eclass
         mata: YA = Y :* D
         // compute IF of DA
         mata: IF_DA = N/sum( mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
-              + N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) /// mean of unmatched
-        
+              + N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) // mean of unmatched
+        if (b[1,4] == 0) mata: IF_DA = IF_DA :* 0
+		
         // DB
         // subset to group B
         mata: mB = M :* !D
         mata: YB = Y :* !D
         // compute IF of DB
         mata: IF_DB = N/sum( mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
-              + N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) /// mean of unmatched
-              
+              + N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) // mean of unmatched
+        if (b[1,5] == 0) mata: IF_DB = IF_DB :* 0
+		
         mata: V_if = variance((IF_D, IF_D0, IF_DX, IF_DA, IF_DB)) / N
         mata: st_matrix("V", V_if)			
         
