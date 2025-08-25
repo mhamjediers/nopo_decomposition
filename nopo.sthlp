@@ -132,20 +132,20 @@ for characteristics and returns is switched.
 
 {phang}
 {cmdab:xref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
-manually set the reference group for the counteractual group in terms of {it:characteristics}. 
+manually set the reference group for the counterfactual group in terms of {it:characteristics}. 
 Naturally, {cmd:xref()} and {cmd:bref()} cannot be the same.
 
 {phang}
 {cmdab:bref(}{varname}{it: == #}{cmd:)} allows to adjust the matching direction and thereby 
-manually set the reference group for the counteractual group in terms of {it:returns}. 
+manually set the reference group for the counterfactual group in terms of {it:returns}. 
 Naturally, {cmd:bref()} and {cmd:xref()} cannot be the same.
 
 
 {dlgtab:Matching procedure}
 
 {phang}
-{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the measure how both groups are matched, while the
-decomposition always relays on a one-to-many matching procedure. The default is to use 
+{cmdab:km:atch(}em|md|ps{cmdab:)} lets you choose the measure on which both groups are matched, while the
+decomposition always relies on a one-to-many matching procedure. The default is to use 
 {it:exact matching} {cmd:kmatch(em)}, in which case all variables in {varlist} are treated as 
 factors. For multivariate-distance {cmd:kmatch(md)} and propensity score {cmd:kmatch(ps)} 
 matching, make sure to indicate via factor notation which variables are factors and which are
@@ -192,8 +192,8 @@ Note that some of the kmatch variables contain the same information as the varia
 {phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
 {phang}. {stata gen educ_c = round(educ,1)}{p_end}
 {phang}. {stata lab var educ_c "years of educational attainment (rounded)"}{p_end}
-{phang}. {stata lab var exper_c "years of work experience (5-year intervalls)"}{p_end}
-{phang}. {stata lab var tenure_c "years of job tenure (5-year intervalls)"}{p_end}
+{phang}. {stata lab var exper_c "years of work experience (5-year intervals)"}{p_end}
+{phang}. {stata lab var tenure_c "years of job tenure (5-year intervals)"}{p_end}
 {phang}. {stata lab def female 0 "Men" 1 "Women"}{p_end}
 {phang}. {stata lab val female female}{p_end}
 
@@ -244,21 +244,23 @@ Note that some of the kmatch variables contain the same information as the varia
 {synoptset 20 tabbed}{...}
 {p2col 5 20 24 2: Macros}{p_end}
 {synopt:{cmd:e(kmatch_cmdline)}}command line of interal {cmd:kmatch} call{p_end}
-{synopt:{cmd:e(kmatch_subcmd)}}type of matching ({cmd:md}, {cmd:ps}, or {cmd:em}{p_end}
+{synopt:{cmd:e(kmatch_subcmd)}}type of matching ({cmd:md}, {cmd:ps}, or {cmd:em}){p_end}
 {synopt:{cmd:e(strata)}}name of variable that denotes matching stratum{p_end}
 {synopt:{cmd:e(mweight)}}name of variable that denotes matching weight{p_end}
 {synopt:{cmd:e(matched)}}name of variable that denotes matching indicator{p_end}
 {synopt:{cmd:e(matchset)}}list of variables on which groups are matched{p_end}
+{synopt:{cmd:e(xvars)}}list of variables as used in matching (e.g., including interactions){p_end}
+{synopt:{cmd:e(ematch)}}list of variables on which exact matching was applied{p_end}
 {synopt:{cmd:e(groupA)}}expression that defines group {it:A} in terms of group-variable{p_end}
 {synopt:{cmd:e(groupB)}}expression that defines group {it:B} in terms of group-variable{p_end}
 {synopt:{cmd:e(xref)}}expression for the reference group in terms of {it:characteristics}{p_end}
 {synopt:{cmd:e(bref)}}expression for the reference group in terms of {it:returns}{p_end}
-{synopt:{cmd:e(cval)}}list of variables on which groups are matched{p_end}
-{synopt:{cmd:e(tval)}}list of variables on which groups are matched{p_end}
+{synopt:{cmd:e(cval)}}value of group-variable to which units are matched{p_end}
+{synopt:{cmd:e(tval)}}value of group-variable which is matched{p_end}
 {synopt:{cmd:e(tvar)}}name of group variable{p_end}
 {synopt:{cmd:e(teffect)}}matching direction ({bf:ATT} or {bf:ATC}){p_end}
 {synopt:{cmd:e(wexp)}}weight expression (if weights are applied){p_end}
-{synopt:{cmd:e(wtype)}}{it:fweights}, {it:pweights}, and {it:iweights} (if weights are applied){p_end}
+{synopt:{cmd:e(wtype)}}{it:fweights}, {it:pweights}, or {it:iweights} (if weights are applied){p_end}
 {synopt:{cmd:e(cmd)}}{cmd:nopo}{p_end}
 {synopt:{cmd:e(properties)}}{cmd:b}{p_end}
 

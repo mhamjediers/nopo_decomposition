@@ -1,5 +1,7 @@
 {smcl}
 {* *! version 1.0.0   02feb2024  Maximilian Sprengholz & Maik Hamjediers}{...}
+{* *! version 1.0.5   06feb2024  Maximilian Sprengholz & Maik Hamjediers}{...}
+
 {vieweralsosee "kmatch" "kmatch"}{...}
 {vieweralsosee "nopomatch" "nopomatch"}{...}
 {viewerjumpto "Syntax" "nopo##syntax"}{...}
@@ -21,6 +23,7 @@ The following postestimation commands are of special interest after {cmd:nopo de
 {p2coldent :Command}Description{p_end}
 {synoptline}
 {synopt :{helpb nopo_postestimation##summarize:nopo summarize}}descriptive table by group and matching/weighting status{p_end}
+{synopt :{helpb nopo_postestimation##commsupport:nopo commsupport}}matching on all combinations of {varlist} and plot common support for each matching{p_end}
 {synopt :{helpb nopo_postestimation##gapoverdist:nopo gapoverdist}}plotting decomposition-components over the distribution of {depvar}{p_end}
 {synopt :{helpb nopo_postestimation##dadb:nopo dadb}}plot that displays contribute to components {it:DA} and {it:DB}{p_end}
 {synoptline}
@@ -74,6 +77,69 @@ on various specifications.
 {p2col 5 20 24 2: Matrices}{p_end}
 {synopt:{cmd:r(table)}}matrix of the descriptive statistics by group and matching/weighting status{p_end}
 {synopt:{cmd:r({it:statnames})}}matrix of each statistic of {cmdab:stat:istics()} by group and matching/weighting status{p_end}
+
+
+{marker commsupport}{...}
+{title:Description for nopo commsupport}
+
+{p 2 2 2}
+{cmd:nopo commsupport} [{cmd:, always({varlist})} {it: displayoptions}]
+
+{pstd}
+Runs a matching for all possible combinations of the variables in the matching set of a previous call of {cmd:nopo decomp} 
+and plots the share of matched units among group {it:A} and {it:B} of each matching. This allows to assess for which 
+characteristics (or their combinations) lacks of common support are espacially high or low. 
+
+{dlgtab:Options of nopo commsupport}
+
+{phang}
+{cmd:always(}{varlist}{cmd:)} specifies variables that are included in each matching and never omitted. {varlist} can only 
+contain variables used in the matching of the previous {cmd:nopo decomp} and should correspond to the potential usage of factor-variables.
+
+{phang}
+{it: displayoptions} comprise:
+
+{p 6 8 2}
+{cmd:nodots} suppress dots for each separate matching run
+
+{p 6 8 2}
+{cmd:nosort} does not sort the matching-combinations by share of common support among group {it:A} and {it:B}
+
+{p 6 8 2}
+{cmdab:varlab:el} displays variables labels instead of variable names in the bottom part of each plot. Interacting factor-variables are not affected.
+
+{p 6 8 2}
+{cmdab:inclm:arkers(}{it:{help scatter##marker_options:marker_options}}{cmd:)} and {cmdab:omitm:arkers(}{help scatter##marker_options:marker_options}{cmd:)} allow to specify the appearance of the markers in the bottom plot of variables included or omitted in each matching. 
+
+{p 6 8 2}
+{cmdab:zlab:el(}{it:suboptions}{cmd:)} allows for {it:suboptions} of {help axis_label_options} to adjust the labels and ticks for the variable-labels of the y-axis of the bottom plot.
+
+{p 6 8 2}
+{cmdab:ylab:el(}{it:{help axis_label_options}}{cmd:)} specifies how the y-axis of the upper plot should be labeled and ticked. This option allows you to control the placement of major ticks and labels. {it:axis_label_options} also allow you to add or to suppress grid lines on your graphs.  See {manhelpi axis_label_options G-3}.
+
+{p 6 8 2}
+{cmdab:lp:attern()}, {cmdab:lw:idth()}, {cmdab:lc:olor()}, {cmdab:la:lign()}, and {cmdab:lsty:le()} allow to change the look of the line for the percentage of matched units in the upper plot. See {it: {help connect_options}} for specifications.
+
+{p 6 8 2}
+{cmdab:xti:tle(}{it:{help axis_title_options}}{cmd:)} and {cmdab:yti:tle(}{help axis_title_options}{cmd:)} specify the titles to appear next to the axes. They also allow you to format the title fonts. See {manhelpi axis_title_options G-3}.
+
+{p 6 8 2}
+Additionally, all options available for {bf:{help graph combine}} can be used.
+
+{dlgtab:Stored results of nopo commsupport}
+
+{pstd}
+{cmdab:nopo commsupport} stores the following in {cmd:r()}:
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Matrices}{p_end}
+{synopt:{cmd:r(commsupport)}}matrix of percentage of matched units for group {it:A} and {it:B} for each matching{p_end}
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Macros}{p_end}
+{synopt:{cmd:r(ncomb)}}number of combinations of matching variables{p_end}
+{synopt:{cmd:r(xvars)}}list of variables as used in matching (e.g., including interactions){p_end}
+{synopt:{cmd:r(ematch)}}list of variables on which exact matching was applied){p_end}
+{synopt:{cmd:r(comb#)}}underlying matchingset for row # from matrix r(commsupport){p_end}
 
 
 {marker gapoverdist}{...}
@@ -246,21 +312,26 @@ to build your own plot from the data.
 {phang}. {stata "for any exper tenure: gen X_c = round(X,5)"}{p_end}
 {phang}. {stata gen educ_c = round(educ,1)}{p_end}
 {phang}. {stata lab var educ_c "years of educational attainment (rounded)"}{p_end}
-{phang}. {stata lab var exper_c "years of work experience (5-year intervalls)"}{p_end}
-{phang}. {stata lab var tenure_c "years of job tenure (5-year intervalls)"}{p_end}
+{phang}. {stata lab var exper_c "years of work experience (5-year intervals)"}{p_end}
+{phang}. {stata lab var tenure_c "years of job tenure (5-year intervals)"}{p_end}
 {phang}. {stata lab def female 0 "Men" 1 "Women"}{p_end}
 {phang}. {stata lab val female female}{p_end}
 
 {pstd}Example decomposition{p_end}
 {phang}. {stata nopo decomp lnwage educ_c exper_c tenure_c, by(female)}{p_end}
 
-{pstd}Postestimation{p_end}
+{pstd}Postestimation commands{p_end}
 {phang}. {stata nopo summarize, label}{p_end}
 {phang}. {stata nopo summarize i.educ_c, label}{p_end}
+
+{phang}. {stata nopo commsupport}{p_end}
+{phang}. {stata nopo commsupport, varlabel zlabel(labsize(small)) omitmarker(ms(X))}{p_end}
+
 {phang}. {stata nopo gapoverdist}{p_end}
 {phang}. {stata nopo gapoverdist d d0}{p_end}
-{phang}. {stata nopo dadb tenure_c}{p_end}
 
+{phang}. {stata nopo dadb tenure_c}{p_end}
+{phang}. {stata nopo dadb tenure_c, nosort nmin(10)}{p_end}
 
 {title:References}
 
@@ -277,6 +348,7 @@ regression adjustment. Available from {browse https://ideas.repec.org/c/boc/boco
 {pstd}
 Special thanks to Carla Rowold for stress testing and many helpful comments.
 
+The command {cmd: nopo commsupport} includes a part of the {help tuples} package from J.N. Luchman, D. Klein, and N.J. Cox. We copied the code to avoid further dependencies.
 
 {title:Authors}
 

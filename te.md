@@ -9,8 +9,9 @@ Authors: Maximilian Sprengholz and Maik Hamjediers
    3. [Relationship to Estimation of Treatment Effects via Matching](#relationship-to-estimation-of-treatment-effects-via-matching)
 2. [Post-Estimation Statistics](#post-estimation-statistics)
    1. [Descriptive statistics by matching status (`summarize`)](#descriptive-statistics-by-matching-status-summarize)
-   2. [Decomposition-components across the distribution of $Y$ (`gapoverdist`)](#decomposition-components-across-the-distribution-of-y-gapoverdist)
-   3. [Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)](#contribution-of-characteristics-to-the-components-d_a-and-d_b-dadb)
+   2. [Common support analysis along possible combinations of characteristics (`commsupport`)](#common-support-analysis-along-possible-combinations-of-characteristics-commsupport)
+   3. [Decomposition-components across the distribution of $Y$ (`gapoverdist`)](#decomposition-components-across-the-distribution-of-y-gapoverdist)
+   4. [Contribution of characteristics to the components $D_A$ and $D_B$ (`dadb`)](#contribution-of-characteristics-to-the-components-d_a-and-d_b-dadb)
 3. [References](#references)
 
 
@@ -126,6 +127,8 @@ Note that the estimation of any treatment effects ($ATT$ as well as $ATC$) via m
 ### Descriptive statistics by matching status (`summarize`)
 
 It provides descriptive statistics (e.g., means and standard deviations) for each group and by matching status. Additionally, the descriptive statistics for the invoked counterfactual group of $A^B$ is reported, which allows, on the one hand, to assess the balancing between the counterfactual weighted group $A^B$ and the target distribution of the characteristics-wise reference group $B$ (`xref`), and on the other hand, the extent of differences in the characteristics between $A^B$ and $A$ that underlay the explained component $D_X$. A comparison of the statistics for the unmatched units $A,u$ and $B,u$ to their matched counterparts ($A,m$ and $B,m$) also indicates which characteristics might drive the components $D_A$ and $D_B$. 
+
+### Common support analysis along possible combinations of characteristics (`commsupport`)
 
 ### Decomposition-components across the distribution of $Y$ (`gapoverdist`)
 
