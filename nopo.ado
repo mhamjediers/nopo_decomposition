@@ -21,7 +21,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     KMKEEPgen /// keep all generated variables
     KMNOISily /// show kmatch output
     dtable /// do not show estimates table (makes sense for bootstrap)
-    NOPOSE /// report Nopo SE 
+    NOPOSE /// report Nopo SE
 	  IFSE /// report Influence-Function SE
     KMATCHSE /// report kmatch SE
     KEEPOMitted /// keep omitted coefficients by setting them to 1e-10 (no SE)
@@ -30,12 +30,12 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     * ///
   ]
 
-  
+
   /*
    In essence, this wrapper does two things:
 
    (1) Call a Nopo (2008) style decomposition after matching via kmatch. If a varlist is
-       specified, this wrapper calls a default version of kmatch, otherwise it checks if all 
+       specified, this wrapper calls a default version of kmatch, otherwise it checks if all
        requirements are met by the kmatch performed before nopo. Estimates are returned for
        the decomposition components and a few auxiliary things.
    (2) Call postestimation stuff:
@@ -45,7 +45,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
        - show summary table by group:
        A_unmatched, A_matched, A_matched_weighted/B_matched_weighted, B_matched, B_unmatched
   */
-  
+
   // tokenize; determine decomp operation
   if ("`anything'" != "") gettoken subcmd varlist : anything
     else local subcmd "decomp"
@@ -55,7 +55,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
     error 198
     exit
   }
-  
+
   // run kmatch or check if kmatch requirements met
   if ("`subcmd'" == "decomp" & "`varlist'" != "") {
     local nvars : word count `varlist'
@@ -85,7 +85,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         dis as error "`by' must have 2 levels"
         error 148
         exit
-      } 
+      }
       else if (r(r) > 2) {
         dis as error "`by' must have 2 levels"
         error 149
@@ -105,7 +105,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         - group A = treat == 1
         - xref is B; bref is A
       - manually specify reference groups (xref, bref)
-        
+
       */
       // treatment value = group order
       if ("`swap'" == "") {
@@ -145,19 +145,21 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         error 198
         exit
       }
+      else if ("`atc'" != "" | "`att'" != "") {
+        local _te `atc' `att' // user specified
+      }
       else {
-        local _te `atc' `att' // only one of both possible; set
+        local _te = "att" // ATT is default
       }
       local att // unset (in case it was passed)
       local atc // unset (in case it was passed)
-      // ATT IS DEFAULT (to correspond to our expositions)
       if ("`_te'" == "atc") local atc = "atc"
-        else local att = "att"
-      
+        else local att = "att" // ATT is default
+
       //
       // Run kmatch
       //
-      
+
       // get input
       gettoken _depvar varlist : varlist
       if ("`kmatch'" == "") {
@@ -171,14 +173,14 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`weight'" != "") local _weightexp "[`weight'`exp']"
       if ("`kmnoisily'" != "") local kmnoisily = "noisily"
 
-      // return error if _depvar is in varlist 
+      // return error if _depvar is in varlist
       local _checkdv: list _depvar - varlist
       if "`_checkdv'" == "" {
         noisily dis as error "Outcome `_depvar' may not be included in matching set"
         error 103
-        exit 
+        exit
       }
-	  
+
       // clean factor notation if exact matching
       // kmatch em treats everything as factor and so does nopo_summarize after kmatch em
       if ("`kmatch'" == "em") {
@@ -203,25 +205,24 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
         // sum: always group A = Control = T == 0
         sum `_depvar' if `by' == `_cval' & `touse' `_sum_weightexp', meanonly
         qui gen _`_depvarabbrev'_norm = `_depvar' / r(mean) if `touse'
-        local _depvarlbl : variable label `_depvar'			
+        local _depvarlbl : variable label `_depvar'
         // set normalized var as _depvar!
         local _depvar = "_`_depvarabbrev'_norm"
         if ("`_depvarlbl'" != "") lab var `_depvar' "`_depvarlbl' (normalized)"
         dis as text "Normalized outcome generated: `_depvar'"
       }
 
-      // SEs supposed to be bootstrapped, so default is to not to compute standard errors
-      // if not specifically requested
+      // SEs supposed to be bootstrapped, so default is not to compute standard errors
       if ("`kmatchse'" == "") {
         local nose "nose"
-        local _aux "`att' `atc'" // only one treatment effect
+        local _aux "`_te'" // only one treatment effect
       }
       else {
-        if ("`kmatch'" == "em") {
+        /* if ("`kmatch'" == "em") {
           dis as error "Option kmatchse only valid for kmatch(md) and kmatch(ps), not kmatch(`kmatch')"
           error 322
           exit
-        }
+        } */
         local nose
         local _aux "nate att atc po ifgenerate" // we need all IFs for calculation
       }
@@ -233,16 +234,17 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
        and wrong depvar means for matched/unmatched entering DA/DB.
       */
       if ("`kmatch'" != "em") local _aux "`_aux' sharedbwidth"
-      
+
       // run
-      quietly {	
+      quietly {
         `kmnoisily' kmatch `kmatch' `by' `varlist' (`_depvar') `if' `in' `_weightexp' ///
           , tval(`_tval') generate wgenerate replace `kmopts' `nose' `_aux'
           // kmopts should be stripped of already set options
       }
-      
+
       // save matching weight variable for passthru
-      local _mweight = "mweight(_W_`=strupper("`att'`atc'")')"
+      local _mweight = "mweight(_W_`=strupper("`_te'")')"
+
       // clear varlist
       local varlist
     }
@@ -253,7 +255,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       dis as error "Previous command was not kmatch."
       error 301
       exit
-    } 
+    }
     else if (!inlist("`e(subcmd)'", "md", "ps", "em")) {
       dis as error "nopo only works after kmatch md, kmatch ps, and kmatch em"
       error 301
@@ -309,15 +311,15 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
       if ("`kmatchse'" != "") {
 
         // assert not em
-        if ("`e(subcmd)'" == "em") {
+        /* if ("`e(subcmd)'" == "em") {
           dis as error "Option kmatchse only valid for kmatch md and ps, not `e(subcmd)'"
           error 322
           exit
-        }
+        } */
 
         // check for nate, att, atc, po
         if (ustrregexm(`"`_cmdline'"', "\bnate\b") == 0) local _cmdadd "`_cmdadd' nate"
-        if ("`e(att)'" == "") local _cmdadd "`_cmdadd' ate"
+        if ("`e(att)'" == "") local _cmdadd "`_cmdadd' att"
         if ("`e(atc)'" == "") local _cmdadd "`_cmdadd' atc"
         if (ustrregexm(`"`_cmdline'"', "\bpo\b") == 0)  local _cmdadd "`_cmdadd' po"
         // IF: consider user prefix (extract using requested te, which presence has been asserted);
@@ -340,7 +342,7 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
               local _cmdadd "`_cmdadd' ifgenerate"
               local _cmdline = ustrregexrf(`"`_cmdline'"', "ifgen[erate]*\(*\)", "")
             }
-          } 
+          }
         }
 
       }
@@ -359,12 +361,12 @@ syntax [anything] [if] [in] [fweight pweight iweight] , ///
   }
   // set passthru
   if ("`kmpassthru'" != "") local kmpassthru "kmpassthru(`kmpassthru')"
-    
+
   // run subcommand with option passthru
   nopo_`subcmd' `varlist' ///
     , `_mweight' `atc' `att' `kmpassthru' `kmkeepgen' `dtable' `nopose' `ifse' `kmatchse' `keepomitted' ///
-    `options' 
-	
+    `options'
+
 end
 
 
@@ -388,9 +390,9 @@ program define nopo_decomp, eclass
       KMATCHSE ///
       KEEPOMitted ///
     ]
-  
+
   quietly {
-    
+
     //
     // use returns of kmatch for estimations or passthru
     //
@@ -401,7 +403,7 @@ program define nopo_decomp, eclass
 
     // depvar
     local _depvar = e(depvar)
-    
+
     // treatment (fixed to 0/1)
     local _tvar = e(tvar)
     local _tval = e(tval)
@@ -409,7 +411,7 @@ program define nopo_decomp, eclass
     gen `treat' = 0 if !mi(`_tvar')
     replace `treat' = 1 if `_tvar' == `_tval'
     local _te = strupper("`att'`atc'")
-    
+
 	  // determine matching set from kmatch for return passthru; drop doublettes
     local _varset "`e(xvars)' `e(emvars)' `e(emxvars)'" // varnames = tokenizable as regex words
     fvrevar `_varset', list
@@ -442,11 +444,11 @@ program define nopo_decomp, eclass
         dis as error "Allowed vce types are 'analytic' and 'cluster'. Use the bootstrap or jackknife prefix notation for these vce"
         error 322
         exit
-      } 
+      }
     }
     // generated matching vars processing
     /*
-     catch all for missing gen / wgen vars: 
+     catch all for missing gen / wgen vars:
      - if manually deleted before calling nopo decomp
      - if kmatch estimates are restored after nopo decomp without option 'kmkeepgen'
     */
@@ -471,20 +473,20 @@ program define nopo_decomp, eclass
     if ("`_kmatch_subcmd'" == "ps") {
       local _strata
       local _ps = "`5'"
-      if ("`kmkeepgen'" == "") drop `1' `4' `6' 
+      if ("`kmkeepgen'" == "") drop `1' `4' `6'
     }
     else {
       local _strata = "`5'"
       local _ps // unset
       if ("`kmkeepgen'" == "") drop `1' `4'
     }
-	
+
     // obtaining number of strata and matched strata only for exact matching
     if ("`_kmatch_subcmd'" == "em") {
       mata: st_numscalar("_nstrata", colmax(st_data(., "`_strata'")))
       mata: st_numscalar("_nmstrata", length(uniqrows(st_data(., "`_strata'","`matched'"))))
     }
-    
+
     // sample
     tempvar sample
     gen `sample' = e(sample)
@@ -498,7 +500,7 @@ program define nopo_decomp, eclass
       error 2000
       exit
     }
-    
+
     // determine A, B, and xref
     levelsof `_tvar', local(_tvarlvls)
     local _cval = strrtrim(strltrim(usubinstr("`_tvarlvls'", "`_tval'", "", .)))
@@ -514,13 +516,13 @@ program define nopo_decomp, eclass
     }
 
     // save ATT/ATC as D0
-    mata: st_numscalar("_d0", st_matrix("e(b)")[1,`"`=strupper("`att'`atc'")'"']) // backwards comp. matrix access
-    
+    mata: st_numscalar("_d0", st_matrix("e(b)")[1, `=colnumb(e(b),"`_te'")']) // backwards comp. matrix access
+
     // save nn / kernel bandwidth / ridge param for display
     if ("`e(nn)'" != "") local _nn = e(nn)
     if ("`e(bwidth)'" != "") {
       mat _bw = e(bwidth)
-      local _bwidth = _bw[1, "`att'`atc'"]
+      local _bwidth = _bw[1, "`=strlower("`_te'")'"]
     }
     if ("`e(ridge)'" != "") local _ridge = e(ridge)
 
@@ -532,7 +534,7 @@ program define nopo_decomp, eclass
       exit
     }
 
-    
+
     // save everything from kmatch which has been requested for passthru
     /*
      - We exclude everything we return and stuff that does not make sense for subcmds offered
@@ -548,7 +550,7 @@ program define nopo_decomp, eclass
         idgenerate dxgenerate cemgenerate ifgenerate metric kernel keepall ///
         pscmd psopts pspredict bw_method cv_outcome cv_weighted cv_nopenalty ///
         cv_nolimit cv_exact ebalance ebvars csonly targets covariances nconstraint ///
-        fitopts att atc vce clustvar title 
+        fitopts att atc vce clustvar title
       local _ematrices ///
          _N S cv
       foreach _r in `kmpassthru' {
@@ -566,12 +568,12 @@ program define nopo_decomp, eclass
         }
       }
     }
-    
+
 
     //
     // gather/estimate components
     //
-    
+
     // weighting helpers
     tempvar weight_cons
     gen `weight_cons' `_wexp'
@@ -581,20 +583,20 @@ program define nopo_decomp, eclass
 
     // D
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 0
-    mata: st_numscalar("_meanA", st_matrix("e(b)")[1,1]) // backwards comp. matrix access
+    scalar _meanA = r(mean)
     local _nA = r(sum_w)
     local _varA = r(Var)
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `sample' & `treat' == 1
-    mata: st_numscalar("_meanB", st_matrix("e(b)")[1,2]) // backwards comp. matrix access
+    scalar _meanB = r(mean)
     local _nB = r(sum_w)
     local _varB = r(Var)
     mat b = J(1, 5, .)
     mat b[1,1] = _meanB - _meanA
-    if ("`nopose'" != "") {	
+    if ("`nopose'" != "") {
       mat V = J(5, 5, 0)
       mat V[1,1] = `_varA' / `_nA' + `_varB' / `_nB'
     }
-    	
+
     // DA
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 0 & `matched' == 0 & `sample'
     scalar _meanumA = r(mean)
@@ -615,14 +617,14 @@ program define nopo_decomp, eclass
     mat b[1,4] = _mgapA * (_numwA / _nwA)
     if (b[1,4] == . & "`keepomitted'" == "") mat b[1,4] = 0
     if (b[1,4] == . & "`keepomitted'" != "") mat b[1,4] = 1e-10 // workaround to keep omitted coefs
-    if ("`nopose'" != "") {	
+    if ("`nopose'" != "") {
       local _vargapA = `_varumA' / _numwA + _varmA / _nmwA
-      mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// gap^2 * var of share 
-        + (1 - _msharewA/100)^2 * `_vargapA' /// share^2 * var of gap 
-        + (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' // var of share * var of gap 	  
+      mat V[4,4] = _mgapA^2 * (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) /// gap^2 * var of share
+        + (1 - _msharewA/100)^2 * `_vargapA' /// share^2 * var of gap
+        + (_msharewA/100 * (1-_msharewA/100) / (_nwA - 1)) * `_vargapA' // var of share * var of gap
       if (V[4,4] == .) mat V[4,4] = 0
     }
-	
+
     // DB
     sum `_depvar' [`_wtype_cons' `_wexp_cons'] if `treat' == 1 & `matched' == 0 & `sample'
     scalar _meanumB = r(mean)
@@ -643,11 +645,11 @@ program define nopo_decomp, eclass
     mat b[1,5] = -1 * _mgapB * (_numwB / _nwB)
     if (b[1,5] == . & "`keepomitted'" == "") mat b[1,5] = 0
     if (b[1,5] == . & "`keepomitted'" != "") mat b[1,5] = 1e-10 // workaround to keep omitted coefs
-    if ("`nopose'" != "") {	
+    if ("`nopose'" != "") {
       local _vargapB = `_varumB' / _numwB + _varmB / _nmwB
-      mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// gap^2 * var of share 
-        + (1 - _msharewB/100)^2 * `_vargapB' /// share^2 * var of gap 
-        + (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' // var of share * var of gap 	 
+      mat V[5,5] = _mgapB^2 * (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) /// gap^2 * var of share
+        + (1 - _msharewB/100)^2 * `_vargapB' /// share^2 * var of gap
+        + (_msharewB/100 * (1-_msharewB/100) / (_nwB - 1)) * `_vargapB' // var of share * var of gap
       if (V[5,5] == .) mat V[5,5] = 0
 	  }
 
@@ -666,19 +668,19 @@ program define nopo_decomp, eclass
         local _wA _KM_nm // not user-spec safe
       }
 
-      // Generate strata if not exact matching 
+      // Generate strata if not exact matching
       if ("`_kmatch_subcmd'" != "em") {
         tempvar _varcomb
         egen `_varcomb' = group(`_matchset')
         local _strata `_varcomb'
         sum `_wA'
-        replace `_wA' = `_wA' / `r(sum)' * _nmwA // std. back to obsverations per group A in cases of multiple matches
+        replace `_wA' = `_wA' / `r(sum)' * _nmwA // std. back to observations per group A in case of multiple matches
       }
 
       // Variance-Covariance estimation for counterfactual based on across strata
-      preserve 
+      preserve
         collapse `_yB' `_wA'  (sd) _vB = `_yB' if `matched' == 1 & `treat' == 1 & `sample' [`_wtype_cons' `_wexp_cons'], by( `_strata')
-        
+
         replace _vB = _vB^2
         misstable pat _vB
         if `r(N_incomplete)' != 0  &  ("`_kmatch_subcmd'" == "em") {
@@ -686,57 +688,55 @@ program define nopo_decomp, eclass
           replace _vB = _varmB if _vB == . // plugging in global variance
           //replace _vB = (`_yB' - _meanmB)^2 if _vB == .  // estimating specific variance by pulgging in global mean
         }
-        
+
         replace `_wA' = `_wA' / _nmwA
-        
-        //Variance of counterfactual
+
+        // Variance of counterfactual
         gen _vcf =  (`_wA' * (1-`_wA') * (`_yB'^2) ) / ( (`_alpha')^2) + _vB*(`_wA'^2)
         sum _vcf
         local _vcf = r(sum)
 
-        //Covariance of weight and values for counterfactual
+        // Covariance of weight and values for counterfactual
         gen _cf = `_yB' * `_wA'
         local _cf _cf
         mata: C = st_data(., st_local("_cf"), .)
         mata: _covcf = (sum(C*C') - trace(C*C'))
         mata: st_numscalar("_covcf", _covcf)
-        
-      restore 
-      matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
+
+      restore
+      matrix V[2,2] = (_varmA / _nmwA) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2)
       if (V[2,2] == .) mat V[2,2] = 0
-		
+
 	  }
-	 	  
-    // DX 
+
+    // DX
     mat b[1,3] = b[1,1] - b[1,2] - b[1,4] - b[1,5]
     if ("`nopose'" != "") {
-	
       // Variance-Covariance estimation for counterfactual based on across strata (taken from D0)
-      matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2) 
+      matrix V[3,3] = (_varmB / _nmwB) +  (`_vcf' / _nmwB) - (_covcf  / _nmwB  / (`_alpha')^2)
       if (V[3,3] == .) mat V[3,3] = 0
-
     }
-	
+
     // Standard Errors via Influence functions (yet, currently not with weighting)
-    if ("`ifse'" != "") &  ("`_kmatch_subcmd'" == "em") { 
-      preserve 
-        keep if  `sample'
-        
+    if ("`ifse'" != "") & ("`_kmatch_subcmd'" == "em") {
+      preserve
+        keep if `sample'
+
         // count number of observations within stratum
         sort `_strata'
         by `_strata': generate T = sum(`treat' == 1 & `matched' == 1)
         by `_strata': replace T = T[_N] // size of treatment group within stratum
         by `_strata': generate C = sum(`treat' == 0 & `matched' == 1)
         by `_strata': replace C = C[_N] // size of control group within stratum
-        
+
         // exclude strata that have insufficient treatment variability (with default
         // settings, teffect requires at least 3 treated and 3 controls per stratum)
         *keep if T>=3 & C>=3
-        
+
         // compute within-stratum outcome averages in control group
         by `_strata': generate double y0 = sum(`_depvar'*(`treat'==0 & `matched' == 1))
         by `_strata': replace y0 = y0[_N] / C if `matched' == 1
-        
+
         // data into mata
         mata: N = st_nobs()
         mata: D = st_data(.,"`treat'", .)
@@ -745,17 +745,17 @@ program define nopo_decomp, eclass
         mata: T = st_data(.,"T",.)
         mata: C = st_data(.,"C", .)
         mata: y0 = st_data(.,"y0", .)
-        
+
         // D
         mata: IF_D = (Y :- mean(Y, D)) + (Y :- mean(Y, !D))
-        
+
         // subset to matched for D0 and DX
         mata: Dm = D :* M
         mata: Ym = Y :* M
         mata: T =  T :* M
         mata: C =  C :* M
         mata: y0 = y0 :* M
-            
+
         // compute IF for A(matched)
         mata: IF_Am = N/sum(!Dm) * !Dm :* (Ym :- mean(Ym, !Dm))
         // compute IF for B(matched)
@@ -766,42 +766,42 @@ program define nopo_decomp, eclass
         mata: IF_D0 = IF_Bm - IF_AB
         mata: IF_DX = IF_AB - IF_Am
 
-        // DA 
+        // DA
         // subset to group A
         mata: mA = M :* D
         mata: YA = Y :* D
         // compute IF of DA
-        mata: IF_DA = N/sum( mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
+        mata: IF_DA = N/sum(mA) *  mA :* ((YA :- mean(YA,  mA)) :* sum( mA)/sum(D) ) /// mean of matched
               + N/sum(!mA) * !mA :* ((YA :- mean(YA, !mA)) :* sum(!mA)/sum(D) ) // mean of unmatched
         if (b[1,4] == 0) mata: IF_DA = IF_DA :* 0
-		
+
         // DB
         // subset to group B
         mata: mB = M :* !D
         mata: YB = Y :* !D
         // compute IF of DB
-        mata: IF_DB = N/sum( mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
+        mata: IF_DB = N/sum(mB) *  mB :* ((YB :- mean(YB,  mB)) :* sum( mB)/sum(!D) ) /// mean of matched
               + N/sum(!mB) * !mB :* ((YB :- mean(YB, !mB)) :* sum(!mB)/sum(!D) ) // mean of unmatched
         if (b[1,5] == 0) mata: IF_DB = IF_DB :* 0
-		
+
         mata: V_if = variance((IF_D, IF_D0, IF_DX, IF_DA, IF_DB)) / N
-        mata: st_matrix("V", V_if)			
-        
-      restore		  
+        mata: st_matrix("V", V_if)
+
+      restore
 	  }
 
     // drop _KM_nc and _KM_nm after SE calculation
     tokenize `e(generate)'
     if ("`kmkeepgen'" == "") drop `2' `3'
 
-	
+
     // kmatch SE (atm with total, has ereturns)
     if "`kmatchse'" != "" {
-      
+
       // save before ereturn
       local _ifgenerate "`e(ifgenerate)'"
       local _wgenerate "`e(wgenerate)'"
-      
+
       // get relevant IFs
       foreach _if in NATE ATT ATC Y0_ATT Y0_ATC Y1_ATT Y1_ATC {
         local _IF_`_if' = ustrregexm("`e(ifgenerate)'", "\b\S+`_if'\b", 1)
@@ -838,7 +838,7 @@ program define nopo_decomp, eclass
       else {
         gen `_IF_DB' = 0
       }
-      
+
       // check weight restrictions for total
       if ("`_wtype'" == "aweight") local _wtype_cons = "pweight"
         else local _wtype_cons = "`_wtype'"
@@ -851,28 +851,28 @@ program define nopo_decomp, eclass
         noi total `_IF_NATE' `_IF_ATC' `_IF_DX' `_IF_DA' `_IF_DB' [`_wtype_cons' `_wexp'], vce(`vce')
       }
       mat V = e(V)
-      
+
     }
 
     // drop IFs after SE calculation
     if ("`kmatchse'" != "" & "`kmkeepgen'" == "") drop `_ifgenerate'
-	
+
     // return
     if ("`nopose'" == "" & "`kmatchse'" == "" & "`ifse'" == "") {
       // default
-      mat colnames b = D D0 DX DA DB     
+      mat colnames b = D D0 DX DA DB
       ereturn post b, obs(`_Nsample') esample(`sample') depname(`_depvar')
     }
     else {
       if ("`nopose'" != "" | "`kmatchse'" != "") {
-        mat colnames b = D D0 DX DA DB    
+        mat colnames b = D D0 DX DA DB
         mat colnames V = D D0 DX DA DB
         mat rownames V = D D0 DX DA DB
 		    ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
       }
 	    if ("`ifse'" != "") {
         if ("`_kmatch_subcmd'" == "em") {
-          mat colnames b = D D0 DX DA DB    
+          mat colnames b = D D0 DX DA DB
           mat colnames V = D D0 DX DA DB
           mat rownames V = D D0 DX DA DB
           ereturn post b V, obs(`_Nsample') esample(`sample') depname(`_depvar')
@@ -927,7 +927,7 @@ program define nopo_decomp, eclass
       ereturn local ps = "_nopo_ps"
     }
     if ("`kmkeepgen'" == "") drop `_wgenerate' `e(wgenerate)' `_strata' `_ps'
-  
+
     if ("`_nn'" != "") ereturn scalar nn = `_nn'
     if ("`_bwidth'" != "") ereturn scalar bwidth = `_bwidth'
     if ("`_ridge'" != "") ereturn scalar ridge = `_ridge'
@@ -981,7 +981,7 @@ program define nopo_decomp, eclass
     local _groupAlbl : label `_treatvallbl' `_cval'
     local _groupBlbl : label `_treatvallbl' `_tval'
   }
-  
+
   di as text " "
   di as text "Nopo decomposition" _col(42) "N" _col(68) "= " _col(71) %8.0g `_Nsample'
   if ("`_kmatch_subcmd'" == "em") {
@@ -1025,19 +1025,19 @@ program define nopo_decomp, eclass
     */ as result _col(33) %7.1f _mshareB /*
     */ _col(46) %7.1f `=100-_mshareB'
   di as text "{hline 29}{c BT}{hline 48}"
-  if ("`_wtype'" != "" & "`_wexp'" != "=1") di as text "Note: N and % are unweighted." 
+  if ("`_wtype'" != "" & "`_wexp'" != "=1") di as text "Note: N and % are unweighted."
   dis ""
-  
+
   // display estimates
   if ("`dtable'" == "") {
     ereturn display
   }
   if "`_note_on_SE'" != "" {
-    dis as text "Note: Some strata have only one observation, which permits strata-specific variances."
-    dis as text _skip(6) "For these strata, the overall variance in `_depvar' of matched units are plugged in."
+    dis as text "Note: Some strata have only one observation and therefore no strata-specific variance."
+    dis as text _skip(6) "For these strata, the overall variance in `_depvar' of matched units is plugged in."
     dis as text _skip(6) "Standard errors for D0 and DX are not robust against potential heteroskedasticity."
   }
-  
+
 end
 
 
@@ -1047,7 +1047,7 @@ end
 
 /*
 
-At the moment, the plot shows the gaps by comparing the outcome means in each quantile between 
+At the moment, the plot shows the gaps by comparing the outcome means in each quantile between
 groups. So, the mean across all these comparisons is the same as the decomposition component values
 produced by nopo. But that also means that:
 
@@ -1181,7 +1181,7 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
         rename diff `_c'
         lab var `_c' "Component `_c'"
       }
-      
+
       // summary table for sensibility checks
       local _rows = 0
       local _rspec = "||"
@@ -1224,14 +1224,14 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
       }
       // note options
       if (`nquantiles' == 100) noisily dis "- Use the nquantiles(#) option to set the number of quantiles."
-      
+
       // plot
       if ("`nodraw'" == "") {
-        
+
         // legend
         local _dadblegend
         local _i = 1
-        foreach _c in `_components' {      
+        foreach _c in `_components' {
           // legend
           local _lbl = strupper("`_c'")
           count if !mi(`_c')
@@ -1260,7 +1260,7 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
 
         // gather plots
         local _plots
-        foreach _c in `_components' {      
+        foreach _c in `_components' {
           local _plots `"`_plots' (`recast' `_c' q, `twopts`_c'')"'
         }
 
@@ -1268,7 +1268,7 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
         twoway `_plots', `twopts'
 
       }
-      
+
       // save if requested
       if (`"`save'"' != "") noisily save `save', replace
 
@@ -1287,7 +1287,7 @@ syntax [namelist] [if] [in], /// if/in might produce misleading results; undocum
       }
       return scalar xsize = `xsize'
       return scalar ysize = `ysize'
-    
+
     restore
   }
 
@@ -1303,11 +1303,11 @@ syntax varname [if] [fweight pweight iweight], ///
   [comp(string)] /// gap components, used as filter
   [NQuantiles(integer 100)] ///
   [RAWUMdiff] /// do not scale by N_A/N_B
-  [SAVE(string asis)] * 
+  [SAVE(string asis)] *
 
 quietly {
   preserve
-    
+
     // weight
     local weightvar = (subinstr("`exp'","=","",.))
 
@@ -1322,7 +1322,7 @@ quietly {
       replace `by' = `xref' if _expanded == 1
       replace `weightvar' = `mweight' if _expanded == 1 // replace weight with matching weight
     }
-    
+
     // xtile aggregates quantiles if they contain constant values. Fill up to avoid empty cells.
     tempvar quantile
     gen `quantile' = .
@@ -1349,7 +1349,7 @@ quietly {
         replace `quantile'_`i' = `nquantiles' if `quantile'_`i' > `nquantiles'
         replace `quantile' = `quantile'_`i' if `by' == `i'
         drop `totweight'
-      } 
+      }
       else {
         local _qsuccess = 0
       }
@@ -1357,12 +1357,12 @@ quietly {
       count if `by' == `i'
       if ("`_nmin'" == "") {
         local _nmin = r(N)
-      } 
+      }
       else {
         if (r(N) < `_nmin') local _nmin = r(N)
       }
     }
-    
+
     // do only if estimation was successful; otherwise save empty data
     if (`_qsuccess' == 1) {
       // collapse, use sum of weights (passed via `exp') as N
@@ -1374,7 +1374,7 @@ quietly {
         if !mi(`varlist') [`weight'`exp'] ///
         , by(`by' `quantile')
       reshape wide `meanq' `nq', i(`quantile') j(`by')
-      
+
       // gen diff
       tempvar diff
       if ("`comp'" == "db") {
@@ -1402,7 +1402,7 @@ quietly {
       keep diff `quantile'
       gen `comp'_qcntmin = .
     }
-    
+
     // save temp data
     rename `quantile' q
     lab var q "Compared `varlist' quantile between groups (component-specific)"
@@ -1448,7 +1448,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
   [SAVE(string asis)]
 
   quietly {
-    
+
     // check if prior command was nopo
     if ("`e(cmd)'" != "nopo") {
       noisily dis as error "Previous command was not nopo decomp"
@@ -1468,7 +1468,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       error 321
       exit
     }
-    
+
     // set input from syntax and nopo returns
     // sample
     tempvar touse
@@ -1514,8 +1514,8 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       if (r(N) == 0) replace `treat' = . if `treat' == 0
       count if `_support' == 0 & `treat' == 1
       if (r(N) == 0) replace `treat' = . if `treat' == 1
-    }		
-    
+    }
+
     // weights
     if ("`e(wtype)'" != "") {
       local _weightexp "[`e(wtype)'`e(wexp)']"
@@ -1540,13 +1540,13 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       error 134
       exit
     }
-    
+
     // relevel plotby: gen variable with no gaps
     // default: sort by depvar
     tempvar plotbyreleveled
     gen `plotbyreleveled' = .
     // gen means
-    if ("`nosort'" == "") {	
+    if ("`nosort'" == "") {
       preserve
         collapse (mean) `_depvar' `_weightexp' if `touse', by(`plotby')
         sort `_depvar'
@@ -1575,11 +1575,11 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
     if ("`nosort'" == "") {
       drop `sorter'
       lab var `plotbyreleveled' "`_plotbylbl' releveled by mean `_depvar' `descending'"
-    } 
+    }
     else {
       lab var `plotbyreleveled' "`_plotbylbl' releveled"
     }
-    
+
     // build plot components
     preserve
 
@@ -1614,9 +1614,9 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       /* noisily dis "Component sum check:"
       noisily table `treat' if `_support' == 0, stat(sum mdepvar_diff_weighted) */
 
-      // keep all levels for plot? 
+      // keep all levels for plot?
       // useful if plotted comparisons do not have the same plotby levels due to missings
-      if ("`keepalllevels'" == "") keep if `touse' 
+      if ("`keepalllevels'" == "") keep if `touse'
 
       // collapse
       collapse ///
@@ -1626,7 +1626,7 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
       replace mdepvar_diff_weighted = . if n_weighted == 0
 
       if ("`nodraw'" == "") {
-        
+
         // set format for xlab & xrange
         if ("`xlabfmt'" == "") local xlabfmt "%3.2f"
 
@@ -1667,22 +1667,22 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
           yscale(range(`_yrangemax' 1)) ytitle("")
           xscale(range(-`_wmmax' `_wmmax') axis(1)) xlab(#5, axis(1) grid labsize(small))
           xscale(range(-`_mmax' `_mmax') axis(2)) xlab(#5, axis(2) grid labsize(small))
-          xtitle("Difference in means", axis(2) margin(0 0 0 3)) 
+          xtitle("Difference in means", axis(2) margin(0 0 0 3))
           subtitle(, bcolor("237 237 237") margin(1 1 1 1.5))
           scheme(s1mono) xsize(`xsize') ysize(`ysize')
           "';
         if (`"`twoptsbar'"' == "") local twoptsbar `"
           horizontal xaxis(2) `_text' fcolor(gs10%50) lcolor(gs10) lp(solid) lw(0.2)
           "';
-        if (`"`twoptsscatter'"' == "") local twoptsscatter `" 
-          mcolor(black) xline(0, lcolor(black) lwidth(0.2)) xaxis(1) 
-          xtitle("Contribution of unmatched to D", margin(0 0 3 3)) 
+        if (`"`twoptsscatter'"' == "") local twoptsscatter `"
+          mcolor(black) xline(0, lcolor(black) lwidth(0.2)) xaxis(1)
+          xtitle("Contribution of unmatched to D", margin(0 0 3 3))
           "';
-        if (`"`twoptsn'"' == "") local twoptsn `" 
+        if (`"`twoptsn'"' == "") local twoptsn `"
           xaxis(2) mcolor(none) mlabel(n_weighted_str) mlabpos(9) mlabgap(0) msize(vtiny))
           "';
-        if (`"`twoptsby'"' == "") local twoptsby `" 
-          ixtitle note("") b1title("") graphregion(margin(zero)) 
+        if (`"`twoptsby'"' == "") local twoptsby `"
+          ixtitle note("") b1title("") graphregion(margin(zero))
           "';
         #delimit cr
 
@@ -1692,12 +1692,12 @@ syntax varname [if] [in], /// if/in might produce misleading results; undocument
           (scatter `plotbyreleveled' mdepvar_diff_weighted if n_weighted >= `nmin', `twoptsscatter') ///
           (scatter `plotbyreleveled' nx, `twoptsn' ///
           , by(`treat', `twoptsby') `twopts' nodraw name(dadb)
-        
+
         // fix labels
         .dadb.plotregion1.xaxis1[1].title.text = {"Contribution of unmatched to DA"}
         .dadb.plotregion1.xaxis1[2].title.text = {"Contribution of unmatched to DB"}
         graph display
-	
+
       }
 
       // save plot data?
@@ -1755,7 +1755,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
   [keepempty]
 
   quietly {
-    
+
     // check if prior command was nopo
     if ("`e(cmd)'" != "nopo") {
       noisily dis as error "Previous command was not nopo decomp"
@@ -1804,7 +1804,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
 
     //
     // Create table as matrix
-    // 
+    //
     /*
      Some N handling is done in nopo decomp, so that there are matched obs in both groups.
      Here we only need to capture missing obs for the unmatched among A and B.
@@ -1823,7 +1823,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
 
     // statistics
     if ("`statistics'" == "") local statistics = "mean sd"
-    local _nstats : word count `statistics' 
+    local _nstats : word count `statistics'
 
     // vars to tab; defaults to matching set
     if ("`varlist'" == "") local varlist "`_depvar' `e(matchset)'"
@@ -1839,10 +1839,10 @@ syntax [varlist (default=none fv)] [if] [in], ///
       // rownames
       local _rownames = "" // gather for full table
       local _rownames_sep = "" // gather for separate table for each statistic
-      
+
       // factor variable processing
       if ("`_var'" != "`_depvar'" & (ustrregexm("`_var'", "^i.*\.") == 1 | "`_kmatch'" == "em")) {
-        
+
         // set factor indicator
         local _factor = 1
 
@@ -1869,11 +1869,11 @@ syntax [varlist (default=none fv)] [if] [in], ///
               local _lbl : label `_var' `_lvl'
               local _lbl = abbrev(ustrregexra("`_lbl'", "\.|:", ""), 32)
               }
-            if ("`_lbl'" != "") local _rownames = `" `_rownames' "`_lbl'" "' 
-              else local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback  
+            if ("`_lbl'" != "") local _rownames = `" `_rownames' "`_lbl'" "'
+              else local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback
           }
           else {
-            local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback  
+            local _rownames = `" `_rownames' "`_lvl'" "' // numval as fallback
           }
         }
       }
@@ -1909,7 +1909,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
         }
         else if (`_j' == 1) {
           local _rownameseq_sep = `" `_rownameseq_sep' "`_varlblabbrev'" "'
-        } 
+        }
         local ++_j
       }
       local _rownames = `"`_rownameseq'"'
@@ -1918,7 +1918,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       //
       // estimate mean for each sample and concatenate
       //
-      
+
       // gather colnames
       local _colnames = ""
 
@@ -1929,14 +1929,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
       if (`_factor' == 1) mat _S = _S'
       if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _S // full table element
-      // stat-specific table element 
+      // stat-specific table element
       forvalues _s = 1/`_nstats' {
         if (`_factor' == 0) {
           mat _stat`_s' = _S[`_s', 1]
         }
         else if (`_factor' == 1 & `_s' == 1) {
           mat _stat`_s' = _S[`_s'..., 1]
-        } 
+        }
         else {
           mat _stat`_s' = J(rowsof(_S), 1, .)
         }
@@ -1960,14 +1960,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
       if (`_factor' == 1) mat _S = _S'
       if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S // full table element
-      // stat-specific table element 
+      // stat-specific table element
       forvalues _s = 1/`_nstats' {
         if (`_factor' == 0) {
           mat _stat`_s' = _stat`_s', _S[`_s', 1]
         }
         else if (`_factor' == 1 & `_s' == 1) {
           mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
-        } 
+        }
         else {
           mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
         }
@@ -1982,14 +1982,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
       if (`_factor' == 1) mat _S = _S'
       if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
       mat _V = _V, _S
-      // stat-specific table element 
+      // stat-specific table element
       forvalues _s = 1/`_nstats' {
         if (`_factor' == 0) {
           mat _stat`_s' = _stat`_s', _S[`_s', 1]
         }
         else if (`_factor' == 1 & `_s' == 1) {
           mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
-        } 
+        }
         else {
           mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
         }
@@ -2004,14 +2004,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
         if (`_factor' == 1) mat _S = _S'
         if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
         mat _V = _S, _V
-        // stat-specific table element 
+        // stat-specific table element
         forvalues _s = 1/`_nstats' {
           if (`_factor' == 0) {
             mat _stat`_s' = _S[`_s', 1], _stat`_s'
           }
           else if (`_factor' == 1 & `_s' == 1) {
             mat _stat`_s' = _S[`_s'..., 1], _stat`_s'
-          } 
+          }
           else {
             mat _stat`_s' = J(rowsof(_S), 1, .), _stat`_s'
           }
@@ -2020,7 +2020,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       else if ("`keepempty'" != "") {
         local _colnames = `" "A_unmatched" `_colnames' "' // keep in table despite no unmatched obs
-      } 
+      }
 
       // B_unmatched
       if (`e(mshareB)' < 100) {
@@ -2030,14 +2030,14 @@ syntax [varlist (default=none fv)] [if] [in], ///
         if (`_factor' == 1) mat _S = _S'
         if (`_factor' == 1 & "`fvpercent'" != "") mat _S = _S * 100
         mat _V = _V, _S
-        // stat-specific table element 
+        // stat-specific table element
         forvalues _s = 1/`_nstats' {
           if (`_factor' == 0) {
             mat _stat`_s' = _stat`_s', _S[`_s', 1]
           }
           else if (`_factor' == 1 & `_s' == 1) {
             mat _stat`_s' = _stat`_s', _S[`_s'..., 1]
-          } 
+          }
           else {
             mat _stat`_s' = _stat`_s', J(rowsof(_S), 1, .)
           }
@@ -2046,7 +2046,7 @@ syntax [varlist (default=none fv)] [if] [in], ///
       }
       else if ("`keepempty'" != "") {
         local _colnames = `" `_colnames' "B_unmatched" "' // keep in table despite no unmatched obs
-      } 
+      }
 
       // assign row names
       mat rownames _V = `_rownames'
@@ -2105,13 +2105,13 @@ syntax [varlist (default=none fv)] [if] [in], ///
     foreach _m in M `statistics' {
       mat colnames _`_m' = `_colnames'
     }
-    
+
     // determine column format by no. of columns
     if ("`labelwidth'" == "") local labelwidth = 0
     if (colsof(_M) == 3) {
       if (`labelwidth' < 14) local _twidth = 14
         else local _twidth = `labelwidth'
-      local _format = "%18.3g"	
+      local _format = "%18.3g"
     }
     else if (colsof(_M) == 4) {
       if (`labelwidth' < 13) local _twidth = 13
@@ -2148,16 +2148,16 @@ syntax [if] [in] , ///
 	[ALWAYS(varlist fv)] /// specify variables to always include in each model
 	[INCLMarkers(string asis)] /// marker-options to indicated included variables
 	[OMITMarkers(string asis)] /// marker-options to indicated omitted variables
-	[XTItle(string asis)] /// 
-	[YTItle(string asis)] /// 
+	[XTItle(string asis)] ///
+	[YTItle(string asis)] ///
 	[YLABel(string asis)] ///
 	[ZLABel(string asis)] /// y-Labels for bottom graph
-	[LPattern(passthru) LWidth(passthru) LColor(passthru) LAlign(passthru) LSTYle(passthru)] /// line option 
+	[LPattern(passthru) LWidth(passthru) LColor(passthru) LAlign(passthru) LSTYle(passthru)] /// line option
 	[NOSORT]  ///
 	[NODOTS] ///
 	[*] // star for all graph combine options
-	
-	
+
+
 qui {
 	 // check if prior command was nopo
     if ("`e(cmd)'" != "nopo") {
@@ -2183,9 +2183,9 @@ qui {
 	local _by `e(by)'
 	local _tval = `e(tval)'
 	local _wtype `e(wtype)'
-	
+
 	local _nvars = `:word count `_matchset'' // number of variables in matchingset
-	
+
 	if "`varlabel'" != "" { // if requested, obtain variable labels
 		local i = 1
 		foreach v of loca _matchset {
@@ -2205,8 +2205,8 @@ qui {
 		}
 	}
 
-	// check if always-variable contains those of matchingset 
-	local _check: list always - _matchset 
+	// check if always-variable contains those of matchingset
+	local _check: list always - _matchset
 	if "`_check'" != "" {
 		noisily dis as error "Variable(s) in always() are not part of the matching-set of previous nopo decomp: `_check'"
 		error 103
@@ -2226,7 +2226,7 @@ qui {
 	if ("`omitmarkers'" == "") local omitmarkers "ms(oh)"
 	if ("`xtitle'" == "") local xtitle "Combinations of characteristics"
 	if ("`ytitle'" == "") local ytitle "Percent matched units"
-	if "`ylabel'" != "" { 
+	if "`ylabel'" != "" {
 		if ustrregexm("`ylabel'", "angle") == 0 {
 			local ylabel "`ylabel' angle(0)"
 		}
@@ -2238,8 +2238,8 @@ qui {
 	if (ustrregexm("`zlabel'", "labstyle") == 0) local zlabel "`zlabel' labstyle(tick_label)"
 	if (ustrregexm("`zlabel'", "nogrid") == 0) local zlabel "`zlabel' nogrid"
 	if (ustrregexm("`zlabel'", "angle") == 0)  local zlabel "`zlabel' angle(0)"
-	
-	
+
+
 	// Generate list with all possible combinations
 	// Code from tuples-Package, v4.2.0 (Joseph N. Luchman, daniel klein, & NJC, 2021)
 	tokenize `"`macval(_tuplist)'"'
@@ -2261,11 +2261,11 @@ qui {
             local tuple`++k' `"`macval(tuple)'"'
         }
 	// output is number of tuples (ntuples) and local of tuple`t' for each combination
-	
+
 	// Run kmatch with specified options across all combinations of variables in matchingset
-	mat _t = J(`ntuples',2,.) 
+	mat _t = J(`ntuples',2,.)
 	noisily {
-		if "`nodots'" == "" { 
+		if "`nodots'" == "" {
 			_dots 0, title("Running `_kmatch_subcmd' matching for `ntuples' combinations of matching variables:")
 		}
 	}
@@ -2276,7 +2276,7 @@ qui {
 			kmatch `_kmatch_subcmd' `_by' `always' `_subxvars' if `touse' == 1, tval(`_tval') ematch(`_subematch')
 		}
 		else {
-			kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval') 
+			kmatch `_kmatch_subcmd' `_by' `always' `tuple`t'' if `touse' == 1, tval(`_tval')
 		}
 		matrix N = e(_N)
 		mat _t[`t', 1 ] = N[2,1] / N[2,3] * 100
@@ -2287,20 +2287,20 @@ qui {
 	}
 	matrix colnames _t = mshareA mshareB
 	*matrix rownames _t = `_rowlab' // does not work with very long lists of variables
-	
+
 	//New data set of matching-matrix
 	if regexm("`options'", "nodraw") == 0 {
 		noisily: dis as txt _newline "Plotting common support graph"
-		preserve 
+		preserve
 			clear
 			svmat _t, names(col)
-			
+
 			gen comb  = "" // label which combinations are underlying
 			foreach t of num 1 (1) `ntuples' {
 				replace comb = "`tuple`t''" in `t'
 			}
-			
-			gen t = _n 
+
+			gen t = _n
 			if "`nosort'" == "" {
 				sort mshareA
 				gen sortA = _n // sorting variable for share of matched in A
@@ -2311,57 +2311,57 @@ qui {
 				gen sortA = _n
 				gen sortB = _n
 			}
-			
-			expand `_nvars' // expand to also mark unused variables via scatter 
-			bys t: gen var = _n 
+
+			expand `_nvars' // expand to also mark unused variables via scatter
+			bys t: gen var = _n
 			gen incl = 0
 			local i = 1
-			local _phantom = " " 
+			local _phantom = " "
 			foreach v of local _matchset {
 				replace incl = 1 if regexm(comb, "`v'")  & var == `i' // mark which variables are used
 				if "`varlabel'" != "" {
-					local lab `"`_`i'lab'"' 
+					local lab `"`_`i'lab'"'
 				}
 				else {
 					local lab "`v'"
 				}
-				lab def var `i' `"`lab'"', modify // ylabels for bottom-graph 
+				lab def var `i' `"`lab'"', modify // ylabels for bottom-graph
 				if strlen(`"`lab'"') > strlen(`"`_phantom'"') {
 					local _phantom = `"`lab'"' // phantom label of longest label for upper graph
 				}
-				local i = `i' + 1 
+				local i = `i' + 1
 			}
-			lab val var var	
-			
+			lab val var var
+
 			// plot for each group
 			foreach gr in A B {
-				// bottom graph of which matching variables were used 
+				// bottom graph of which matching variables were used
 				twoway scatter var sort`gr' if incl == 1, `inclmarkers' ///
 					|| scatter var sort`gr' if incl == 0, `omitmarkers' ///
 					ylabel(1 (1) `_nvars', `zlabel' valuelabel) ///
 					xscale(reverse fextend titlegap(7pt)) ///
 					xlabel(,nolab notick) xtitle(`xtitle') ///
 					legend(off) fysize(20) ytitle(" ") nodraw name(_bottom, replace)
-				// upper graph of share of matched 
+				// upper graph of share of matched
 				twoway line mshare`gr' sort`gr', ///
 					`lpattern' `lwdith' `lcolor' `align' `lstyle' ///
 					sort(sort`gr') yscale(range(-5 105)) ///
 					ylabel(`ylabel') ///
-					ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///  
-					xscale(reverse off) xlabel(,nolab notick) xtitle("") /// 
+					ymlabel(1.5 `"`_phantom'"', `zlabel' custom tlc(%0) labcol(%0)) ///
+					xscale(reverse off) xlabel(,nolab notick) xtitle("") ///
 					legend(off) fysize(80) ytitle(`ytitle') ///
 					nodraw name(_top, replace)
 				// combine both for one group
 				graph combine _top _bottom , imargin(zero) c(1) ///
 					title("Common support for group `gr'", size(medium)) ///
-					nodraw name(_group`gr', replace)				
+					nodraw name(_group`gr', replace)
 			}
 			// combine groups
 			graph combine _groupA _groupB, `options'
 			graph drop _bottom _top _groupA  _groupB
 		restore
 	}
-	
+
 	//return
 	matrix _t = _t'
 	return matrix commsupport = _t
@@ -2372,10 +2372,10 @@ qui {
 	return local xvars = "`_xvars'"
 	return local ncomb = "`ntuples'"
 	if ("`always'" != "") return local always = "`alyways'"
-	
+
 	noisily: if ("`_ematch'" == "") dis as txt "Exact matching applied to `_ematch'"
 	noisily: if ("`_wtype'" != "")  dis as text _newline "Note: Percentages of matched are based on unweighted observations."
-	
+
 	est restore _nopo
 }
 
